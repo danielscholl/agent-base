@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      pr: ${{ steps.release.outputs.pr }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      # Update uv.lock when release PR is created/updated
+      - name: Checkout release PR branch
+        if: ${{ steps.release.outputs.pr }}
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ fromJson(steps.release.outputs.pr).headBranchName }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install uv
+        if: ${{ steps.release.outputs.pr }}
+        uses: astral-sh/setup-uv@v7
+
+      - name: Update uv.lock
+        if: ${{ steps.release.outputs.pr }}
+        run: uv lock
+
+      - name: Commit updated uv.lock
+        if: ${{ steps.release.outputs.pr }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add uv.lock
+          git diff --staged --quiet || git commit -m "chore: update uv.lock"
+          git push
+
+  build-artifacts:
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Build package
+        run: |
+          uv pip install --system build
+          python -m build
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: dist/*

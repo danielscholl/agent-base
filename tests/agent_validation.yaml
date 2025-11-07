@@ -1,0 +1,112 @@
+# Agent Validation Test Suite
+version: "1.0"
+name: "Agent CLI Validation"
+description: "Real-world validation tests for agent functionality"
+
+# Basic command tests
+command_tests:
+  - name: "Help command displays correctly"
+    command: "uv run agent --help"
+    timeout: 10
+    expected:
+      exit_code: 0
+      stdout_contains:
+        - "agent"
+        - "--prompt"
+        - "--check"
+        - "Examples:"
+
+  - name: "Version command works"
+    command: "uv run agent --version"
+    timeout: 5
+    expected:
+      exit_code: 0
+      stdout_matches: "Agent version \\d+\\.\\d+\\.\\d+"
+
+  - name: "Health check passes"
+    command: "uv run agent --check"
+    timeout: 10
+    expected:
+      exit_code: 0
+      stdout_contains:
+        - "Health Check"
+        - "✓"
+        - "passed"
+
+  - name: "Configuration display"
+    command: "uv run agent --config"
+    timeout: 5
+    expected:
+      exit_code: 0
+      stdout_contains:
+        - "Configuration"
+        - "Provider"
+
+# Prompt execution tests
+prompt_tests:
+  - name: "Simple greeting"
+    command: 'uv run agent -p "Say hello"'
+    timeout: 30
+    expected:
+      exit_code: 0
+      stdout_contains_any:
+        - "Hello"
+        - "hello"
+        - "Hi"
+      stdout_not_contains:
+        - "error"
+        - "Error"
+        - "failed"
+
+  - name: "Math question"
+    command: 'uv run agent -p "What is 2+2?"'
+    timeout: 30
+    expected:
+      exit_code: 0
+      stdout_contains_any:
+        - "4"
+        - "four"
+        - "Four"
+
+  - name: "Tool invocation test"
+    command: 'uv run agent -p "Use the hello tool to greet Alice"'
+    timeout: 30
+    expected:
+      exit_code: 0
+      stdout_contains:
+        - "Alice"
+      validates_tool_usage: "hello"
+
+  - name: "Empty prompt handling"
+    command: 'uv run agent -p ""'
+    timeout: 10
+    expected:
+      exit_code: 0
+      stdout_contains_any: ["Interactive mode", "not implemented", "Use:", "help"]
+
+# Performance tests
+performance_tests:
+  - name: "Response time for simple prompts"
+    command: 'uv run agent -p "What is 2+2?"'
+    max_duration: 15
+    expected:
+      exit_code: 0
+
+  - name: "Startup time"
+    command: "uv run agent --version"
+    max_duration: 3
+    expected:
+      exit_code: 0
+
+# Configuration tests
+config_tests:
+  - name: "Missing configuration handling"
+    env:
+      unset: ["LLM_PROVIDER", "OPENAI_API_KEY"]
+    command: "uv run agent --check"
+    expected:
+      exit_code: 1
+      stdout_contains_any:
+        - "Configuration error"
+        - "missing"
+        - "required"

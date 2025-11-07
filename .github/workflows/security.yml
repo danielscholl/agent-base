@@ -1,0 +1,69 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+
+  sbom-generation:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install dependencies
+        run: |
+          uv sync --frozen
+          uv pip install cyclonedx-bom
+
+      - name: Generate SBOM
+        run: uv run cyclonedx-py environment -o sbom.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v5
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.json
+          retention-days: 90
+
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4

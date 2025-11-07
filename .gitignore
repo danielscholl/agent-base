@@ -1,6 +1,7 @@
 ai-specs/
 ai-examples/
 ai-docs/
+CLAUDE.local.md
 
 # Python
 __pycache__/
@@ -65,8 +66,10 @@ dmypy.json
 *~
 .DS_Store
 
-# Butler Agent specific
+# Agent specific
 .local/
+.agent/
+uv.lock
 
 # Kubernetes
 kubeconfig
