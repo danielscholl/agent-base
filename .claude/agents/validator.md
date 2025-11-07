@@ -53,12 +53,12 @@ Execute actual agent commands and validate outputs:
 **Files**:
 - `tests/integration/test_agent_validation.py` - AgentValidator class and pytest integration
 - `tests/integration/run_validation.py` - Standalone runner (no pytest required)
-- `tests/agent_validation.yaml` - Test configuration
+- `tests/integration/agent_validation.yaml` - Test configuration
 
 ### 3. Agent-Specific Test Structure
 
 #### Test Configuration File
-Create a `.claude/tests/validation.yaml` or `tests/agent_validation.yaml` file:
+Create a `tests/integration/agent_validation.yaml` file:
 
 ```yaml
 # Agent Validation Test Suite
@@ -201,7 +201,7 @@ import time
 class AgentValidator:
     """Real-world validation tests for agent CLI."""
 
-    def __init__(self, config_path: str = "tests/agent_validation.yaml"):
+    def __init__(self, config_path: str = "tests/integration/agent_validation.yaml"):
         """Initialize validator with test configuration."""
         self.config_path = Path(config_path)
         self.load_config()

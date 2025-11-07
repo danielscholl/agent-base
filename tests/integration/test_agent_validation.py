@@ -18,7 +18,7 @@ import yaml
 class AgentValidator:
     """Real-world validation tests for agent CLI."""
 
-    def __init__(self, config_path: str = "tests/agent_validation.yaml"):
+    def __init__(self, config_path: str = "tests/integration/agent_validation.yaml"):
         """Initialize validator with test configuration.
 
         Args:
@@ -357,7 +357,7 @@ class TestAgentValidation:
 
     def test_validation_config_exists(self):
         """Test that validation configuration file exists."""
-        config_path = Path("tests/agent_validation.yaml")
+        config_path = Path("tests/integration/agent_validation.yaml")
         assert config_path.exists(), "Validation config file should exist"
 
     def test_validation_config_valid(self, validator):

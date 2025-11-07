@@ -45,8 +45,8 @@ Examples:
     parser.add_argument(
         "--config",
         type=str,
-        default="tests/agent_validation.yaml",
-        help="Path to validation config file (default: tests/agent_validation.yaml)",
+        default="tests/integration/agent_validation.yaml",
+        help="Path to validation config file (default: tests/integration/agent_validation.yaml)",
     )
 
     parser.add_argument(

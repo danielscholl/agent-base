@@ -153,7 +153,7 @@ agent-template/
 │       └── errors.py      # Custom exceptions
 ├── tests/                  # Test suite
 │   ├── unit/              # Unit tests
-│   ├── integration/       # Integration tests
+│   ├── integration/       # Integration tests (includes agent validation)
 │   └── mocks/             # Test mocks
 ├── docs/                   # Documentation
 │   ├── architecture/      # Architecture docs

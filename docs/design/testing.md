@@ -121,8 +121,8 @@ Test real-world CLI behavior via subprocess execution:
 **Files**:
 - `tests/integration/test_agent_validation.py` - Pytest integration
 - `tests/integration/run_validation.py` - Standalone runner
-- `tests/agent_validation.yaml` - Basic test configuration
-- `tests/agent_validation_advanced.yaml` - Advanced scenarios
+- `tests/integration/agent_validation.yaml` - Basic test configuration
+- `tests/integration/agent_validation_advanced.yaml` - Advanced scenarios
 
 **See**: [Agent Validation Testing](#agent-validation-testing) section for details
 
@@ -408,9 +408,11 @@ tests/
 ├── integration/
 │   ├── test_agent_validation.py    # AgentValidator class + pytest integration
 │   ├── run_validation.py           # Standalone runner (no pytest required)
-│   └── test_hello_integration.py   # Traditional integration tests
-├── agent_validation.yaml           # Basic validation test config
-└── agent_validation_advanced.yaml  # Advanced scenarios and edge cases
+│   ├── test_hello_integration.py   # Traditional integration tests
+│   ├── agent_validation.yaml       # Basic validation test config
+│   └── agent_validation_advanced.yaml  # Advanced scenarios and edge cases
+├── unit/                            # Unit tests
+└── mocks/                           # Test mocks
 ```
 
 ### AgentValidator Class
@@ -520,7 +522,7 @@ uv run pytest tests/integration/test_agent_validation.py -m "not slow"
 uv run python tests/integration/run_validation.py
 
 # Use custom config
-uv run python tests/integration/run_validation.py --config tests/agent_validation_advanced.yaml
+uv run python tests/integration/run_validation.py --config tests/integration/agent_validation_advanced.yaml
 
 # Run specific category
 uv run python tests/integration/run_validation.py --category command_tests
