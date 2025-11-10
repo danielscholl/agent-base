@@ -10,7 +10,7 @@ A functional agent base for building AI agents with multi-provider LLM support a
 Build conversational AI agents with enterprise-grade features: session management, observability, and extensible toolsets.
 
 ```bash
-uv run agent
+agent
 
 Agent - Conversational Assistant
 Version 0.1.0 • OpenAI/gpt-5-mini
@@ -86,7 +86,7 @@ az login  # For Azure providers (OpenAI, AI Foundry)
 
 **3. Verify setup**
 ```bash
-uv run agent --check   # Validate configuration
+agent --check   # Validate configuration
 ```
 
 ## Usage
