@@ -120,7 +120,8 @@ def azure_ai_foundry_agent():
     config = AgentConfig(
         llm_provider="azure_ai_foundry",
         azure_project_endpoint=os.getenv("AZURE_PROJECT_ENDPOINT"),
-        azure_model_deployment=os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-4o"),
+        # Use gpt-5-mini as default (supports tools and matches main config)
+        azure_model_deployment=os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini"),
     )
 
     return Agent(config=config)
