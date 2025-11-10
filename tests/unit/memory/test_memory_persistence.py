@@ -337,3 +337,25 @@ class TestMemoryPersistence:
 
         assert loaded[0]["metadata"]["user_info"]["name"] == "Alice"
         assert loaded[0]["metadata"]["user_info"]["preferences"] == ["Python", "AI"]
+
+    @pytest.mark.asyncio
+    async def test_save_handles_write_error(self, memory_persistence, tmp_path, monkeypatch):
+        """Test save handles file write errors gracefully."""
+        memory_data = [{"id": 0, "role": "user", "content": "Test"}]
+        file_path = tmp_path / "memory" / "error.json"
+
+        # Mock open to raise an error
+        import builtins
+
+        original_open = builtins.open
+
+        def mock_open(*args, **kwargs):
+            if str(file_path) in str(args[0]):
+                raise PermissionError("Cannot write to file")
+            return original_open(*args, **kwargs)
+
+        monkeypatch.setattr(builtins, "open", mock_open)
+
+        # Should raise exception (not catch and ignore)
+        with pytest.raises(PermissionError):
+            await memory_persistence.save(memory_data, file_path)

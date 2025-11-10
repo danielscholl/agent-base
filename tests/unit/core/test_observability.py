@@ -37,3 +37,21 @@ class TestSpanContextHelpers:
 
         result = get_current_agent_span()
         assert result is None
+
+    def test_multiple_span_context_changes(self):
+        """Test changing span context multiple times."""
+        span1 = "span1"
+        span2 = "span2"
+        span3 = "span3"
+
+        set_current_agent_span(span1)
+        assert get_current_agent_span() == span1
+
+        set_current_agent_span(span2)
+        assert get_current_agent_span() == span2
+
+        set_current_agent_span(span3)
+        assert get_current_agent_span() == span3
+
+        set_current_agent_span(None)
+        assert get_current_agent_span() is None
