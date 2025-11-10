@@ -14,8 +14,13 @@ class AgentConfig:
     Supports four LLM providers:
     - openai: OpenAI API (gpt-5-mini, gpt-4o, etc.)
     - anthropic: Anthropic API (claude-sonnet-4-5, claude-opus-4, etc.)
-    - azure: Azure OpenAI (gpt-5-codex, gpt-4o, etc.)
+    - azure: Azure OpenAI (requires deployment name)
     - foundry: Azure AI Foundry with managed models
+
+    Model selection:
+    - AGENT_MODEL: Override default model for any provider
+    - Defaults: gpt-5-mini (OpenAI), claude-sonnet-4-5-20250929 (Anthropic)
+    - Azure providers: Use deployment names (AZURE_OPENAI_DEPLOYMENT_NAME, AZURE_MODEL_DEPLOYMENT)
     """
 
     # LLM Provider (openai, anthropic, azure, or foundry)
@@ -45,8 +50,8 @@ class AgentConfig:
     agent_data_dir: Path | None = None
     agent_session_dir: Path | None = None
 
-    # Memory configuration
-    memory_enabled: bool = True
+    # Memory configuration (currently redundant with thread persistence)
+    memory_enabled: bool = False  # Default false until semantic memory implemented
     memory_type: str = "in_memory"  # Future: "mem0", "langchain", etc.
     memory_dir: Path | None = None
     memory_history_limit: int = 20  # Max memories to inject as context
@@ -76,20 +81,23 @@ class AgentConfig:
 
         llm_provider = os.getenv("LLM_PROVIDER", "openai")
 
+        # AGENT_MODEL can override any provider's default model
+        agent_model = os.getenv("AGENT_MODEL")
+
         config = cls(
             llm_provider=llm_provider,
             # OpenAI
             openai_api_key=os.getenv("OPENAI_API_KEY"),
-            openai_model=os.getenv("OPENAI_MODEL", "gpt-5-mini"),
+            openai_model=agent_model or "gpt-5-mini",
             # Anthropic
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
-            anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5-20250929"),
-            # Azure OpenAI
+            anthropic_model=agent_model or "claude-sonnet-4-5-20250929",
+            # Azure OpenAI (deployment name is required Azure resource identifier)
             azure_openai_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
             azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
             azure_openai_api_version=os.getenv("AZURE_OPENAI_VERSION", "2024-08-01-preview"),
             azure_openai_api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-            # Azure AI Foundry
+            # Azure AI Foundry (deployment name is required Azure resource identifier)
             azure_project_endpoint=os.getenv("AZURE_PROJECT_ENDPOINT"),
             azure_model_deployment=os.getenv("AZURE_MODEL_DEPLOYMENT"),
         )
@@ -101,7 +109,9 @@ class AgentConfig:
         config.agent_session_dir = config.agent_data_dir / "sessions"
 
         # Memory configuration
-        config.memory_enabled = os.getenv("MEMORY_ENABLED", "true").lower() == "true"
+        # Note: Memory is currently redundant with thread persistence
+        # Default to false until semantic memory (mem0) is implemented
+        config.memory_enabled = os.getenv("MEMORY_ENABLED", "false").lower() == "true"
         config.memory_type = os.getenv("MEMORY_TYPE", "in_memory")
         config.memory_history_limit = int(os.getenv("MEMORY_HISTORY_LIMIT", "20"))
         memory_dir = os.getenv("MEMORY_DIR")

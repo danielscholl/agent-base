@@ -189,16 +189,17 @@ class Agent:
         """Load system prompt with three-tier fallback and placeholder replacement.
 
         Loading priority:
-        1. Custom file from config.system_prompt_file (if specified)
-        2. Package default from prompts/system.md
-        3. Hardcoded fallback (if file loading fails)
+        1. AGENT_SYSTEM_PROMPT env variable (explicit override)
+        2. ~/.agent/system.md (user's default custom prompt)
+        3. Package default from prompts/system.md
+        4. Hardcoded fallback (if all file loading fails)
 
         Returns:
             System prompt string with placeholders replaced and YAML front matter stripped
         """
         prompt_content = ""
 
-        # Tier 1: Try custom file if specified
+        # Tier 1: Try explicit env variable override (AGENT_SYSTEM_PROMPT)
         if self.config.system_prompt_file:
             try:
                 # Expand environment variables and user home directory
@@ -206,15 +207,28 @@ class Agent:
                 custom_path = Path(expanded_path).expanduser()
                 prompt_content = custom_path.read_text(encoding="utf-8")
                 logger.info(
-                    f"Loaded system prompt from custom file: {self.config.system_prompt_file}"
+                    f"Loaded system prompt from AGENT_SYSTEM_PROMPT: {self.config.system_prompt_file}"
                 )
             except Exception as e:
                 logger.warning(
-                    f"Failed to load custom system prompt from {self.config.system_prompt_file}: {e}. "
-                    "Falling back to default prompt."
+                    f"Failed to load system prompt from AGENT_SYSTEM_PROMPT={self.config.system_prompt_file}: {e}. "
+                    "Trying next fallback."
                 )
 
-        # Tier 2: Try package default if no custom file or custom file failed
+        # Tier 2: Try user's default custom prompt (~/.agent/system.md)
+        if not prompt_content:
+            try:
+                user_default_path = self.config.agent_data_dir / "system.md"
+                if user_default_path.exists():
+                    prompt_content = user_default_path.read_text(encoding="utf-8")
+                    logger.info(f"Loaded system prompt from user default: {user_default_path}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to load user default system prompt from {user_default_path}: {e}. "
+                    "Trying next fallback."
+                )
+
+        # Tier 3: Try package default
         if not prompt_content:
             try:
                 # Use importlib.resources for package resource loading
@@ -224,10 +238,10 @@ class Agent:
                 logger.info("Loaded system prompt from package default: prompts/system.md")
             except Exception as e:
                 logger.warning(
-                    f"Failed to load default system prompt: {e}. Using hardcoded fallback."
+                    f"Failed to load package default system prompt: {e}. Using hardcoded fallback."
                 )
 
-        # Tier 3: Hardcoded fallback
+        # Tier 4: Hardcoded fallback
         if not prompt_content:
             prompt_content = """You are a helpful AI assistant that can use tools to assist with various tasks.
 

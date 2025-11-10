@@ -1,124 +1,130 @@
 # Agent Base
 
-Production-ready conversational AI agent with extensible architecture.
+A functional agent base for building AI agents with multi-provider LLM support and built-in observability.
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
 
-A complete conversational agent built on Microsoft Agent Framework with multi-provider LLM support, conversation memory, and session management. Designed for extension through custom toolsets.
+Build conversational AI agents with enterprise-grade features: session management, observability, and extensible toolsets.
 
 ```bash
-agent -p "say hello to Alice"
-# Complete (2.0s)
-# Hello, Alice!
+uv run agent
 
-agent  # Interactive mode with auto-save sessions
+Agent - Conversational Assistant
+Version 0.1.0 • OpenAI/gpt-5-mini
+
+> Say hello to Alice
+
+● Thinking...
+
+Hello, Alice! ◉‿◉
+
+> What was the name I just mentioned?
+
+● Thinking...
+
+You mentioned "Alice."
+
+> exit
+Saved 4 memories
+Session auto-saved as '2025-11-10-11-38-07'
+
+Goodbye!
 ```
 
-## Features
+Supports OpenAI, Anthropic, Azure OpenAI, and Azure AI Foundry. Includes session persistence, conversation memory, and local observability.
 
-### Observability & Monitoring
-- **OpenTelemetry Integration**: Built-in telemetry with Azure Application Insights and Aspire Dashboard support
-- **Local Development**: `/telemetry start` command for instant local observability (no Azure required!)
-- **Session Tracking**: Correlate telemetry with log files via `session.id`
-- **Token Metrics**: Track token usage and costs by model
-- **Tool Tracing**: See full execution hierarchy including tool calls
-- **Cross-Platform**: Works on Windows, Mac, and Linux
+## Prerequisites
 
-### Core Capabilities
+### Cloud Resources (LLM Provider)
 
-**Multi-Provider LLM Support**
-- OpenAI (gpt-5-mini, gpt-4o)
-- Anthropic (claude-sonnet-4-5, claude-opus-4)
-- Azure OpenAI (gpt-5-codex, gpt-4o)
-- Azure AI Foundry
+**Required - Choose one:**
+- [OpenAI API](https://platform.openai.com/api-keys) - Direct OpenAI access
+- [Anthropic API](https://console.anthropic.com/) - Direct Anthropic access
+- [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/how-to/create-resource) - Azure-hosted OpenAI
+- [Azure AI Foundry](https://ai.azure.com) - Managed AI platform
 
-**Conversation Features**
-- Conversation memory with context persistence
-- Automatic session saving and resume
-- Multi-turn context awareness
-- Session switching and management
+**Optional (for observability):**
+- [Azure Application Insights](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview) - Cloud telemetry
 
-**Extensible Architecture**
-- Class-based toolset system for custom tools
-- Event-driven design for loose coupling
-- Dependency injection for testing
-- Test coverage above 85%
+### Local Tools (Development)
 
-## Quick Start
+**Required:**
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
 
-**Prerequisites**
-- Python 3.12 or higher
-- [uv](https://docs.astral.sh/uv/) package manager
-- API credentials for at least one LLM provider
-- (Optional) [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) for Azure providers
+**Optional (enhances experience):**
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) - Simplifies Azure auth
+- [Docker](https://docs.docker.com/get-docker/) - For local observability dashboard
 
-**Installation**
+## Quick Setup
 
 ```bash
-git clone https://github.com/danielscholl/agent-base.git
-cd agent-base
-uv sync
-```
+# 1. Install
+uv tool install --prerelease=allow git+https://github.com/danielscholl/agent-base.git
 
-**Configuration**
+# Upgrade
+uv tool upgrade agent
 
-Copy the example environment file and add your credentials:
-
-```bash
+# 2. Configure required credentials
 cp .env.example .env
 ```
 
-For OpenAI:
+**Authenticate with CLI tools** (recommended):
 ```bash
-LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-your-key
+az login  # For Azure providers (OpenAI, AI Foundry)
 ```
 
-For Azure providers, authenticate via Azure CLI:
+**OR use API keys** (if CLI not available):
 ```bash
-az login
+# AZURE_OPENAI_API_KEY=your-key
+# LLM_PROVIDER=openai
+# OPENAI_API_KEY=sk-your-key
 ```
 
-**Verification**
-
+**3. Verify setup**
 ```bash
-uv run agent --check    # Validate configuration (includes Docker check)
-uv run agent --config   # Display current settings
+uv run agent --check   # Validate configuration
 ```
 
-**Optional: Enable Local Observability**
+## Usage
 
 ```bash
-# Start telemetry dashboard
-export ENABLE_OTEL=true
-uv run agent --telemetry start
+# Interactive chat mode (with memory and session management)
+agent
+
+# Single query
+agent -p "Say hello to Alice"
+
+# Get help
+agent --help
 ```
 
+### Local Observability
 
-
-See [USAGE.md](USAGE.md) for detailed examples and usage patterns.
-
-## Configuration
-
-Environment variables are loaded from `.env`:
+Monitor your agent's performance with OpenTelemetry:
 
 ```bash
-# Provider selection (openai, anthropic, azure, azure_ai_foundry)
-LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-your-key
+# Run agent with telemetry enabled
+ENABLE_OTEL=true
 
-# Optional settings
-AGENT_DATA_DIR=~/.agent              # Session storage location
-LOG_LEVEL=info                       # Logging verbosity
+# Start local dashboard (requires Docker)
+agent --telemetry start
+
+# View at http://localhost:18888
+# - Traces: Full execution hierarchy
+# - Metrics: Token usage and costs
+# - Logs: Structured application logs
 ```
 
-See [.env.example](.env.example) for all available configuration options, including custom system prompt support via `AGENT_SYSTEM_PROMPT`.
+See [USAGE.md](USAGE.md) for complete examples.
 
 
+## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code quality guidelines, and contribution workflow.
 
 ## License
 
@@ -127,5 +133,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Acknowledgments
 
 - Built with [Microsoft Agent Framework](https://github.com/microsoft/agent-framework)
-- CLI powered by [Rich](https://rich.readthedocs.io/) and [Typer](https://typer.tiangolo.com/)
-- Testing with [pytest](https://pytest.org/)
+- Powered by [Azure AI Foundry](https://azure.microsoft.com/en-us/products/ai-services/ai-studio)

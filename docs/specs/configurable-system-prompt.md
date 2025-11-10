@@ -24,13 +24,20 @@ Currently, the agent's system instructions are hardcoded as a string literal in 
 
 ## Solution Statement
 
-Implement a three-tiered system prompt loading mechanism:
+Implement a four-tiered system prompt loading mechanism:
 
-1. **Custom file path** (highest priority): Load from file specified in `AGENT_SYSTEM_PROMPT` environment variable
-2. **Package default** (fallback): Load from `src/agent/prompts/system.md` using `importlib.resources`
-3. **Hardcoded fallback** (safety): Use embedded string if file loading fails
+1. **AGENT_SYSTEM_PROMPT env variable** (highest priority): Load from file specified in `AGENT_SYSTEM_PROMPT` environment variable
+2. **User default** (~/.agent/system.md): Load from user's data directory if file exists
+3. **Package default** (fallback): Load from `src/agent/prompts/system.md` using `importlib.resources`
+4. **Hardcoded fallback** (safety): Use embedded string if all file loading fails
 
 Support placeholder replacement to inject runtime configuration values (e.g., `{{DATA_DIR}}`, `{{MODEL}}`) into prompts, enabling dynamic contextualization.
+
+This design provides:
+- Explicit per-project overrides via env variable
+- Convenient global customization via ~/.agent/system.md
+- Sensible defaults for new users
+- Graceful fallback for reliability
 
 ## Related Documentation
 
