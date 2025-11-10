@@ -1,0 +1,96 @@
+name: "Copilot Setup Steps"
+
+# Automatically run the setup steps when they are changed to allow for easy validation, and
+# allow manual testing through the repository's "Actions" tab
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+
+    # Set the permissions to the lowest permissions possible needed for your steps.
+    # Copilot will be given its own token for its operations.
+    permissions:
+      # If you want to clone the repository as part of your setup steps, for example to install dependencies, you'll need the `contents: read` permission. If you don't clone the repository in your setup steps, Copilot will do this for you automatically after the steps complete.
+      contents: read
+
+    # You can define any steps you want, and they will run before the agent starts.
+    # If you do not check out your code, Copilot will do this for you.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv package manager
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify uv installation
+        run: |
+          uv --version
+
+      - name: Install Python dependencies
+        continue-on-error: true
+        run: |
+          # Retry dependency installation to handle intermittent network failures
+          MAX_ATTEMPTS=3
+          ATTEMPT=1
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "===== Python Dependency Installation Attempt: $ATTEMPT/$MAX_ATTEMPTS ====="
+
+            if uv sync --all-extras; then
+              echo "✅ Python dependencies installed successfully"
+              exit 0
+            else
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                echo "⚠️ Attempt $ATTEMPT failed, retrying in 5 seconds..."
+                ATTEMPT=$((ATTEMPT + 1))
+                sleep 5
+              else
+                echo "❌ Python dependency installation failed after $MAX_ATTEMPTS attempts"
+                exit 1
+              fi
+            fi
+          done
+
+      - name: Verify Python environment
+        continue-on-error: true
+        run: |
+          python --version
+          uv --version
+          echo "===== Installed Python Packages ====="
+          uv pip list
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: ${{ runner.os }}-python-3.12-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-python-3.12-
+
+      - name: Display environment info
+        run: |
+          echo "===== Environment Information ====="
+          echo "Python: $(python --version)"
+          echo "uv: $(uv --version)"
+          echo "OS: $(uname -a)"
+          echo "Working Directory: $(pwd)"
+          echo "===== Repository Structure ====="
+          ls -la
