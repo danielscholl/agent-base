@@ -86,38 +86,39 @@ async def test_execution_context_propagation(agent_with_middleware: Agent):
 async def test_display_tree_integration():
     """Test that ExecutionTreeDisplay integrates with event emitter."""
     # Create display with test console
-    console = Console(file=open("/dev/null", "w"))  # Discard output
-    display = ExecutionTreeDisplay(
-        console=console,
-        display_mode=DisplayMode.MINIMAL,
-        show_completion_summary=False,
-    )
+    with open("/dev/null", "w") as f:
+        console = Console(file=f)  # Discard output
+        display = ExecutionTreeDisplay(
+            console=console,
+            display_mode=DisplayMode.MINIMAL,
+            show_completion_summary=False,
+        )
 
-    # Setup context
-    ctx = ExecutionContext(
-        is_interactive=False,
-        show_visualization=True,
-        display_mode=DisplayMode.MINIMAL,
-    )
-    set_execution_context(ctx)
+        # Setup context
+        ctx = ExecutionContext(
+            is_interactive=False,
+            show_visualization=True,
+            display_mode=DisplayMode.MINIMAL,
+        )
+        set_execution_context(ctx)
 
-    # Start display
-    await display.start()
+        # Start display
+        await display.start()
 
-    # Emit some test events
-    emitter = get_event_emitter()
-    emitter.emit(LLMRequestEvent(message_count=3))
-    emitter.emit(ToolStartEvent(tool_name="test_tool", arguments={}))
-    emitter.emit(ToolCompleteEvent(tool_name="test_tool", result_summary="Done", duration=0.5))
+        # Emit some test events
+        emitter = get_event_emitter()
+        emitter.emit(LLMRequestEvent(message_count=3))
+        emitter.emit(ToolStartEvent(tool_name="test_tool", arguments={}))
+        emitter.emit(ToolCompleteEvent(tool_name="test_tool", result_summary="Done", duration=0.5))
 
-    # Give display time to process events
-    await asyncio.sleep(0.3)
+        # Give display time to process events
+        await asyncio.sleep(0.3)
 
-    # Stop display
-    await display.stop()
+        # Stop display
+        await display.stop()
 
-    # Verify display started and stopped without errors
-    assert display._running is False, "Display should be stopped"
+        # Verify display started and stopped without errors
+        assert display._running is False, "Display should be stopped"
 
 
 @pytest.mark.asyncio
