@@ -65,8 +65,8 @@ def test_status_bar_handles_no_git(mock_run):
 @patch("agent.cli.app.subprocess.run")
 def test_status_bar_handles_git_exception(mock_run):
     """Test that status bar handles git command exceptions."""
-    # Mock git command to raise exception
-    mock_run.side_effect = Exception("Git not found")
+    # Mock git command to raise exception (OSError for git not found)
+    mock_run.side_effect = OSError("Git not found")
 
     # Should not raise exception
     result = _get_status_bar_text()
