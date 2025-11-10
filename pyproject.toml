@@ -136,6 +136,9 @@ select = [
 ignore = [
     "E501",  # line too long (handled by black)
     "B008",  # function calls in argument defaults
+    "B904",  # raise exceptions with from err/from None (acceptable for typer.Exit)
+    "E402",  # module level import not at top (acceptable for pytest fixtures)
+    "B017",  # pytest.raises(Exception) (acceptable in test templates)
 ]
 
 [tool.ruff.lint.isort]

@@ -3,7 +3,7 @@
 import pytest
 
 from agent.config import AgentConfig
-from agent.memory import create_memory_manager, InMemoryStore, MemoryManager
+from agent.memory import InMemoryStore, MemoryManager, create_memory_manager
 
 
 @pytest.mark.unit
@@ -31,9 +31,7 @@ class TestMemoryManager:
 
     def test_create_success_response_structure(self, memory_store):
         """Test _create_success_response creates proper structure."""
-        response = memory_store._create_success_response(
-            result={"data": "test"}, message="Success"
-        )
+        response = memory_store._create_success_response(result={"data": "test"}, message="Success")
 
         assert response["success"] is True
         assert response["result"] == {"data": "test"}

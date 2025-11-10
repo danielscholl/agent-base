@@ -37,9 +37,7 @@ class TestToolInvocationAcrossProviders:
 
         Cost: ~$0.0003
         """
-        response = await openai_agent.run(
-            "Call the hello_world tool with name='TestUser'"
-        )
+        response = await openai_agent.run("Call the hello_world tool with name='TestUser'")
 
         assert "TestUser" in response, f"Expected 'TestUser' in response: {response}"
 
@@ -50,9 +48,7 @@ class TestToolInvocationAcrossProviders:
 
         Cost: ~$0.0003
         """
-        response = await anthropic_agent.run(
-            "Call the hello_world tool with name='TestUser'"
-        )
+        response = await anthropic_agent.run("Call the hello_world tool with name='TestUser'")
 
         assert "TestUser" in response, f"Expected 'TestUser' in response: {response}"
 
@@ -63,9 +59,7 @@ class TestToolInvocationAcrossProviders:
 
         Cost: ~$0.0003
         """
-        response = await openai_agent.run(
-            "Use greet_user tool: name='Maria', language='es'"
-        )
+        response = await openai_agent.run("Use greet_user tool: name='Maria', language='es'")
 
         # Should contain Maria and Spanish greeting
         assert "Maria" in response
@@ -78,9 +72,7 @@ class TestToolInvocationAcrossProviders:
 
         Cost: ~$0.0003
         """
-        response = await anthropic_agent.run(
-            "Use greet_user tool: name='Pierre', language='fr'"
-        )
+        response = await anthropic_agent.run("Use greet_user tool: name='Pierre', language='fr'")
 
         assert "Pierre" in response
 
@@ -122,8 +114,15 @@ class TestToolErrorHandlingAcrossProviders:
         # Should communicate error
         response_lower = response.lower()
         error_indicators = [
-            "not supported", "error", "cannot", "unable", "unsupported",
-            "doesn't support", "does not support", "only accepts", "only supports"
+            "not supported",
+            "error",
+            "cannot",
+            "unable",
+            "unsupported",
+            "doesn't support",
+            "does not support",
+            "only accepts",
+            "only supports",
         ]
         assert any(
             word in response_lower for word in error_indicators

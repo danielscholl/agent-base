@@ -1,5 +1,7 @@
 """Command handlers for CLI."""
 
+import subprocess
+import time
 from typing import Any
 
 from prompt_toolkit import PromptSession
@@ -9,8 +11,6 @@ from agent.agent import Agent
 from agent.cli.session import pick_session, restore_session_context
 from agent.persistence import ThreadPersistence
 from agent.utils.terminal import TIMEOUT_EXIT_CODE, clear_screen, execute_shell_command
-import subprocess
-import time
 
 
 async def handle_shell_command(command: str, console: Console) -> None:
@@ -205,7 +205,7 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
             )
 
             if CONTAINER_NAME in result.stdout:
-                console.print(f"\n[yellow]Telemetry dashboard is already running![/yellow]")
+                console.print("\n[yellow]Telemetry dashboard is already running![/yellow]")
                 console.print(f"[cyan]Dashboard:[/cyan] {DASHBOARD_URL}")
                 console.print(f"[cyan]OTLP Endpoint:[/cyan] {OTLP_ENDPOINT}\n")
                 return
@@ -239,7 +239,7 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
             console.print("\n[green]✓ Telemetry dashboard started successfully![/green]\n")
             console.print(f"  Dashboard: {DASHBOARD_URL}\n")
             console.print("[bold]To enable telemetry:[/bold]")
-            console.print(f"  export ENABLE_OTEL=true\n")
+            console.print("  export ENABLE_OTEL=true\n")
 
         elif action == "stop":
             # Stop the container
@@ -251,9 +251,9 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
             )
 
             if result.returncode == 0:
-                console.print(f"\n[green]✓ Telemetry dashboard stopped[/green]\n")
+                console.print("\n[green]✓ Telemetry dashboard stopped[/green]\n")
             else:
-                console.print(f"\n[yellow]Telemetry dashboard was not running[/yellow]\n")
+                console.print("\n[yellow]Telemetry dashboard was not running[/yellow]\n")
 
         elif action == "status":
             # Check if running
@@ -280,19 +280,19 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
                     timeout=10,
                 )
 
-                console.print(f"\n[green]✓ Telemetry dashboard is running[/green]")
+                console.print("\n[green]✓ Telemetry dashboard is running[/green]")
                 console.print(f"[dim]Status: {uptime_result.stdout.strip()}[/dim]")
                 console.print(f"[cyan]Dashboard:[/cyan] {DASHBOARD_URL}")
                 console.print(f"[cyan]OTLP Endpoint:[/cyan] {OTLP_ENDPOINT}\n")
             else:
-                console.print(f"\n[yellow]Telemetry dashboard is not running[/yellow]")
-                console.print(f"[dim]Start with: /telemetry start[/dim]\n")
+                console.print("\n[yellow]Telemetry dashboard is not running[/yellow]")
+                console.print("[dim]Start with: /telemetry start[/dim]\n")
 
         elif action == "url":
-            console.print(f"\n[bold]Telemetry Dashboard:[/bold]")
+            console.print("\n[bold]Telemetry Dashboard:[/bold]")
             console.print(f"  {DASHBOARD_URL}\n")
-            console.print(f"[bold]Enable telemetry:[/bold]")
-            console.print(f"  export ENABLE_OTEL=true\n")
+            console.print("[bold]Enable telemetry:[/bold]")
+            console.print("  export ENABLE_OTEL=true\n")
 
         else:
             # Show help

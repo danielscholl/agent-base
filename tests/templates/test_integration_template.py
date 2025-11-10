@@ -53,9 +53,7 @@ def agent_with_tools(integration_config, mock_llm_client):
     # ← Replace HelloTools with your toolsets
     toolsets = [HelloTools(integration_config)]
 
-    return Agent(
-        config=integration_config, chat_client=mock_llm_client, toolsets=toolsets
-    )
+    return Agent(config=integration_config, chat_client=mock_llm_client, toolsets=toolsets)
 
 
 @pytest.mark.integration
@@ -76,9 +74,7 @@ class TestAgentToolIntegration:
         assert len(agent_with_tools.tools) > 0, "Agent should have registered tools"
 
         # Check tools are callable
-        assert all(
-            callable(tool) for tool in agent_with_tools.tools
-        ), "All tools must be callable"
+        assert all(callable(tool) for tool in agent_with_tools.tools), "All tools must be callable"
 
         # ← Add specific tool name checks
         tool_names = [tool.__name__ for tool in agent_with_tools.tools]
@@ -274,9 +270,7 @@ def multi_toolset_agent(integration_config, mock_llm_client):
         # YourOtherTools(integration_config),
     ]
 
-    return Agent(
-        config=integration_config, chat_client=mock_llm_client, toolsets=toolsets
-    )
+    return Agent(config=integration_config, chat_client=mock_llm_client, toolsets=toolsets)
 
 
 # ============================================================================

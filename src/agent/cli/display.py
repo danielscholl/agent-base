@@ -1,13 +1,12 @@
 """Display helpers for CLI."""
 
 import asyncio
-import signal
 from typing import Any
 
 from rich.console import Console
 
 from agent.agent import Agent
-from agent.display import DisplayMode, ExecutionContext, ExecutionTreeDisplay, set_execution_context
+from agent.display import DisplayMode, ExecutionContext, ExecutionTreeDisplay
 
 
 def create_execution_context(verbose: bool, quiet: bool, is_interactive: bool) -> ExecutionContext:

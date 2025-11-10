@@ -39,7 +39,7 @@ class TestThreadPersistenceMemory:
         """Test ThreadPersistence defaults memory_dir."""
         persistence = ThreadPersistence(storage_dir=tmp_path / "sessions")
 
-        expected_dir = tmp_path.home() / ".agent" / "memory"
+        tmp_path.home() / ".agent" / "memory"
         # Note: In tests this will use the system home dir
         assert persistence.memory_dir is not None
 
@@ -223,9 +223,7 @@ class TestThreadPersistenceMemory:
     async def test_save_memory_creates_parent_directories(self, tmp_path):
         """Test save_memory_state creates parent directories."""
         nested_dir = tmp_path / "nested" / "memory"
-        persistence = ThreadPersistence(
-            storage_dir=tmp_path / "sessions", memory_dir=nested_dir
-        )
+        persistence = ThreadPersistence(storage_dir=tmp_path / "sessions", memory_dir=nested_dir)
 
         memory_data = [{"id": 0, "role": "user", "content": "Test"}]
         path = await persistence.save_memory_state("test", memory_data)

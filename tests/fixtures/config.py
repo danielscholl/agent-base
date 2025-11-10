@@ -1,6 +1,5 @@
 """Configuration fixtures for testing."""
 
-from pathlib import Path
 
 import pytest
 

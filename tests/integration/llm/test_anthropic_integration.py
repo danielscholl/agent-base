@@ -101,7 +101,14 @@ class TestAnthropicErrorHandling:
 
         # Should communicate the error
         response_lower = response.lower()
-        error_indicators = ["not supported", "error", "cannot", "unable", "not available", "doesn't support"]
+        error_indicators = [
+            "not supported",
+            "error",
+            "cannot",
+            "unable",
+            "not available",
+            "doesn't support",
+        ]
 
         assert any(
             indicator in response_lower for indicator in error_indicators

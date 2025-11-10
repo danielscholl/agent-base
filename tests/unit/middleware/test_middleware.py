@@ -469,7 +469,6 @@ class TestLoggingFunctionMiddleware:
         child_context.function.name = "child_tool"
         child_context.arguments = {}
 
-        parent_event_id = None
 
         async def parent_next(ctx):
             # Call child tool during parent execution

@@ -146,10 +146,10 @@ async def logging_function_middleware(
         >>> middleware = {"function": [logging_function_middleware]}
         >>> agent = chat_client.create_agent(..., middleware=middleware)
     """
-    from agent.config import AgentConfig
-    from agent.observability import get_current_agent_span
     from agent_framework.observability import OtelAttr, get_meter, get_tracer
     from opentelemetry import trace as ot_trace
+
+    from agent.config import AgentConfig
     from agent.display import (
         ToolCompleteEvent,
         ToolErrorEvent,
@@ -246,18 +246,22 @@ async def logging_function_middleware(
                 # Add tool parameters if sensitive data enabled
                 if config.enable_sensitive_data and args:
                     # Convert args to dict for serialization
+                    args_data: dict[str, Any] | str
                     if hasattr(args, "model_dump"):
-                        args_dict = args.model_dump()
+                        args_data = args.model_dump()
                     elif hasattr(args, "dict"):
-                        args_dict = args.dict()
+                        args_data = args.dict()
                     elif isinstance(args, dict):
-                        args_dict = args
+                        args_data = args
                     else:
-                        args_dict = str(args)
+                        args_data = str(args)
 
                     import json
 
-                    span.set_attribute(OtelAttr.TOOL_ARGUMENTS, json.dumps(args_dict))
+                    span.set_attribute(
+                        OtelAttr.TOOL_ARGUMENTS,
+                        json.dumps(args_data) if isinstance(args_data, dict) else args_data,
+                    )
 
             result = await next(context)
             duration = time.time() - start_time

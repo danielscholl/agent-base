@@ -282,20 +282,21 @@ class ThreadPersistence:
         if hasattr(thread, "message_store") and thread.message_store:
             try:
                 messages = await thread.message_store.list_messages()
-                message_count = len(messages)
+                if messages is not None:
+                    message_count = len(messages)
 
-                # Try to get first user message
-                for msg in messages:
-                    if hasattr(msg, "role") and str(msg.role) == "user":
-                        if hasattr(msg, "text"):
-                            first_message = str(msg.text)[:100]
-                        elif hasattr(msg, "content"):
-                            content = msg.content
-                            if isinstance(content, str):
-                                first_message = content[:100]
-                            else:
-                                first_message = str(content)[:100]
-                        break
+                    # Try to get first user message
+                    for msg in messages:
+                        if hasattr(msg, "role") and str(msg.role) == "user":
+                            if hasattr(msg, "text"):
+                                first_message = str(msg.text)[:100]
+                            elif hasattr(msg, "content"):
+                                content = msg.content
+                                if isinstance(content, str):
+                                    first_message = content[:100]
+                                else:
+                                    first_message = str(content)[:100]
+                            break
             except Exception as e:
                 logger.warning(f"Failed to extract first message: {e}")
 
@@ -408,7 +409,7 @@ class ThreadPersistence:
             )
 
             # Display in the same format as live conversation for consistency
-            for i, msg in enumerate(messages):
+            for _i, msg in enumerate(messages):
                 role = msg.get("role", "unknown")
                 content = msg.get("content", "")
 

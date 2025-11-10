@@ -104,7 +104,9 @@ def _get_status_bar_text() -> str:
 def main(
     prompt: str = typer.Option(None, "-p", "--prompt", help="Execute a single prompt and exit"),
     check: bool = typer.Option(False, "--check", help="Show configuration and connectivity status"),
-    config_flag: bool = typer.Option(False, "--config", help="Show configuration and connectivity status (alias for --check)"),
+    config_flag: bool = typer.Option(
+        False, "--config", help="Show configuration and connectivity status (alias for --check)"
+    ),
     version_flag: bool = typer.Option(False, "--version", help="Show version"),
     telemetry: str = typer.Option(
         None, "--telemetry", help="Manage telemetry dashboard (start|stop|status|url)"
@@ -196,7 +198,7 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
             response = await agent.run("test", thread=None)
 
             # Cleanup HTTP client before returning
-            if hasattr(agent, 'chat_client') and hasattr(agent.chat_client, 'close'):
+            if hasattr(agent, "chat_client") and hasattr(agent.chat_client, "close"):
                 try:
                     await agent.chat_client.close()
                 except Exception:
@@ -209,7 +211,7 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
             return False, "Connection failed"
         finally:
             # Final cleanup attempt
-            if agent and hasattr(agent, 'chat_client') and hasattr(agent.chat_client, 'close'):
+            if agent and hasattr(agent, "chat_client") and hasattr(agent.chat_client, "close"):
                 try:
                     await agent.chat_client.close()
                 except Exception:
@@ -261,21 +263,26 @@ def run_health_check() -> None:
 
         # Agent Settings
         console.print("\n[bold]Agent:[/bold]")
-        log_level = os.getenv("AGENT_LOG_LEVEL") or os.getenv("LOG_LEVEL", "INFO")
+        log_level = os.getenv("AGENT_LOG_LEVEL") or os.getenv("LOG_LEVEL") or "INFO"
         console.print(f"  [magenta]◉[/magenta] Log Level: [magenta]{log_level.upper()}[/magenta]")
 
         # System prompt source
         if config.system_prompt_file:
             prompt_display = str(config.system_prompt_file)
         else:
-            user_default = config.agent_data_dir / "system.md"
-            prompt_display = "Default" if not user_default.exists() else str(user_default)
+            user_default = (
+                config.agent_data_dir / "system.md" if config.agent_data_dir else None
+            )
+            prompt_display = (
+                "Default"
+                if not user_default or not user_default.exists()
+                else str(user_default)
+            )
 
         console.print(f"  [magenta]◉[/magenta] System Prompt: [magenta]{prompt_display}[/magenta]")
 
         # Docker
         console.print("\n[bold]Docker:[/bold]")
-        docker_available = False
         try:
             result = subprocess.run(
                 ["docker", "--version"],
@@ -285,7 +292,6 @@ def run_health_check() -> None:
             )
             if result.returncode == 0:
                 version = result.stdout.strip().replace("Docker version ", "").split(",")[0]
-                docker_available = True
 
                 # Get Docker resources
                 resources_info = ""
@@ -306,7 +312,10 @@ def run_health_check() -> None:
                 except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError):
                     pass
 
-                console.print(f"  [green]◉[/green] Running [dim]({version})[/dim]{resources_info}", highlight=False)
+                console.print(
+                    f"  [green]◉[/green] Running [dim]({version})[/dim]{resources_info}",
+                    highlight=False,
+                )
             else:
                 console.print("  [yellow]◉[/yellow] Not running")
         except FileNotFoundError:
@@ -334,7 +343,11 @@ def run_health_check() -> None:
             elif provider_id == "anthropic" and config.anthropic_api_key:
                 creds = f"****{config.anthropic_api_key[-6:]}"
             elif provider_id == "azure" and config.azure_openai_endpoint:
-                creds = "Azure CLI auth" if not config.azure_openai_api_key else f"****{config.azure_openai_api_key[-6:]}"
+                creds = (
+                    "Azure CLI auth"
+                    if not config.azure_openai_api_key
+                    else f"****{config.azure_openai_api_key[-6:]}"
+                )
             elif provider_id == "foundry" and config.azure_project_endpoint:
                 creds = "Azure CLI auth"
             else:
@@ -352,18 +365,29 @@ def run_health_check() -> None:
                 model = ""
 
             if success and creds:
-                console.print(f"{active_prefix}[green]◉[/green] {provider_name} [dim]{model}[/dim] · [dim cyan]{creds}[/dim cyan]", highlight=False)
+                console.print(
+                    f"{active_prefix}[green]◉[/green] {provider_name} [dim]{model}[/dim] · [dim cyan]{creds}[/dim cyan]",
+                    highlight=False,
+                )
             elif success:
-                console.print(f"{active_prefix}[green]◉[/green] {provider_name} [dim]{model}[/dim]", highlight=False)
+                console.print(
+                    f"{active_prefix}[green]◉[/green] {provider_name} [dim]{model}[/dim]",
+                    highlight=False,
+                )
             elif status == "Not configured":
                 console.print(f"  [dim]○[/dim] {provider_name} - Not configured", highlight=False)
             else:
-                console.print(f"{active_prefix}[red]◉[/red] {provider_name} [dim]{model}[/dim] - {status}", highlight=False)
+                console.print(
+                    f"{active_prefix}[red]◉[/red] {provider_name} [dim]{model}[/dim] - {status}",
+                    highlight=False,
+                )
 
         # Final status
         console.print()
         if not active_connected:
-            console.print(f"[yellow]⚠ Active provider ({config.llm_provider}) is not connected[/yellow]\n")
+            console.print(
+                f"[yellow]⚠ Active provider ({config.llm_provider}) is not connected[/yellow]\n"
+            )
             raise typer.Exit(ExitCodes.GENERAL_ERROR)
 
     except ValueError as e:
@@ -403,15 +427,17 @@ def show_configuration() -> None:
             console.print(f" • Session Directory: {config.agent_session_dir}")
 
         # Get log level (support both AGENT_LOG_LEVEL and LOG_LEVEL)
-        log_level = os.getenv("AGENT_LOG_LEVEL") or os.getenv("LOG_LEVEL", "INFO")
+        log_level = os.getenv("AGENT_LOG_LEVEL") or os.getenv("LOG_LEVEL") or "INFO"
         console.print(f" • Log Level: [magenta]{log_level.upper()}[/magenta]")
 
         # System prompt source (purple value)
         if config.system_prompt_file:
             console.print(f" • System Prompt: [magenta]{config.system_prompt_file}[/magenta]")
         else:
-            user_default = config.agent_data_dir / "system.md"
-            if user_default.exists():
+            user_default = (
+                config.agent_data_dir / "system.md" if config.agent_data_dir else None
+            )
+            if user_default and user_default.exists():
                 console.print(f" • System Prompt: [magenta]{user_default}[/magenta]")
             else:
                 console.print(" • System Prompt: [magenta]Agent Default[/magenta]")
@@ -420,7 +446,9 @@ def show_configuration() -> None:
         console.print("\n[bold]LLM Providers:[/bold]")
 
         # Active provider indicator
-        console.print(f" • Active: [cyan]{config.llm_provider}[/cyan] ({config.get_model_display_name()})")
+        console.print(
+            f" • Active: [cyan]{config.llm_provider}[/cyan] ({config.get_model_display_name()})"
+        )
         console.print()
 
         # OpenAI
@@ -512,14 +540,14 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
                 # Add custom attributes
                 span.set_attribute("session.id", session_name)
                 span.set_attribute("mode", "single-prompt")
-                span.set_attribute("gen_ai.system", config.llm_provider)
-                if config.llm_provider == "openai":
+                span.set_attribute("gen_ai.system", config.llm_provider or "unknown")
+                if config.llm_provider == "openai" and config.openai_model:
                     span.set_attribute("gen_ai.request.model", config.openai_model)
-                elif config.llm_provider == "anthropic":
+                elif config.llm_provider == "anthropic" and config.anthropic_model:
                     span.set_attribute("gen_ai.request.model", config.anthropic_model)
-                elif config.llm_provider == "azure":
+                elif config.llm_provider == "azure" and config.azure_openai_deployment:
                     span.set_attribute("gen_ai.request.model", config.azure_openai_deployment)
-                elif config.llm_provider == "foundry":
+                elif config.llm_provider == "foundry" and config.azure_model_deployment:
                     span.set_attribute("gen_ai.request.model", config.azure_model_deployment)
 
                 # Execute with or without visualization
@@ -793,14 +821,14 @@ async def _execute_agent_query(
             # Add session context to each message span
             span.set_attribute("session.id", session_id)
             span.set_attribute("mode", "interactive")
-            span.set_attribute("gen_ai.system", config.llm_provider)
-            if config.llm_provider == "openai":
+            span.set_attribute("gen_ai.system", config.llm_provider or "unknown")
+            if config.llm_provider == "openai" and config.openai_model:
                 span.set_attribute("gen_ai.request.model", config.openai_model)
-            elif config.llm_provider == "anthropic":
+            elif config.llm_provider == "anthropic" and config.anthropic_model:
                 span.set_attribute("gen_ai.request.model", config.anthropic_model)
-            elif config.llm_provider == "azure":
+            elif config.llm_provider == "azure" and config.azure_openai_deployment:
                 span.set_attribute("gen_ai.request.model", config.azure_openai_deployment)
-            elif config.llm_provider == "foundry":
+            elif config.llm_provider == "foundry" and config.azure_model_deployment:
                 span.set_attribute("gen_ai.request.model", config.azure_model_deployment)
 
             # Execute with or without visualization

@@ -1,6 +1,5 @@
 """Integration tests for agent with HelloTools."""
 
-
 import pytest
 
 from agent.agent import Agent

@@ -12,7 +12,6 @@ import pytest
 from agent.agent import Agent
 from agent.config import AgentConfig
 
-
 # Cost tracking (simple implementation)
 _test_costs = {}
 
@@ -87,9 +86,9 @@ def azure_openai_agent():
         azure_openai_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
         # Support both naming conventions, default to gpt-5-codex
         azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT")
-            or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-5-codex"),
+        or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-5-codex"),
         azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION")
-            or os.getenv("AZURE_OPENAI_VERSION", "2025-03-01-preview"),
+        or os.getenv("AZURE_OPENAI_VERSION", "2025-03-01-preview"),
     )
 
     return Agent(config=config)
@@ -133,7 +132,6 @@ def track_llm_test_cost(request):
 
     This is a simple implementation - actual costs depend on prompt/response length.
     """
-    test_name = request.node.name
 
     # Cost tracking happens here
     yield
@@ -148,8 +146,8 @@ def pytest_configure(config):
         print("\n" + "=" * 70)
         print("⚠️  RUNNING REAL LLM TESTS - THESE MAKE API CALLS AND COST MONEY")
         print("=" * 70)
-        print(f"\n💰 Estimated cost: ~$0.005 per test run")
-        print(f"📊 Target: < $0.01 total for all LLM tests\n")
+        print("\n💰 Estimated cost: ~$0.005 per test run")
+        print("📊 Target: < $0.01 total for all LLM tests\n")
 
 
 def pytest_collection_modifyitems(config, items):

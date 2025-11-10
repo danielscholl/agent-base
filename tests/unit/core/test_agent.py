@@ -35,7 +35,7 @@ class TestAgent:
 
     def test_agent_creates_agent_with_tools(self, mock_config, mock_chat_client):
         """Test Agent creates agent with tools via chat client."""
-        agent = Agent(config=mock_config, chat_client=mock_chat_client)
+        Agent(config=mock_config, chat_client=mock_chat_client)
 
         # Check that create_agent was called
         assert len(mock_chat_client.created_agents) == 1
@@ -95,7 +95,7 @@ class TestAgent:
         config = AgentConfig(llm_provider="invalid_provider", openai_api_key="test")
 
         with pytest.raises(ValueError, match="Unknown provider: invalid_provider"):
-            agent = Agent(config=config)
+            Agent(config=config)
 
     def test_agent_has_agent_attribute(self, agent_instance):
         """Test Agent has agent attribute after initialization."""
@@ -118,7 +118,7 @@ class TestAgentSystemPrompt:
 
     def test_agent_uses_default_prompt(self, mock_config, mock_chat_client):
         """Test agent gets default prompt when no custom file specified."""
-        agent = Agent(config=mock_config, chat_client=mock_chat_client)
+        Agent(config=mock_config, chat_client=mock_chat_client)
 
         # Verify agent was created with default prompt
         assert len(mock_chat_client.created_agents) == 1
@@ -128,9 +128,11 @@ class TestAgentSystemPrompt:
         assert "<agent>" in created["instructions"]
         assert "Helpful AI assistant" in created["instructions"]
 
-    def test_agent_uses_custom_prompt(self, custom_prompt_config, mock_chat_client, custom_prompt_file):
+    def test_agent_uses_custom_prompt(
+        self, custom_prompt_config, mock_chat_client, custom_prompt_file
+    ):
         """Test agent gets custom prompt from file specified in config."""
-        agent = Agent(config=custom_prompt_config, chat_client=mock_chat_client)
+        Agent(config=custom_prompt_config, chat_client=mock_chat_client)
 
         # Verify agent was created with custom prompt
         assert len(mock_chat_client.created_agents) == 1
@@ -140,9 +142,11 @@ class TestAgentSystemPrompt:
         assert "Custom Test Prompt" in created["instructions"]
         assert "test assistant" in created["instructions"]
 
-    def test_agent_instructions_have_placeholders_replaced(self, custom_prompt_config, mock_chat_client):
+    def test_agent_instructions_have_placeholders_replaced(
+        self, custom_prompt_config, mock_chat_client
+    ):
         """Test placeholders are replaced correctly in agent instructions."""
-        agent = Agent(config=custom_prompt_config, chat_client=mock_chat_client)
+        Agent(config=custom_prompt_config, chat_client=mock_chat_client)
 
         created = mock_chat_client.created_agents[0]
         instructions = created["instructions"]
@@ -157,13 +161,15 @@ class TestAgentSystemPrompt:
         assert "OpenAI/gpt-5-mini" in instructions
         assert "openai" in instructions
 
-    def test_agent_creation_succeeds_on_prompt_load_failure(self, mock_config, mock_chat_client, caplog):
+    def test_agent_creation_succeeds_on_prompt_load_failure(
+        self, mock_config, mock_chat_client, caplog
+    ):
         """Test agent creation succeeds even if prompt loading fails."""
         # Set invalid custom prompt file
         mock_config.system_prompt_file = "/nonexistent/prompt.md"
 
         # Agent should still be created (using fallback)
-        agent = Agent(config=mock_config, chat_client=mock_chat_client)
+        Agent(config=mock_config, chat_client=mock_chat_client)
 
         assert len(mock_chat_client.created_agents) == 1
         created = mock_chat_client.created_agents[0]
@@ -174,13 +180,15 @@ class TestAgentSystemPrompt:
         # Should log warning
         assert "Failed to load system prompt from AGENT_SYSTEM_PROMPT" in caplog.text
 
-    def test_multiple_agents_with_different_configs(self, mock_config, custom_prompt_config, mock_chat_client):
+    def test_multiple_agents_with_different_configs(
+        self, mock_config, custom_prompt_config, mock_chat_client
+    ):
         """Test multiple agents can have different prompt configurations."""
         # Create agent with default config
-        agent1 = Agent(config=mock_config, chat_client=mock_chat_client)
+        Agent(config=mock_config, chat_client=mock_chat_client)
 
         # Create agent with custom config
-        agent2 = Agent(config=custom_prompt_config, chat_client=mock_chat_client)
+        Agent(config=custom_prompt_config, chat_client=mock_chat_client)
 
         # Verify both were created
         assert len(mock_chat_client.created_agents) == 2

@@ -158,7 +158,7 @@ class TestYourToolset:  # ← Replace TestYourToolset
     @pytest.mark.asyncio
     async def test_your_tool_function_empty_string(self, toolset):
         """Test your_tool_function with empty string input."""
-        result = await toolset.your_tool_function("")
+        await toolset.your_tool_function("")
 
         # Decide: Should empty string be valid or error?
         # ← Implement based on your requirements
@@ -168,7 +168,7 @@ class TestYourToolset:  # ← Replace TestYourToolset
         """Test your_tool_function with very long input."""
         long_input = "x" * 10000
 
-        result = await toolset.your_tool_function(long_input)
+        await toolset.your_tool_function(long_input)
 
         # ← Validate how your tool handles long inputs
 
@@ -177,7 +177,7 @@ class TestYourToolset:  # ← Replace TestYourToolset
         """Test your_tool_function with special characters."""
         special_input = "Test with !@#$%^&*()_+ special chars"
 
-        result = await toolset.your_tool_function(special_input)
+        await toolset.your_tool_function(special_input)
 
         # ← Validate special character handling
 

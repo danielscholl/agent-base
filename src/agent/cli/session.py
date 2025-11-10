@@ -52,7 +52,7 @@ def setup_session_logging(
 
     # Configure logging
     # Support both AGENT_LOG_LEVEL and LOG_LEVEL (backward compatibility)
-    log_level = os.getenv("AGENT_LOG_LEVEL") or os.getenv("LOG_LEVEL", "INFO")
+    log_level = os.getenv("AGENT_LOG_LEVEL") or os.getenv("LOG_LEVEL") or "INFO"
     log_level = log_level.upper()
     numeric_level = getattr(logging, log_level, logging.INFO)
 

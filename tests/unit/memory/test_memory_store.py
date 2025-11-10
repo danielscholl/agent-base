@@ -2,7 +2,6 @@
 
 import pytest
 
-from agent.config import AgentConfig
 from agent.memory.store import InMemoryStore
 
 
@@ -150,9 +149,7 @@ class TestInMemoryStore:
     @pytest.mark.asyncio
     async def test_search_respects_limit(self, memory_store):
         """Test search respects limit parameter."""
-        messages = [
-            {"role": "user", "content": f"Python message {i}"} for i in range(10)
-        ]
+        messages = [{"role": "user", "content": f"Python message {i}"} for i in range(10)]
         await memory_store.add(messages)
 
         result = await memory_store.search("Python", limit=3)

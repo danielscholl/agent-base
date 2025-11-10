@@ -125,7 +125,7 @@ class Agent:
                 api_key=self.config.openai_api_key,
             )
         elif self.config.llm_provider == "anthropic":
-            from agent_framework.anthropic import AnthropicClient
+            from agent_framework.anthropic import AnthropicClient  # type: ignore[import-not-found]
 
             return AnthropicClient(
                 model_id=self.config.anthropic_model,
@@ -224,8 +224,7 @@ class Agent:
                     logger.info(f"Loaded system prompt from user default: {user_default_path}")
             except Exception as e:
                 logger.warning(
-                    f"Failed to load user default system prompt: {e}. "
-                    "Trying next fallback."
+                    f"Failed to load user default system prompt: {e}. " "Trying next fallback."
                 )
 
         # Tier 3: Try package default
@@ -433,7 +432,7 @@ Be helpful, concise, and clear in your responses."""
         if isinstance(result, str):
             return result
         elif hasattr(result, "text"):
-            return result.text
+            return str(result.text)
         else:
             return cast(str, result)
 

@@ -167,7 +167,7 @@ class TestEventEmitter:
             # Ensure background task completes
             try:
                 await asyncio.wait_for(task, timeout=0.5)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 task.cancel()
 
     def test_disable_prevents_emission(self):

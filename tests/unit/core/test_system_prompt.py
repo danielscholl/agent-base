@@ -1,12 +1,11 @@
 """Tests for system prompt loading with three-tier fallback."""
 
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
 from agent.agent import Agent
-from agent.config import AgentConfig
 
 
 class TestSystemPromptLoading:
@@ -227,7 +226,7 @@ Model: {{MODEL}}
 
         mock_config.system_prompt_file = str(prompt_file)
         agent = Agent(mock_config)
-        prompt = agent._load_system_prompt()
+        agent._load_system_prompt()
 
         # Should log warning about unresolved placeholders
         assert "Unresolved placeholders" in caplog.text

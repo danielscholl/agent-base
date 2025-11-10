@@ -39,8 +39,6 @@ import pytest
 
 from agent.agent import Agent
 from agent.config import AgentConfig
-from agent.tools.hello import HelloTools  # ← Replace with your tools
-
 
 # ============================================================================
 # Fixtures for Real LLM Testing
@@ -333,9 +331,7 @@ class TestCrossProviderBehavior:
 
         # All should contain "hello"
         for provider, response in responses:
-            assert (
-                "hello" in response.lower()
-            ), f"{provider} should include 'hello' in response"
+            assert "hello" in response.lower(), f"{provider} should include 'hello' in response"
 
 
 # ============================================================================

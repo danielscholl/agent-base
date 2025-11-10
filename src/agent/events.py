@@ -216,8 +216,10 @@ try:
         ToolErrorEvent,
         ToolStartEvent,
         get_current_tool_event_id,
-        get_event_emitter as get_display_event_emitter,
         set_current_tool_event_id,
+    )
+    from agent.display.events import (
+        get_event_emitter as get_display_event_emitter,
     )
 
     __all__ = [

@@ -49,9 +49,7 @@ def assert_error_response(response: dict[str, Any], error_code: str | None = Non
 
     if error_code is not None:
         actual_code = response.get("error")
-        assert (
-            actual_code == error_code
-        ), f"Expected error code '{error_code}', got '{actual_code}'"
+        assert actual_code == error_code, f"Expected error code '{error_code}', got '{actual_code}'"
 
 
 def assert_tool_response_format(response: dict[str, Any]) -> None:

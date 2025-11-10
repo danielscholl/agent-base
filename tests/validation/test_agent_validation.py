@@ -333,7 +333,6 @@ class TestAgentValidation:
         assert "Agent:" in result["stdout"]
         assert "LLM Providers:" in result["stdout"]
 
-
     def test_validation_config_exists(self):
         """Test that validation configuration file exists."""
         config_path = Path("tests/validation/agent_validation.yaml")

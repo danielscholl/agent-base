@@ -159,7 +159,8 @@ class TestExecutionTreeDisplay:
 
         # Cancel any lingering tasks
         import asyncio
-        tasks = [t for t in asyncio.all_tasks() if not t.done()]
+
+        [t for t in asyncio.all_tasks() if not t.done()]
 
         yield
 

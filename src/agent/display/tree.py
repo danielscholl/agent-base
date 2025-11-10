@@ -11,7 +11,6 @@ import asyncio
 import logging
 from datetime import datetime
 from types import TracebackType
-from typing import Type
 
 from rich.console import Console, Group, RenderableType
 from rich.live import Live
@@ -544,7 +543,7 @@ class ExecutionTreeDisplay:
 
     async def __aexit__(
         self,
-        exc_type: Type[BaseException] | None,
+        exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:

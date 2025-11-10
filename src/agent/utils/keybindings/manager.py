@@ -4,7 +4,8 @@ Provides centralized registry for keybinding handlers.
 Adapted from butler-agent for agent-template.
 """
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from prompt_toolkit.key_binding import KeyBindings
 
