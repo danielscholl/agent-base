@@ -120,6 +120,7 @@ async def test_display_tree_integration():
         # Verify display started and stopped without errors
         assert display._running is False, "Display should be stopped"
 
+
 @pytest.mark.asyncio
 async def test_middleware_config_integration(agent_with_middleware: Agent):
     """Test that agent is created with middleware configuration."""
