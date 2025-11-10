@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import os
 import platform
 import subprocess
@@ -43,6 +44,7 @@ from agent.utils.keybindings import ClearPromptHandler, KeybindingManager
 
 app = typer.Typer(help="Agent - Conversational Assistant")
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 def _render_startup_banner(config: AgentConfig) -> None:
@@ -101,8 +103,8 @@ def _get_status_bar_text() -> str:
 @app.command()
 def main(
     prompt: str = typer.Option(None, "-p", "--prompt", help="Execute a single prompt and exit"),
-    check: bool = typer.Option(False, "--check", help="Run health check for configuration"),
-    config_flag: bool = typer.Option(False, "--config", help="Show current configuration"),
+    check: bool = typer.Option(False, "--check", help="Show configuration and connectivity status"),
+    config_flag: bool = typer.Option(False, "--config", help="Show configuration and connectivity status (alias for --check)"),
     version_flag: bool = typer.Option(False, "--version", help="Show version"),
     telemetry: str = typer.Option(
         None, "--telemetry", help="Manage telemetry dashboard (start|stop|status|url)"
@@ -113,42 +115,24 @@ def main(
     quiet: bool = typer.Option(False, "--quiet", help="Minimal output mode"),
     resume: bool = typer.Option(False, "--continue", help="Resume last saved session"),
 ) -> None:
-    """Agent - Generic chatbot agent with extensible tools.
+    """Agent - Conversational Assistant with multi-provider LLM support.
 
     Examples:
-        # Interactive mode
-        agent
+        agent                              # Interactive mode
+        agent --check                      # Show configuration and connectivity
+        agent -p "Say hello to Alice"      # Single query
+        agent --continue                   # Resume last session
+        agent --verbose                    # Show execution details
+        agent --telemetry start            # Start observability dashboard
 
-        # Run health check (includes Docker check for observability)
-        agent --check
-
-        # Show configuration
-        agent --config
-
-        # Execute single prompt
-        agent -p "Say hello to Alice"
-
-        # Execute with verbose visualization
-        agent -p "Say hello to Alice" --verbose
-
-        # Resume previous session
-        agent --continue
-
-        # Show version
-        agent --version
-
-    Note: When in interactive mode, type /help to see available commands.
+    Note: Type /help in interactive mode to see available commands.
     """
     if version_flag:
         console.print(f"Agent version {__version__}")
         return
 
-    if check:
+    if check or config_flag:
         run_health_check()
-        return
-
-    if config_flag:
-        show_configuration()
         return
 
     if telemetry:
@@ -171,32 +155,128 @@ def main(
         asyncio.run(run_chat_mode(quiet=quiet, verbose=verbose, resume_session=resume_session))
 
 
+async def _test_provider_connectivity_async(provider: str, config: AgentConfig) -> tuple[bool, str]:
+    """Test connectivity to a specific LLM provider asynchronously.
+
+    Args:
+        provider: Provider name (openai, anthropic, azure, foundry)
+        config: Agent configuration with credentials
+
+    Returns:
+        Tuple of (success, status_message)
+    """
+    try:
+        # Create temporary config for this provider
+        test_config = AgentConfig(
+            llm_provider=provider,
+            openai_api_key=config.openai_api_key,
+            openai_model=config.openai_model,
+            anthropic_api_key=config.anthropic_api_key,
+            anthropic_model=config.anthropic_model,
+            azure_openai_endpoint=config.azure_openai_endpoint,
+            azure_openai_deployment=config.azure_openai_deployment,
+            azure_openai_api_version=config.azure_openai_api_version,
+            azure_openai_api_key=config.azure_openai_api_key,
+            azure_project_endpoint=config.azure_project_endpoint,
+            azure_model_deployment=config.azure_model_deployment,
+            agent_data_dir=config.agent_data_dir,
+            agent_session_dir=config.agent_session_dir,
+        )
+
+        # Validate this provider's configuration
+        try:
+            test_config.validate()
+        except ValueError:
+            return False, "Not configured"
+
+        # Test actual connectivity
+        agent = None
+        try:
+            agent = Agent(test_config)
+            response = await agent.run("test", thread=None)
+
+            # Cleanup HTTP client before returning
+            if hasattr(agent, 'chat_client') and hasattr(agent.chat_client, 'close'):
+                try:
+                    await agent.chat_client.close()
+                except Exception:
+                    pass
+
+            return (True, "Connected") if response else (False, "Connection failed")
+
+        except Exception as e:
+            logger.debug(f"Connectivity test for {provider} failed: {e}")
+            return False, "Connection failed"
+        finally:
+            # Final cleanup attempt
+            if agent and hasattr(agent, 'chat_client') and hasattr(agent.chat_client, 'close'):
+                try:
+                    await agent.chat_client.close()
+                except Exception:
+                    pass
+
+    except Exception as e:
+        logger.debug(f"Provider test for {provider} failed: {e}")
+        return False, "Error testing provider"
+
+
+async def _test_all_providers(config: AgentConfig) -> list[tuple[str, str, bool, str]]:
+    """Test connectivity to all LLM providers in parallel.
+
+    Args:
+        config: Agent configuration
+
+    Returns:
+        List of tuples: (provider_id, provider_name, success, status)
+    """
+    providers = [
+        ("openai", "OpenAI", config.openai_model),
+        ("anthropic", "Anthropic", config.anthropic_model),
+        ("azure", "Azure OpenAI", config.azure_openai_deployment or "N/A"),
+        ("foundry", "Azure AI Foundry", config.azure_model_deployment or "N/A"),
+    ]
+
+    results = []
+    for provider_id, provider_name, model in providers:
+        success, status = await _test_provider_connectivity_async(provider_id, config)
+        results.append((provider_id, f"{provider_name} ({model})", success, status))
+
+    return results
+
+
 def run_health_check() -> None:
-    """Run health check for dependencies and configuration."""
-    console.print("\n[bold]Agent Health Check[/bold]\n")
+    """Run unified health check with configuration and connectivity."""
+    console.print()
 
     try:
-        # System Information
-        console.print("[bold]System:[/bold]")
-        console.print(f"  Platform: {platform.platform()}")
-        cpu_count = os.cpu_count() or 0
-        console.print(f"  CPU Cores: {cpu_count}")
-
-        # Configuration
+        # Configuration validation
         config = AgentConfig.from_env()
         config.validate()
 
-        console.print("\n[bold]Configuration:[/bold]")
-        console.print(f"[green]✓[/green] Provider: {config.llm_provider}")
-        console.print(f"  Model: {config.get_model_display_name()}")
-        if config.agent_data_dir:
-            console.print(f"  Data Dir: {config.agent_data_dir}")
+        # System Information
+        console.print("[bold]System:[/bold]")
+        console.print(f"  [cyan]◉[/cyan] Python [cyan]{platform.python_version()}[/cyan]")
+        console.print(f"  [cyan]◉[/cyan] Platform: [cyan]{platform.platform()}[/cyan]")
+        console.print(f"  [cyan]◉[/cyan] Data: [cyan]{config.agent_data_dir}[/cyan]")
+
+        # Agent Settings
+        console.print("\n[bold]Agent:[/bold]")
+        log_level = os.getenv("AGENT_LOG_LEVEL") or os.getenv("LOG_LEVEL", "INFO")
+        console.print(f"  [magenta]◉[/magenta] Log Level: [magenta]{log_level.upper()}[/magenta]")
+
+        # System prompt source
+        if config.system_prompt_file:
+            prompt_display = str(config.system_prompt_file)
+        else:
+            user_default = config.agent_data_dir / "system.md"
+            prompt_display = "Default" if not user_default.exists() else str(user_default)
+
+        console.print(f"  [magenta]◉[/magenta] System Prompt: [magenta]{prompt_display}[/magenta]")
 
         # Docker
         console.print("\n[bold]Docker:[/bold]")
         docker_available = False
         try:
-            # Check Docker version
             result = subprocess.run(
                 ["docker", "--version"],
                 capture_output=True,
@@ -204,11 +284,11 @@ def run_health_check() -> None:
                 timeout=5,
             )
             if result.returncode == 0:
-                version = result.stdout.strip().replace("Docker version ", "")
-                console.print(f"[green]✓[/green] Version: {version}")
+                version = result.stdout.strip().replace("Docker version ", "").split(",")[0]
                 docker_available = True
 
-                # Get Docker info
+                # Get Docker resources
+                resources_info = ""
                 try:
                     info_result = subprocess.run(
                         ["docker", "info", "--format", "{{json .}}"],
@@ -218,27 +298,73 @@ def run_health_check() -> None:
                     )
                     if info_result.returncode == 0:
                         docker_info = json.loads(info_result.stdout)
-
-                        # CPU info
                         ncpu = docker_info.get("NCPU", 0)
-                        if ncpu > 0:
-                            console.print(f"[green]✓[/green] CPU Limit: {ncpu} cores")
-
-                        # Memory info
                         mem_total = docker_info.get("MemTotal", 0)
-                        if mem_total > 0:
+                        if ncpu > 0 and mem_total > 0:
                             mem_gb = mem_total / (1024**3)
-                            console.print(f"[green]✓[/green] Memory Limit: {mem_gb:.1f} GiB")
-
+                            resources_info = f" · {ncpu} cores, {mem_gb:.1f} GiB"
                 except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError):
-                    pass  # Skip detailed info if not available
+                    pass
 
+                console.print(f"  [green]◉[/green] Running [dim]({version})[/dim]{resources_info}", highlight=False)
             else:
-                console.print("[yellow]✗[/yellow] Not available")
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            console.print("[yellow]✗[/yellow] Not installed")
+                console.print("  [yellow]◉[/yellow] Not running")
+        except FileNotFoundError:
+            console.print("  [dim]○[/dim] Not installed")
+        except subprocess.TimeoutExpired:
+            console.print("  [yellow]◉[/yellow] Timeout (check if running)")
 
-        console.print("\n[green]✓ All checks passed![/green]\n")
+        # LLM Providers - Test all with connectivity
+        console.print("\n[bold]LLM Providers:[/bold]")
+
+        active_connected = False
+        with console.status("[bold blue]Testing provider connectivity...", spinner="dots"):
+            results = asyncio.run(_test_all_providers(config))
+
+        # Display results with configuration details
+        for provider_id, provider_display, success, status in results:
+            is_active = provider_id == config.llm_provider
+
+            if is_active and success:
+                active_connected = True
+
+            # Get credentials display
+            if provider_id == "openai" and config.openai_api_key:
+                creds = f"****{config.openai_api_key[-6:]}"
+            elif provider_id == "anthropic" and config.anthropic_api_key:
+                creds = f"****{config.anthropic_api_key[-6:]}"
+            elif provider_id == "azure" and config.azure_openai_endpoint:
+                creds = "Azure CLI auth" if not config.azure_openai_api_key else f"****{config.azure_openai_api_key[-6:]}"
+            elif provider_id == "foundry" and config.azure_project_endpoint:
+                creds = "Azure CLI auth"
+            else:
+                creds = None
+
+            # Format output with dimmed models
+            active_prefix = "[green]✓[/green] " if is_active else "  "
+
+            # Split provider name and model for styling
+            if "(" in provider_display:
+                provider_name = provider_display.split("(")[0].strip()
+                model = "(" + provider_display.split("(")[1]
+            else:
+                provider_name = provider_display
+                model = ""
+
+            if success and creds:
+                console.print(f"{active_prefix}[green]◉[/green] {provider_name} [dim]{model}[/dim] · [dim cyan]{creds}[/dim cyan]", highlight=False)
+            elif success:
+                console.print(f"{active_prefix}[green]◉[/green] {provider_name} [dim]{model}[/dim]", highlight=False)
+            elif status == "Not configured":
+                console.print(f"  [dim]○[/dim] {provider_name} - Not configured", highlight=False)
+            else:
+                console.print(f"{active_prefix}[red]◉[/red] {provider_name} [dim]{model}[/dim] - {status}", highlight=False)
+
+        # Final status
+        console.print()
+        if not active_connected:
+            console.print(f"[yellow]⚠ Active provider ({config.llm_provider}) is not connected[/yellow]\n")
+            raise typer.Exit(ExitCodes.GENERAL_ERROR)
 
     except ValueError as e:
         console.print(f"[red]✗[/red] Configuration error: {e}")
@@ -259,34 +385,79 @@ async def _run_telemetry_cli(action: str) -> None:
 
 
 def show_configuration() -> None:
-    """Show current configuration."""
-    console.print("\n[bold]Agent Configuration[/bold]\n")
+    """Show current configuration and system information."""
+    console.print()
 
     try:
         config = AgentConfig.from_env()
 
-        console.print("[bold]LLM Provider:[/bold]")
-        console.print(f" • Provider: {config.llm_provider}")
-        console.print(f" • Model: {config.get_model_display_name()}")
+        # System Information
+        console.print("[bold]System:[/bold]")
+        console.print(f" • Python: [cyan]{platform.python_version()}[/cyan]")
+        console.print(f" • Platform: [cyan]{platform.platform()}[/cyan]")
 
-        if config.llm_provider == "openai" and config.openai_api_key:
-            masked_key = f"****{config.openai_api_key[-6:]}"
-            console.print(f" • API Key: {masked_key}")
-        elif config.llm_provider == "anthropic" and config.anthropic_api_key:
-            masked_key = f"****{config.anthropic_api_key[-6:]}"
-            console.print(f" • API Key: {masked_key}")
-        elif config.llm_provider == "azure":
-            console.print(f" • Endpoint: {config.azure_openai_endpoint}")
-            if config.azure_openai_api_key:
-                masked_key = f"****{config.azure_openai_api_key[-6:]}"
-                console.print(f" • API Key: {masked_key}")
-        elif config.llm_provider == "azure_ai_foundry":
-            console.print(f" • Endpoint: {config.azure_project_endpoint}")
-
+        # Agent Settings
         console.print("\n[bold]Agent Settings:[/bold]")
         console.print(f" • Data Directory: {config.agent_data_dir}")
         if config.agent_session_dir:
             console.print(f" • Session Directory: {config.agent_session_dir}")
+
+        # Get log level (support both AGENT_LOG_LEVEL and LOG_LEVEL)
+        log_level = os.getenv("AGENT_LOG_LEVEL") or os.getenv("LOG_LEVEL", "INFO")
+        console.print(f" • Log Level: [magenta]{log_level.upper()}[/magenta]")
+
+        # System prompt source (purple value)
+        if config.system_prompt_file:
+            console.print(f" • System Prompt: [magenta]{config.system_prompt_file}[/magenta]")
+        else:
+            user_default = config.agent_data_dir / "system.md"
+            if user_default.exists():
+                console.print(f" • System Prompt: [magenta]{user_default}[/magenta]")
+            else:
+                console.print(" • System Prompt: [magenta]Agent Default[/magenta]")
+
+        # LLM Providers (show all)
+        console.print("\n[bold]LLM Providers:[/bold]")
+
+        # Active provider indicator
+        console.print(f" • Active: [cyan]{config.llm_provider}[/cyan] ({config.get_model_display_name()})")
+        console.print()
+
+        # OpenAI
+        if config.openai_api_key:
+            masked_key = f"****{config.openai_api_key[-6:]}"
+            console.print(f" • [cyan]OpenAI[/cyan] ({config.openai_model})")
+            console.print(f"   API Key: {masked_key}")
+        else:
+            console.print(" • [dim]OpenAI - Not configured[/dim]")
+
+        # Anthropic
+        if config.anthropic_api_key:
+            masked_key = f"****{config.anthropic_api_key[-6:]}"
+            console.print(f" • [cyan]Anthropic[/cyan] ({config.anthropic_model})")
+            console.print(f"   API Key: {masked_key}")
+        else:
+            console.print(" • [dim]Anthropic - Not configured[/dim]")
+
+        # Azure OpenAI
+        if config.azure_openai_endpoint and config.azure_openai_deployment:
+            console.print(f" • [cyan]Azure OpenAI[/cyan] ({config.azure_openai_deployment})")
+            console.print(f"   Endpoint: {config.azure_openai_endpoint}")
+            if config.azure_openai_api_key:
+                masked_key = f"****{config.azure_openai_api_key[-6:]}"
+                console.print(f"   API Key: {masked_key}")
+            else:
+                console.print("   Auth: Azure CLI")
+        else:
+            console.print(" • [dim]Azure OpenAI - Not configured[/dim]")
+
+        # Azure AI Foundry
+        if config.azure_project_endpoint and config.azure_model_deployment:
+            console.print(f" • [cyan]Azure AI Foundry[/cyan] ({config.azure_model_deployment})")
+            console.print(f"   Endpoint: {config.azure_project_endpoint}")
+            console.print("   Auth: Azure CLI")
+        else:
+            console.print(" • [dim]Azure AI Foundry - Not configured[/dim]")
 
         console.print()
 
