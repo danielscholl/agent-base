@@ -85,7 +85,7 @@ def azure_openai_agent():
     config = AgentConfig(
         llm_provider="azure",
         azure_openai_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        # Support both naming conventions
+        # Support both naming conventions, default to gpt-5-codex
         azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT")
             or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-5-codex"),
         azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION")
