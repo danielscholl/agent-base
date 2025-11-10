@@ -123,7 +123,9 @@ class TestThreadPersistence:
         original_open = builtins.open
 
         def mock_open(*args, **kwargs):
-            if "index.json" in str(args[0]) and "w" in str(kwargs.get("mode", args[1] if len(args) > 1 else "")):
+            if "index.json" in str(args[0]) and "w" in str(
+                kwargs.get("mode", args[1] if len(args) > 1 else "")
+            ):
                 raise PermissionError("Cannot write metadata")
             return original_open(*args, **kwargs)
 
