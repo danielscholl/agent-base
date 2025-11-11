@@ -15,6 +15,8 @@ on:
 permissions:
   contents: read
   security-events: write
+  pull-requests: read
+  actions: read
 
 jobs:
   dependency-review:
@@ -38,7 +40,6 @@ jobs:
           fetch-depth: 2
 
       - uses: actions/dependency-review-action@v4
-        continue-on-error: true  # Allow failure if Advanced Security not enabled
         with:
           fail-on-severity: moderate
 
@@ -82,7 +83,7 @@ jobs:
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v5
         with:
-          name: sbom-${{ github.sha }}
+          name: sbom-${{ github.event.pull_request.head.sha || github.sha }}
           path: sbom.json
           retention-days: 90
 
