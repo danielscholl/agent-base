@@ -35,7 +35,7 @@ We will implement a **"local" provider** that leverages Docker Desktop's model s
 config = AgentConfig(
     llm_provider="local",
     local_base_url="http://localhost:12434/engines/llama.cpp/v1",  # DMR endpoint
-    local_model="phi4",
+    local_model="ai/phi4",
 )
 
 # Client Creation (in Agent._create_chat_client)
@@ -150,7 +150,7 @@ elif self.config.llm_provider == "local":
 ```python
 # AgentConfig dataclass fields
 local_base_url: str | None = None
-local_model: str = "phi4"  # Default model
+local_model: str = "ai/phi4"  # Default model
 ```
 
 ### Environment Variables
@@ -158,7 +158,7 @@ local_model: str = "phi4"  # Default model
 ```bash
 LLM_PROVIDER=local
 LOCAL_BASE_URL=http://localhost:12434/engines/llama.cpp/v1  # Optional, has default
-AGENT_MODEL=phi4  # Optional, overrides default
+AGENT_MODEL=ai/phi4  # Optional, overrides default
 ```
 
 ### Validation

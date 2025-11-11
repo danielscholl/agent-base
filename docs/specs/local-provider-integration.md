@@ -2,9 +2,9 @@
 
 ## Feature Description
 
-Add support for locally-hosted LLM models via Docker Desktop's built-in model serving capability. This enables users to run the agent framework entirely offline using local models like phi4, without requiring cloud API keys or internet connectivity. The implementation leverages Docker models' OpenAI-compatible API endpoint, allowing seamless integration with the existing agent-framework OpenAI client.
+Add support for locally-hosted LLM models via Docker Desktop's built-in model serving capability. This enables users to run the agent framework entirely offline using local models like ai/phi4, without requiring cloud API keys or internet connectivity. The implementation leverages Docker models' OpenAI-compatible API endpoint, allowing seamless integration with the existing agent-framework OpenAI client.
 
-This feature provides cost-free local development, offline operation, data privacy, and rapid iteration for users who have pulled Docker models (e.g., `docker model phi4`).
+This feature provides cost-free local development, offline operation, data privacy, and rapid iteration for users who have pulled Docker models (e.g., `docker model ai/phi4`).
 
 ## User Story
 
@@ -22,7 +22,7 @@ Currently, agent-base requires one of five cloud-based LLM providers (OpenAI, An
 4. **Latency**: Network round-trips add latency to every interaction
 5. **Rate limiting**: Cloud providers enforce rate limits that can slow development
 
-Docker Desktop now provides built-in model serving with OpenAI-compatible endpoints, enabling local execution of models like phi4. However, agent-base lacks a provider configuration to utilize these local endpoints.
+Docker Desktop now provides built-in model serving with OpenAI-compatible endpoints, enabling local execution of models like ai/phi4. However, agent-base lacks a provider configuration to utilize these local endpoints.
 
 ## Solution Statement
 
@@ -30,8 +30,8 @@ Implement a "local" LLM provider that leverages Docker models' OpenAI-compatible
 
 **Architecture approach:**
 1. Add "local" as a new provider option in `AgentConfig`
-2. Configure `OpenAIChatClient` with Docker's local endpoint (`http://localhost:8080/v1`)
-3. Set phi4 as the default local model
+2. Configure `OpenAIChatClient` with Docker's local endpoint (`http://localhost:12434/engines/llama.cpp/v1`)
+3. Set ai/phi4 as the default local model
 4. Allow configuration via environment variables (`LOCAL_BASE_URL`, `LOCAL_MODEL`)
 5. Skip API key validation for local provider since Docker doesn't require authentication
 
@@ -55,8 +55,8 @@ This approach minimizes code changes, reuses proven infrastructure, and aligns w
 - **`.env.example`** (lines 1-77)
   - Add new section for Local Provider Configuration
   - Document `LLM_PROVIDER=local` option
-  - Document `LOCAL_BASE_URL` (default: `http://localhost:8080/v1`)
-  - Document `LOCAL_MODEL` (default: `phi4`)
+  - Document `LOCAL_BASE_URL` (default: `http://localhost:12434/engines/llama.cpp/v1`)
+  - Document `LOCAL_MODEL` (default: `ai/phi4`)
 
 - **`README.md`** (lines 37-38)
   - Add "Local (Docker Models)" to supported providers list
@@ -126,16 +126,16 @@ Complete end-to-end integration and documentation. This includes:
 
 - Add configuration fields to `AgentConfig` dataclass (after gemini fields):
   - `local_base_url: str | None = None`
-  - `local_model: str = "phi4"`
+  - `local_model: str = "ai/ai/phi4"`
 - Add local provider loading in `from_env()` method:
-  - Load `LOCAL_BASE_URL` (default: `"http://localhost:8080/v1"`)
-  - Load `LOCAL_MODEL` (default: `"phi4"`)
+  - Load `LOCAL_BASE_URL` (default: `"http://localhost:12434/engines/llama.cpp/v1"`)
+  - Load `LOCAL_MODEL` (default: `"ai/ai/phi4"`)
   - Handle `AGENT_MODEL` override for local provider
 - Update `validate()` method:
   - Add `elif self.llm_provider == "local":` case
   - Check if `local_base_url` is set (not None)
   - No API key validation required for local provider
-  - Add helpful error message suggesting `docker model pull phi4`
+  - Add helpful error message suggesting `docker model pull ai/phi4`
 - Update `get_model_display_name()` method:
   - Add `elif self.llm_provider == "local":` case
   - Return `f"Local/{self.local_model}"`
@@ -186,8 +186,8 @@ Complete end-to-end integration and documentation. This includes:
   # ==============================================================================
   # Docker Desktop model serving with OpenAI-compatible API
   # Requires: docker model pull <model-name>
-  # LOCAL_BASE_URL=http://localhost:8080/v1
-  # AGENT_MODEL=phi4
+  # LOCAL_BASE_URL=http://localhost:12434/engines/llama.cpp/v1
+  # AGENT_MODEL=ai/phi4
   ```
 - Update line 10 comment to include "local" in supported providers:
   - Change: `# Supported providers: openai, anthropic, azure, foundry, gemini`
@@ -208,7 +208,7 @@ Complete end-to-end integration and documentation. This includes:
 - Write integration test methods:
   - `test_local_chat_completion()` - Test basic chat with local model
   - `test_local_streaming_response()` - Test streaming with local model
-  - `test_local_with_tools()` - Test function calling (if supported by phi4)
+  - `test_local_with_tools()` - Test function calling (if supported by ai/phi4)
   - `test_local_multi_turn_conversation()` - Test conversation continuity
 - Mark all tests with `@pytest.mark.llm`, `@pytest.mark.integration`, `@pytest.mark.requires_local`
 - Use real configuration from environment (not mocks)
@@ -221,7 +221,7 @@ Complete end-to-end integration and documentation. This includes:
 - To: `"Supports OpenAI, Anthropic, Azure OpenAI, Azure AI Foundry, Google Gemini, and Local (Docker Models)."`
 - Line 48: Add new line after Gemini:
   ```markdown
-  - [Docker Desktop](https://www.docker.com/products/docker-desktop/) - Local model serving (phi4, etc.)
+  - [Docker Desktop](https://www.docker.com/products/docker-desktop/) - Local model serving (ai/phi4, etc.)
   ```
 
 #### USAGE.md Updates:
@@ -237,15 +237,15 @@ Complete end-to-end integration and documentation. This includes:
   # 1. Install Docker Desktop (includes model serving)
   # Download from https://www.docker.com/products/docker-desktop/
 
-  # 2. Pull a model (phi4 recommended)
-  docker model pull phi4
+  # 2. Pull a model (ai/phi4 recommended)
+  docker model pull ai/phi4
 
   # 3. Start the model server (automatic via Docker Desktop)
   # Models are served at http://localhost:8080
 
   # 4. Configure agent-base
   export LLM_PROVIDER=local
-  export LOCAL_MODEL=phi4
+  export LOCAL_MODEL=ai/phi4
 
   # 5. Run agent
   agent
@@ -259,7 +259,7 @@ Complete end-to-end integration and documentation. This includes:
 
   ### Limitations
   - Requires Docker Desktop with sufficient RAM
-  - Model quality varies (phi4 is capable but not GPT-4 level)
+  - Model quality varies (ai/phi4 is capable but not GPT-4 level)
   - Function calling support depends on model
   - First run downloads large model files
   ```
@@ -307,17 +307,17 @@ Execute all validation commands to ensure zero regressions and confirm feature w
   ```bash
   uv run pytest -m "not llm" -n auto --cov=src/agent --cov-fail-under=85
   ```
-- **If Docker with phi4 is available**, run local integration tests:
+- **If Docker with ai/phi4 is available**, run local integration tests:
   ```bash
-  docker model pull phi4
+  docker model pull ai/phi4
   export LLM_PROVIDER=local
-  export LOCAL_BASE_URL=http://localhost:8080/v1
-  export LOCAL_MODEL=phi4
+  export LOCAL_BASE_URL=http://localhost:12434/engines/llama.cpp/v1
+  export LOCAL_MODEL=ai/phi4
   uv run pytest -m "requires_local" -v
   ```
 - Test end-to-end with local provider (manual verification):
   ```bash
-  uv run agent --check  # Should show "Local/phi4" as provider
+  uv run agent --check  # Should show "Local/ai/phi4" as provider
   uv run agent -p "Say hello"  # Should get response from local model
   ```
 
@@ -331,7 +331,7 @@ Execute all validation commands to ensure zero regressions and confirm feature w
 - Configuration loading from environment variables
 - Default values for `local_base_url` and `local_model`
 - Validation logic (requires base_url, no API key needed)
-- Display name generation (`"Local/phi4"`)
+- Display name generation (`"Local/ai/phi4"`)
 - Model override via `AGENT_MODEL`
 - Invalid configuration handling
 
@@ -350,13 +350,13 @@ Execute all validation commands to ensure zero regressions and confirm feature w
 - Basic chat completion with local model
 - Streaming response handling
 - Multi-turn conversation state
-- Function calling (if phi4 supports it)
+- Function calling (if ai/phi4 supports it)
 - Error handling for unavailable Docker service
 - Session persistence with local provider
 
 **Test requirements**:
 - Docker Desktop installed and running
-- phi4 model pulled (`docker model pull phi4`)
+- ai/phi4 model pulled (`docker model pull ai/phi4`)
 - `LOCAL_BASE_URL` environment variable set
 - Real API calls (not mocked)
 
@@ -384,7 +384,7 @@ Execute all validation commands to ensure zero regressions and confirm feature w
 
 5. **Model override**:
    - Test: Set `AGENT_MODEL=llama3.2` while `LLM_PROVIDER=local`
-   - Expected: Uses llama3.2 instead of default phi4
+   - Expected: Uses llama3.2 instead of default ai/phi4
 
 6. **Concurrent requests**:
    - Test: Multiple agent instances using local provider
@@ -397,9 +397,9 @@ Execute all validation commands to ensure zero regressions and confirm feature w
 1. ✅ Configuration accepts `LLM_PROVIDER=local` with `LOCAL_BASE_URL` and `LOCAL_MODEL`
 2. ✅ Agent successfully creates OpenAI client pointing to Docker endpoint
 3. ✅ Validation passes with base_url, no API key required
-4. ✅ Display name shows `"Local/phi4"` (or configured model)
+4. ✅ Display name shows `"Local/ai/phi4"` (or configured model)
 5. ✅ Unit tests pass with 100% coverage of new configuration paths
-6. ✅ Integration tests pass when Docker with phi4 is available
+6. ✅ Integration tests pass when Docker with ai/phi4 is available
 7. ✅ All existing tests pass (zero regressions)
 8. ✅ Code quality checks pass (black, ruff, mypy)
 9. ✅ Overall test coverage remains ≥85%
@@ -432,27 +432,27 @@ uv run pytest -m "not llm" -n auto --cov=src/agent --cov-fail-under=85
 # 5. Generate coverage report (optional, for review)
 uv run pytest -m "not llm" --cov=src/agent --cov-report=html
 
-# 6. Local integration tests (requires Docker + phi4)
+# 6. Local integration tests (requires Docker + ai/phi4)
 # Setup first:
-docker model pull phi4
+docker model pull ai/phi4
 export LLM_PROVIDER=local
-export LOCAL_BASE_URL=http://localhost:8080/v1
-export LOCAL_MODEL=phi4
+export LOCAL_BASE_URL=http://localhost:12434/engines/llama.cpp/v1
+export LOCAL_MODEL=ai/phi4
 
 # Run tests:
 uv run pytest tests/integration/llm/test_local_integration.py -v -s
 
 # 7. Configuration validation
 uv run agent --check
-# Expected output: "Local/phi4" as model
+# Expected output: "Local/ai/phi4" as model
 
 # 8. End-to-end chat test
 uv run agent -p "Say hello in one sentence"
-# Expected: Response from local phi4 model
+# Expected: Response from local ai/phi4 model
 
 # 9. Interactive session test (manual)
 uv run agent
-# Expected: Agent starts with "Local/phi4", accepts prompts
+# Expected: Agent starts with "Local/ai/phi4", accepts prompts
 
 # 10. Session persistence test (manual)
 uv run agent
@@ -483,13 +483,13 @@ We're reusing the `OpenAIChatClient` with a custom `base_url` rather than creati
 Docker Desktop includes model serving capabilities that:
 - Automatically serve pulled models via OpenAI-compatible API
 - Run at `http://localhost:8080` by default
-- Support multiple models (phi4, llama, etc.)
+- Support multiple models (ai/phi4, llama, etc.)
 - Require no authentication (local-only)
 - Work offline once models are downloaded
 
 ### Model Recommendations
 
-**phi4** is recommended as the default because:
+**ai/phi4** is recommended as the default because:
 - Excellent performance for size (~7B parameters)
 - Good instruction following and reasoning
 - Fast inference on consumer hardware

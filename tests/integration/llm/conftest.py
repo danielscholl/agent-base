@@ -169,7 +169,7 @@ def local_agent():
         llm_provider="local",
         local_base_url=os.getenv("LOCAL_BASE_URL", "http://localhost:12434/engines/llama.cpp/v1"),
         # Use env var if set, otherwise use same default as main config
-        local_model=os.getenv("LOCAL_MODEL", "phi4"),
+        local_model=os.getenv("LOCAL_MODEL", "ai/phi4"),
     )
 
     return Agent(config=config)

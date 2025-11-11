@@ -216,7 +216,7 @@ docker desktop enable model-runner --tcp=12434
 
 # 3. Pull a model (Qwen3 recommended for best tool calling)
 docker model pull ai/qwen3
-# Alternative: docker model pull phi4
+# Alternative: docker model pull ai/phi4
 
 # 4. Verify model is available and note the model ID
 curl http://localhost:12434/engines/llama.cpp/v1/models

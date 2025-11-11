@@ -15,7 +15,7 @@ Supports Local (Docker Models), OpenAI, Anthropic, Google Gemini, Azure OpenAI, 
 agent
 
 Agent - Conversational Assistant
-Version 0.1.0 • Local/phi4
+Version 0.1.0 • Local/ai/phi4
 
 > Say hello to Alice
 
@@ -69,7 +69,7 @@ uv tool install --prerelease=allow git+https://github.com/danielscholl/agent-bas
 
 # Pull a model
 docker desktop enable model-runner --tcp=12434
-docker model pull phi4
+docker model pull ai/phi4
 
 # Start the interactive agent
 agent
