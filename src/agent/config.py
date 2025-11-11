@@ -116,7 +116,7 @@ class AgentConfig:
             # Azure OpenAI (deployment name is required Azure resource identifier)
             azure_openai_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
             azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
-            azure_openai_api_version=os.getenv("AZURE_OPENAI_VERSION", "2024-08-01-preview"),
+            azure_openai_api_version=os.getenv("AZURE_OPENAI_VERSION", "2025-03-01-preview"),
             azure_openai_api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             # Azure AI Foundry (deployment name is required Azure resource identifier)
             azure_project_endpoint=os.getenv("AZURE_PROJECT_ENDPOINT"),
