@@ -113,9 +113,8 @@ def main(
         None, "--telemetry", help="Manage telemetry dashboard (start|stop|status|url)"
     ),
     verbose: bool = typer.Option(
-        False, "--verbose", help="Verbose output with detailed execution tree"
+        False, "--verbose", help="Show detailed execution tree (single prompt mode only)"
     ),
-    quiet: bool = typer.Option(False, "--quiet", help="Minimal output mode"),
     resume: bool = typer.Option(False, "--continue", help="Resume last saved session"),
     provider: str = typer.Option(
         None,
@@ -131,14 +130,16 @@ def main(
     Examples:
         agent                              # Interactive mode
         agent --check                      # Show configuration and connectivity
-        agent -p "Say hello to Alice"      # Single query
+        agent -p "Say hello to Alice"      # Single query (clean output)
+        agent -p "Say hello" --verbose     # Single query with execution details
         agent --provider local --model phi4  # Use local provider with phi4
         agent --provider openai            # Use OpenAI provider
         agent --continue                   # Resume last session
-        agent --verbose                    # Show execution details
         agent --telemetry start            # Start observability dashboard
 
-    Note: Type /help in interactive mode to see available commands.
+    Note: Single prompt mode (-p) outputs clean text by default.
+          Use --verbose for detailed execution tree.
+          Interactive mode shows progress indicators.
     """
     # Apply CLI overrides to environment variables (temporary for this process)
     if provider:
@@ -160,8 +161,10 @@ def main(
         return
 
     if prompt:
-        # Single-prompt mode with optional visualization
-        asyncio.run(run_single_prompt(prompt, verbose=verbose, quiet=quiet))
+        # Single-prompt mode: default to quiet (clean output for scripting)
+        # Unless --verbose is specified for detailed execution tree
+        quiet_mode = not verbose  # Quiet by default unless verbose requested
+        asyncio.run(run_single_prompt(prompt, verbose=verbose, quiet=quiet_mode))
     else:
         # Interactive chat mode
         # Handle --continue flag: resume last session
@@ -171,7 +174,7 @@ def main(
             if not resume_session:
                 console.print("[yellow]No previous session found. Starting new session.[/yellow]\n")
 
-        asyncio.run(run_chat_mode(quiet=quiet, verbose=verbose, resume_session=resume_session))
+        asyncio.run(run_chat_mode(quiet=False, verbose=verbose, resume_session=resume_session))
 
 
 async def _test_provider_connectivity_async(provider: str, config: AgentConfig) -> tuple[bool, str]:
@@ -630,8 +633,7 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
             if quiet:
                 console.print(response)
             else:
-                console.print(f"\n{response}\n")
-                console.print(f"[dim]{'─' * console.width}[/dim]")
+                console.print(f"\n{response}")
 
     except ValueError as e:
         console.print(f"\n[red]Configuration error:[/red] {e}")

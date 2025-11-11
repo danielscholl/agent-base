@@ -64,14 +64,14 @@ Goodbye!
 ## Quick Setup
 
 ```bash
-# 1. Install agent
+# Install agent
 uv tool install --prerelease=allow git+https://github.com/danielscholl/agent-base.git
 
-# 2. Pull a local model (free!)
+# Pull a model
 docker desktop enable model-runner --tcp=12434
 docker model pull phi4
 
-# 3. Run the agent
+# Start the interactive agent
 agent
 ```
 
@@ -85,34 +85,42 @@ To use cloud providers instead, set credentials in `.env`:
 # Copy example configuration
 cp .env.example .env
 
-# Edit .env and set your provider:
-# LLM_PROVIDER=openai
-# OPENAI_API_KEY=sk-your-key
+# Edit .env and set default provider:
+LLM_PROVIDER=openai
 
-# Or use Azure CLI (no API keys needed)
+# Set any required provider keys
+OPENAI_API_KEY=sk-your-key
+
+# For Azure use Azure CLI (no API keys needed)
 az login
 ```
 
 ## Usage
 
 ```bash
-# Interactive chat mode (with memory and session management)
+# Interactive chat mode
 agent
 
-# Single query
+# Check the agent configuration
+agent --check
+
+# Single query (clean output for scripting)
 agent -p "Say hello to Alice"
 
-# Switch providers on the fly
-agent --provider openai --model gpt-5-mini -p "Hello"
-agent --provider local --model ai/qwen3 -p "Hello"
-agent --provider anthropic -p "Hello"
+# Single query with verbose execution details
+agent -p "Analyze this text" --verbose
 
-# Start interactive session with specific provider
-agent --provider local --model ai/phi4
+# Switch providers on the fly
+agent --provider openai -p "Hello"
+
+# Switch models on the fly
+agent --provider anthropic --model claude-sonnet-4-5-20250929 -p "Hello"
 
 # Get help
 agent --help
 ```
+
+**Note:** Single prompt mode (`-p`) outputs clean text by default, perfect for piping or scripting. Use `--verbose` to see execution details.
 
 ### Observability
 
