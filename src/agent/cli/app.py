@@ -53,7 +53,6 @@ def _render_startup_banner(config: AgentConfig) -> None:
     Args:
         config: Agent configuration
     """
-    console.print()
     console.print("[bold cyan]Agent[/bold cyan] - Conversational Assistant")
     # Disable both markup and highlighting to prevent Rich from coloring numbers
     console.print(
@@ -113,23 +112,40 @@ def main(
         None, "--telemetry", help="Manage telemetry dashboard (start|stop|status|url)"
     ),
     verbose: bool = typer.Option(
-        False, "--verbose", help="Verbose output with detailed execution tree"
+        False, "--verbose", help="Show detailed execution tree (single prompt mode only)"
     ),
-    quiet: bool = typer.Option(False, "--quiet", help="Minimal output mode"),
     resume: bool = typer.Option(False, "--continue", help="Resume last saved session"),
+    provider: str = typer.Option(
+        None,
+        "--provider",
+        help="LLM provider (local, openai, anthropic, azure, foundry, gemini)",
+    ),
+    model: str = typer.Option(
+        None, "--model", help="Model name (overrides AGENT_MODEL environment variable)"
+    ),
 ) -> None:
     """Agent - Conversational Assistant with multi-provider LLM support.
 
     Examples:
         agent                              # Interactive mode
         agent --check                      # Show configuration and connectivity
-        agent -p "Say hello to Alice"      # Single query
+        agent -p "Say hello to Alice"      # Single query (clean output)
+        agent -p "Say hello" --verbose     # Single query with execution details
+        agent --provider local --model phi4  # Use local provider with phi4
+        agent --provider openai            # Use OpenAI provider
         agent --continue                   # Resume last session
-        agent --verbose                    # Show execution details
         agent --telemetry start            # Start observability dashboard
 
-    Note: Type /help in interactive mode to see available commands.
+    Note: Single prompt mode (-p) outputs clean text by default.
+          Use --verbose for detailed execution tree.
+          Interactive mode shows progress indicators.
     """
+    # Apply CLI overrides to environment variables (temporary for this process)
+    if provider:
+        os.environ["LLM_PROVIDER"] = provider
+    if model:
+        os.environ["AGENT_MODEL"] = model
+
     if version_flag:
         console.print(f"Agent version {__version__}")
         return
@@ -144,8 +160,10 @@ def main(
         return
 
     if prompt:
-        # Single-prompt mode with optional visualization
-        asyncio.run(run_single_prompt(prompt, verbose=verbose, quiet=quiet))
+        # Single-prompt mode: default to quiet (clean output for scripting)
+        # Unless --verbose is specified for detailed execution tree
+        quiet_mode = not verbose  # Quiet by default unless verbose requested
+        asyncio.run(run_single_prompt(prompt, verbose=verbose, quiet=quiet_mode))
     else:
         # Interactive chat mode
         # Handle --continue flag: resume last session
@@ -155,14 +173,14 @@ def main(
             if not resume_session:
                 console.print("[yellow]No previous session found. Starting new session.[/yellow]\n")
 
-        asyncio.run(run_chat_mode(quiet=quiet, verbose=verbose, resume_session=resume_session))
+        asyncio.run(run_chat_mode(quiet=False, verbose=verbose, resume_session=resume_session))
 
 
 async def _test_provider_connectivity_async(provider: str, config: AgentConfig) -> tuple[bool, str]:
     """Test connectivity to a specific LLM provider asynchronously.
 
     Args:
-        provider: Provider name (openai, anthropic, azure, foundry)
+        provider: Provider name (openai, anthropic, azure, foundry, gemini, local)
         config: Agent configuration with credentials
 
     Returns:
@@ -187,6 +205,8 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
             gemini_project_id=config.gemini_project_id,
             gemini_location=config.gemini_location,
             gemini_use_vertexai=config.gemini_use_vertexai,
+            local_base_url=config.local_base_url,
+            local_model=config.local_model,
             agent_data_dir=config.agent_data_dir,
             agent_session_dir=config.agent_session_dir,
         )
@@ -238,11 +258,12 @@ async def _test_all_providers(config: AgentConfig) -> list[tuple[str, str, bool,
         List of tuples: (provider_id, provider_name, success, status)
     """
     providers = [
+        ("local", "Local", config.local_model),
         ("openai", "OpenAI", config.openai_model),
         ("anthropic", "Anthropic", config.anthropic_model),
+        ("gemini", "Google Gemini", config.gemini_model),
         ("azure", "Azure OpenAI", config.azure_openai_deployment or "N/A"),
         ("foundry", "Azure AI Foundry", config.azure_model_deployment or "N/A"),
-        ("gemini", "Google Gemini", config.gemini_model),
     ]
 
     results = []
@@ -319,6 +340,26 @@ def run_health_check() -> None:
                     f"  [green]◉[/green] Running [dim]({version})[/dim]{resources_info}",
                     highlight=False,
                 )
+
+                # Check for Docker Model Runner models
+                try:
+                    import requests
+
+                    response = requests.get(
+                        "http://localhost:12434/engines/llama.cpp/v1/models", timeout=2
+                    )
+                    if response.status_code == 200:
+                        models_data = response.json()
+                        models = models_data.get("data", [])
+                        for model in models:
+                            model_id = model.get("id", "unknown")
+                            console.print(
+                                f"  [green]•[/green] [dim]{model_id}[/dim]",
+                                highlight=False,
+                            )
+                except Exception as e:
+                    logger.debug(f"Failed to fetch Docker models: {e}")
+                    # Silently continue - DMR might not be enabled
             else:
                 console.print("  [yellow]◉[/yellow] Not running")
         except FileNotFoundError:
@@ -360,6 +401,8 @@ def run_health_check() -> None:
                     creds = f"****{config.gemini_api_key[-6:]}"
                 else:
                     creds = None
+            elif provider_id == "local" and config.local_base_url:
+                creds = config.local_base_url
             else:
                 creds = None
 
@@ -586,11 +629,7 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
 
         # Display response after completion summary
         if response:
-            if quiet:
-                console.print(response)
-            else:
-                console.print(f"\n{response}\n")
-                console.print(f"[dim]{'─' * console.width}[/dim]")
+            console.print(response)
 
     except ValueError as e:
         console.print(f"\n[red]Configuration error:[/red] {e}")
@@ -688,13 +727,17 @@ async def run_chat_mode(
         )
 
         # Interactive loop
+        first_prompt = True
         while True:
             try:
                 # Print status bar before prompt
                 if not quiet:
                     status_text = _get_status_bar_text()
-                    console.print(f"\n[dim]{status_text}[/dim]")
+                    # Don't add newline before first prompt (already follows banner)
+                    separator = "" if first_prompt else "\n"
+                    console.print(f"{separator}[dim]{status_text}[/dim]")
                     console.print(f"[dim]{'─' * console.width}[/dim]")
+                    first_prompt = False
 
                 # Get user input
                 user_input = await session.prompt_async("> ")

@@ -15,11 +15,11 @@ from agent.config import AgentConfig
 class TestMemoryConfiguration:
     """Tests for memory-related configuration."""
 
-    def test_config_memory_disabled_by_default(self):
-        """Test memory is disabled by default (redundant with thread persistence)."""
+    def test_config_memory_enabled_by_default(self):
+        """Test memory is enabled by default for conversation context."""
         config = AgentConfig(llm_provider="openai", openai_api_key="test")
 
-        assert config.memory_enabled is False
+        assert config.memory_enabled is True
 
     def test_config_memory_type_defaults_to_in_memory(self):
         """Test memory type defaults to in_memory."""
@@ -65,12 +65,12 @@ class TestMemoryConfiguration:
 
         assert config.memory_dir == custom_dir
 
-    def test_from_env_memory_disabled_by_default(self):
-        """Test from_env has memory disabled by default (redundant with thread persistence)."""
+    def test_from_env_memory_enabled_by_default(self):
+        """Test from_env has memory enabled by default for conversation context."""
         with patch.dict(os.environ, {}, clear=True):
             config = AgentConfig.from_env()
 
-            assert config.memory_enabled is False
+            assert config.memory_enabled is True
 
     def test_from_env_memory_enabled_from_env_var(self):
         """Test from_env loads memory_enabled from environment."""

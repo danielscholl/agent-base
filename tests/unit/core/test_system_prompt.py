@@ -185,7 +185,7 @@ class TestSystemPromptLoading:
 
         # Should replace only the placeholders
         assert "OpenAI/gpt-5-mini" in prompt
-        assert "False" in prompt  # memory_enabled defaults to False now
+        assert "True" in prompt  # memory_enabled defaults to True now
         assert "No placeholders here" in prompt
         assert "{{MODEL}}" not in prompt
         assert "{{MEMORY_ENABLED}}" not in prompt

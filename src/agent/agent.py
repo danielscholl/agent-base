@@ -18,12 +18,13 @@ logger = logging.getLogger(__name__)
 class Agent:
     """Agent with multi-provider LLM support and extensible tools.
 
-    Supports five LLM providers through Microsoft Agent Framework:
+    Supports six LLM providers through Microsoft Agent Framework:
     - OpenAI: Direct OpenAI API
     - Anthropic: Direct Anthropic API
     - Azure OpenAI: Azure-hosted OpenAI models
     - Azure AI Foundry: Microsoft's managed AI platform
     - Google Gemini: Google's Gemini models (custom integration)
+    - Local (Docker Models): Local models via Docker Desktop
 
     Example:
         >>> config = AgentConfig.from_env()
@@ -113,6 +114,7 @@ class Agent:
         - azure: Azure OpenAI (gpt-5-codex, gpt-4o, etc.)
         - foundry: Azure AI Foundry with managed models
         - gemini: Google Gemini (gemini-2.0-flash-exp, gemini-2.5-pro, etc.)
+        - local: Local models via Docker Desktop (phi4, etc.)
 
         Returns:
             Configured chat client for the selected provider
@@ -192,10 +194,18 @@ class Agent:
                 location=self.config.gemini_location,
                 use_vertexai=self.config.gemini_use_vertexai,
             )
+        elif self.config.llm_provider == "local":
+            from agent_framework.openai import OpenAIChatClient
+
+            return OpenAIChatClient(
+                model_id=self.config.local_model,
+                base_url=self.config.local_base_url,
+                api_key="not-needed",  # Docker doesn't require authentication
+            )
         else:
             raise ValueError(
                 f"Unknown provider: {self.config.llm_provider}. "
-                f"Supported: openai, anthropic, azure, foundry, gemini"
+                f"Supported: openai, anthropic, azure, foundry, gemini, local"
             )
 
     def _load_system_prompt(self) -> str:
@@ -237,7 +247,7 @@ class Agent:
                     logger.info(f"Loaded system prompt from user default: {user_default_path}")
             except Exception as e:
                 logger.warning(
-                    f"Failed to load user default system prompt: {e}. " "Trying next fallback."
+                    f"Failed to load user default system prompt: {e}. Trying next fallback."
                 )
 
         # Tier 3: Try package default
@@ -316,88 +326,16 @@ Be helpful, concise, and clear in your responses."""
             context_providers.append(memory_provider)
             logger.info("Memory context provider enabled")
 
-        # Normalize middleware into the structure expected by the client
-        middleware_config = self._prepare_middleware(self.middleware)
-
+        # IMPORTANT: Pass middleware as a list, not dict
+        # Agent Framework automatically categorizes middleware by signature
+        # Converting to dict breaks middleware invocation
         return self.chat_client.create_agent(
             name="Agent",
             instructions=instructions,
             tools=self.tools,
-            middleware=middleware_config,
+            middleware=self.middleware,  # Must be list, not dict
             context_providers=context_providers if context_providers else None,
         )
-
-    def _prepare_middleware(self, middleware: Any) -> dict:
-        """Normalize middleware into a dict keyed by stage.
-
-        Some chat clients expect middleware in the form:
-        {"agent": [...], "function": [...]}.
-        Our project often stores middleware as a flat list and relies on
-        the framework to categorize. To be robust across clients, this
-        helper groups middleware by signature when a list is provided.
-
-        Args:
-            middleware: List or dict of middleware callables
-
-        Returns:
-            Dict with keys "agent" and "function" when possible.
-        """
-        # If already a dict, assume caller provided correct shape
-        if isinstance(middleware, dict):
-            return middleware
-
-        # Otherwise, attempt to categorize a flat list by signature
-        try:
-            from inspect import signature
-            from typing import get_type_hints
-
-            # Agent Framework context types (only used for isinstance checks)
-            from agent_framework import AgentRunContext, FunctionInvocationContext
-
-            agent_mw: list = []
-            function_mw: list = []
-
-            for mw in middleware or []:
-                try:
-                    # Prefer explicit type hints on the first parameter
-                    hints = get_type_hints(mw)
-                    ctx_type = hints.get("context")
-                except Exception:
-                    ctx_type = None
-
-                if ctx_type is None:
-                    # Fallback: infer from parameter annotations directly
-                    try:
-                        params = signature(mw).parameters
-                        if "context" in params:
-                            ctx_type = params["context"].annotation
-                    except Exception:
-                        ctx_type = None
-
-                # Classify based on context type when available
-                try:
-                    if ctx_type is AgentRunContext:
-                        agent_mw.append(mw)
-                        continue
-                    if ctx_type is FunctionInvocationContext:
-                        function_mw.append(mw)
-                        continue
-                except (AttributeError, TypeError):
-                    # Middleware doesn't have proper type hints, fall back to heuristic
-                    pass
-
-                # Last resort: name heuristic
-                name = getattr(mw, "__name__", "")
-                if "function" in name or "tool" in name:
-                    function_mw.append(mw)
-                else:
-                    agent_mw.append(mw)
-
-            return {"agent": agent_mw, "function": function_mw}
-        except Exception:
-            # If anything goes wrong, pass through in a backward-compatible way
-            # letting the client categorize or ignore as needed.
-            return {"agent": list(middleware or [])}
 
     def get_new_thread(self) -> Any:
         """Create a new conversation thread.

@@ -9,11 +9,13 @@ A functional agent base for building AI agents with multi-provider LLM support a
 
 Build conversational AI agents with enterprise-grade features: session persistence, conversation memory, observability, and extensible toolsets.
 
+Supports Local (Docker Models), OpenAI, Anthropic, Google Gemini, Azure OpenAI, and Azure AI Foundry.
+
 ```bash
 agent
 
 Agent - Conversational Assistant
-Version 0.1.0 • OpenAI/gpt-5-mini
+Version 0.1.0 • Local/ai/phi4
 
 > Say hello to Alice
 
@@ -34,74 +36,91 @@ Session auto-saved as '2025-11-10-11-38-07'
 Goodbye!
 ```
 
-Supports OpenAI, Anthropic, Azure OpenAI, Azure AI Foundry, and Google Gemini.
-
 ## Prerequisites
 
-### Cloud Resources (LLM Provider)
+### Required
 
-**Required - Choose one:**
-- [OpenAI API](https://platform.openai.com/api-keys) - Direct OpenAI access
-- [Anthropic API](https://console.anthropic.com/) - Direct Anthropic access
-- [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/how-to/create-resource) - Azure-hosted OpenAI
-- [Azure AI Foundry](https://ai.azure.com) - Managed AI platform
-- [Google Gemini API](https://aistudio.google.com/apikey) - Google's Gemini models
-
-**Optional:**
-- [Azure Application Insights](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview) - Cloud observability
-
-### Local Tools
-
-**Required:**
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
 
-**Optional (enhances experience):**
+### LLM Providers
+
+**Local:**
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) - Local model serving (phi4, qwen3, etc.)
+
+**Hosted:**
+- [OpenAI API](https://platform.openai.com/api-keys) - Direct OpenAI access
+- [Anthropic API](https://console.anthropic.com/) - Direct Anthropic access
+- [Google Gemini API](https://aistudio.google.com/apikey) - Direct Gemini access
+- [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/how-to/create-resource) - Azure-hosted OpenAI
+- [Azure AI Foundry](https://ai.azure.com) - Managed AI platform
+
+
+### Azure Enhancements
+
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) - Simplifies Azure auth
-- [Docker](https://docs.docker.com/get-docker/) - For local observability dashboard
+- [Azure Application Insights](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview) - Cloud observability
 
 ## Quick Setup
 
 ```bash
-# 1. Install
+# Install agent
 uv tool install --prerelease=allow git+https://github.com/danielscholl/agent-base.git
 
-# Upgrade
-uv tool upgrade agent
+# Pull a model
+docker desktop enable model-runner --tcp=12434
+docker model pull ai/phi4
 
-# 2. Configure required credentials
+# Start the interactive agent
+agent
+```
+
+That's it! The agent runs locally with no API keys required.
+
+### Cloud Providers
+
+To use cloud providers instead, set credentials in `.env`:
+
+```bash
+# Copy example configuration
 cp .env.example .env
-```
 
-**Authenticate with CLI tools** (recommended):
-```bash
-az login  # For Azure providers (OpenAI, AI Foundry)
-```
+# Edit .env and set default provider:
+LLM_PROVIDER=openai
 
-**OR use API keys** (if CLI not available):
-```bash
-# AZURE_OPENAI_API_KEY=your-key
-# LLM_PROVIDER=openai
-# OPENAI_API_KEY=sk-your-key
-```
+# Set any required provider keys
+OPENAI_API_KEY=sk-your-key
 
-**3. Verify setup**
-```bash
-agent --check   # Validate configuration
+# For Azure use Azure CLI (no API keys needed)
+az login
 ```
 
 ## Usage
 
 ```bash
-# Interactive chat mode (with memory and session management)
+# Interactive chat mode
 agent
 
-# Single query
+# Check the agent configuration
+agent --check
+
+# Single query (clean output for scripting)
 agent -p "Say hello to Alice"
+
+# Single query with verbose execution details
+agent -p "Analyze this text" --verbose
+
+# Switch providers on the fly
+agent --provider openai -p "Hello"
+
+# Switch models on the fly
+agent --provider anthropic --model claude-sonnet-4-5-20250929 -p "Hello"
 
 # Get help
 agent --help
 ```
+
+**Note:** Single prompt mode (`-p`) outputs clean text by default, perfect for piping or scripting. Use `--verbose` to see execution details.
 
 ### Observability
 

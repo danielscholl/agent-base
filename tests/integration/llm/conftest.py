@@ -57,7 +57,7 @@ def anthropic_agent():
         llm_provider="anthropic",
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
         # Use env var if set, otherwise use same default as main config
-        anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5-20250929"),
+        anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
     )
 
     return Agent(config=config)
@@ -145,6 +145,31 @@ def gemini_agent():
         gemini_api_key=os.getenv("GEMINI_API_KEY"),
         # Use env var if set, otherwise use same default as main config
         gemini_model=os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
+    )
+
+    return Agent(config=config)
+
+
+@pytest.fixture
+def local_agent():
+    """Create agent with local Docker model client.
+
+    Automatically skips if LOCAL_BASE_URL is not set.
+
+    Example:
+        @pytest.mark.llm
+        @pytest.mark.requires_local
+        async def test_something(local_agent):
+            response = await local_agent.run("test")
+    """
+    if not os.getenv("LOCAL_BASE_URL"):
+        pytest.skip("LOCAL_BASE_URL not set - skipping local LLM test")
+
+    config = AgentConfig(
+        llm_provider="local",
+        local_base_url=os.getenv("LOCAL_BASE_URL", "http://localhost:12434/engines/llama.cpp/v1"),
+        # Use env var if set, otherwise use same default as main config
+        local_model=os.getenv("LOCAL_MODEL", "ai/phi4"),
     )
 
     return Agent(config=config)

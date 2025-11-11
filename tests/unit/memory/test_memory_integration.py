@@ -78,13 +78,13 @@ class TestAgentMemoryIntegration:
         assert agent.memory_manager is not None
         assert isinstance(agent.memory_manager, InMemoryStore)
 
-    def test_agent_without_memory_config_defaults_disabled(self, mock_chat_client):
-        """Test Agent defaults to memory disabled (redundant with thread persistence)."""
+    def test_agent_with_memory_config_defaults_enabled(self, mock_chat_client):
+        """Test Agent defaults to memory enabled for conversation context."""
         config = AgentConfig(llm_provider="openai", openai_api_key="test")
 
         agent = Agent(config=config, chat_client=mock_chat_client)
 
-        assert agent.memory_manager is None
+        assert agent.memory_manager is not None
 
     def test_agent_memory_manager_priority(self, mock_chat_client, memory_store):
         """Test injected memory manager takes priority over config."""

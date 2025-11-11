@@ -21,7 +21,7 @@ def mock_anthropic_config():
     return AgentConfig(
         llm_provider="anthropic",
         anthropic_api_key="test-key",
-        anthropic_model="claude-sonnet-4-5-20250929",
+        anthropic_model="claude-haiku-4-5-20251001",
     )
 
 

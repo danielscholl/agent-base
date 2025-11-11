@@ -75,7 +75,7 @@ def anthropic_agent():
     config = AgentConfig(
         llm_provider="anthropic",
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
-        anthropic_model="claude-sonnet-4-5-20250929",  # Cheaper Sonnet model
+        anthropic_model="claude-haiku-4-5-20251001",  # Cheapest model tier
     )
 
     return Agent(config=config)

@@ -14,14 +14,14 @@ from agent.config import AgentConfig
 class TestAgentConfig:
     """Tests for AgentConfig class."""
 
-    def test_from_env_defaults_to_openai(self):
-        """Test from_env defaults to OpenAI provider when no env vars set."""
+    def test_from_env_defaults_to_local(self):
+        """Test from_env defaults to Local provider when no env vars set."""
         with patch.dict(os.environ, {}, clear=True):
             config = AgentConfig.from_env()
 
-            assert config.llm_provider == "openai"
-            assert config.openai_model == "gpt-5-mini"
-            assert config.openai_api_key is None
+            assert config.llm_provider == "local"
+            assert config.local_model == "ai/phi4"
+            assert config.local_base_url == "http://localhost:12434/engines/llama.cpp/v1"
 
     def test_from_env_loads_openai_config(self):
         """Test from_env loads OpenAI configuration with AGENT_MODEL override."""
@@ -169,10 +169,10 @@ class TestAgentConfig:
         config = AgentConfig(
             llm_provider="anthropic",
             anthropic_api_key="test",
-            anthropic_model="claude-sonnet-4-5-20250929",
+            anthropic_model="claude-haiku-4-5-20251001",
         )
 
-        assert config.get_model_display_name() == "Anthropic/claude-sonnet-4-5-20250929"
+        assert config.get_model_display_name() == "Anthropic/claude-haiku-4-5-20251001"
 
     def test_get_model_display_name_azure_foundry(self):
         """Test get_model_display_name for Azure AI Foundry."""
@@ -194,7 +194,7 @@ class TestAgentConfig:
         """Test Anthropic defaults to correct model."""
         config = AgentConfig(llm_provider="anthropic", anthropic_api_key="test")
 
-        assert config.anthropic_model == "claude-sonnet-4-5-20250929"
+        assert config.anthropic_model == "claude-haiku-4-5-20251001"
 
     def test_openai_default_model(self):
         """Test OpenAI defaults to correct model."""

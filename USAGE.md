@@ -200,3 +200,103 @@ Response only, no metadata:
 $ agent -p "say hello" --quiet
 Hello, World!
 ```
+
+## Using Local Models with Docker
+
+Run agent-base completely offline using Docker Desktop's model serving:
+
+### Setup
+
+```bash
+# 1. Install Docker Desktop (includes Model Runner)
+# Download from https://www.docker.com/products/docker-desktop/
+
+# 2. Enable Model Runner with TCP support
+docker desktop enable model-runner --tcp=12434
+
+# 3. Pull a model (Qwen3 recommended for best tool calling)
+docker model pull ai/qwen3
+# Alternative: docker model pull ai/phi4
+
+# 4. Verify model is available and note the model ID
+curl http://localhost:12434/engines/llama.cpp/v1/models
+# Returns: {"object":"list","data":[{"id":"ai/qwen3:latest",...}]}
+
+# 5. Configure agent-base (use full model ID from step 4)
+export LLM_PROVIDER=local
+export AGENT_MODEL=ai/qwen3
+
+# 6. Run agent
+agent
+```
+
+### Configuration
+
+Add to your `.env` file:
+
+```bash
+LLM_PROVIDER=local
+LOCAL_BASE_URL=http://localhost:12434/engines/llama.cpp/v1  # Default DMR endpoint
+AGENT_MODEL=ai/qwen3                                         # Recommended for tool calling
+# Alternative: AGENT_MODEL=ai/phi4                            # General purpose
+```
+
+### Benefits
+
+- **No API costs** - Completely free to run
+- **Offline operation** - Works without internet
+- **Data privacy** - All data stays on your machine
+- **Fast iteration** - No network latency
+
+### Limitations
+
+- Requires Docker Desktop with Model Runner enabled
+- Requires sufficient RAM (8GB+ recommended)
+- Model quality varies (phi4 is capable but not GPT-4 level)
+- Function calling support depends on model
+- First run downloads large model files (~5GB+ per model)
+- TCP support must be enabled: `docker desktop enable model-runner --tcp 12434`
+
+### Supported Models
+
+Docker Desktop supports various models via `docker model pull`:
+
+- **qwen3** - Qwen 3 (8B/14B parameters) - **RECOMMENDED for tool calling** - Use `ai/qwen3` in config
+- **phi4** - Microsoft's phi-4 model (14B parameters) - Good general purpose - Use `ai/phi4` in config
+- **llama3.2** - Meta's Llama 3.2 (very capable) - Use `ai/llama3.2` in config
+- **mistral** - Mistral AI (strong multilingual support) - Use `ai/mistral` in config
+- **codellama** - Meta's Code Llama (optimized for code) - Use `ai/codellama` in config
+
+**Model Selection for Tool Calling**: According to [Docker's evaluation](https://www.docker.com/blog/local-llm-tool-calling-a-practical-evaluation/), Qwen 3 (8B or 14B) provides the best tool-calling accuracy among local models. Use `ai/qwen3` for maximum tool calling reliability.
+
+**Important**: When configuring `AGENT_MODEL`, use the full model ID format (e.g., `ai/qwen3`, not just `qwen3`). Check available models with:
+```bash
+curl http://localhost:12434/engines/llama.cpp/v1/models
+```
+
+### Example Session
+
+```bash
+$ export LLM_PROVIDER=local
+$ export AGENT_MODEL=ai/qwen3
+$ agent --check
+
+LLM Providers:
+✓ ◉ Local (ai/qwen3) · http://localhost:12434/engines/llama.cpp/v1
+
+$ agent
+
+Agent - Conversational Assistant
+Version 0.1.0 • Local/ai/qwen3
+
+> Say hello to Alice
+
+● Thinking...
+
+Hello, Alice! ◉‿◉  ← Tool was called (notice the ◉‿◉ emoji from hello_world tool)
+
+> exit
+Session auto-saved
+
+Goodbye!
+```
