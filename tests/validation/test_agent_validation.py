@@ -345,7 +345,7 @@ class TestAgentValidation:
         assert has_sections or has_config_error, "Should show health check or config error"
 
     def test_config_command(self, validator):
-        """Test config command (alias for --check)."""
+        """Test config command."""
         # Longer timeout needed when running in parallel (connectivity tests to multiple providers)
         result = validator.run_command("uv run agent --config", timeout=60)
         # Strip ANSI codes to focus on content not formatting
