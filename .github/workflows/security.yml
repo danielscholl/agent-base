@@ -3,8 +3,6 @@ name: Security Scanning
 on:
   push:
     branches: [ main ]
-  pull_request_target:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
   schedule:
@@ -22,20 +20,9 @@ jobs:
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request_target' || github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request'
     steps:
-      - name: Checkout PR head
-        if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 2
-          persist-credentials: false
-
-      - name: Checkout repository
-        if: github.event_name == 'pull_request'
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 2
 
@@ -47,20 +34,7 @@ jobs:
     name: Generate SBOM
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR head
-        if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 2
-          persist-credentials: false
-
-      - name: Checkout repository
-        if: github.event_name != 'pull_request_target'
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 2
+      - uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -76,35 +50,20 @@ jobs:
           uv pip install cyclonedx-bom
 
       - name: Generate SBOM
-        run: |
-          uv run cyclonedx-py environment -o sbom.json
-          echo "SBOM generated successfully"
+        run: uv run cyclonedx-py environment -o sbom.json
 
-      - name: Upload SBOM artifact
+      - name: Upload SBOM
         uses: actions/upload-artifact@v5
         with:
-          name: sbom-${{ github.event.pull_request.head.sha || github.sha }}
+          name: sbom-${{ github.sha }}
           path: sbom.json
           retention-days: 90
 
   codeql-analysis:
-    name: CodeQL Security Scan
+    name: CodeQL Analysis
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR head
-        if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Checkout repository
-        if: github.event_name != 'pull_request_target'
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v5
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -115,5 +74,3 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:python"
