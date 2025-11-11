@@ -20,7 +20,7 @@ classifiers = [
 
 dependencies = [
     # Microsoft Agent Framework (latest beta)
-    "agent-framework>=1.0.0b251007",
+    "agent-framework>=1.0.0b251106",
     # Core dependencies
     "pydantic>=2.11.10",
     "python-dotenv>=1.1.1",
@@ -32,6 +32,7 @@ dependencies = [
     "anthropic>=0.40.0",
     "azure-identity>=1.25.1",
     "azure-monitor-opentelemetry-exporter>=1.0.0b44",
+    "google-genai>=0.8.0",
 ]
 
 [project.optional-dependencies]
@@ -102,6 +103,9 @@ markers = [
     "requires_openai: Tests requiring OpenAI API key",
     "requires_anthropic: Tests requiring Anthropic API key",
     "requires_azure: Tests requiring Azure credentials",
+    "requires_gemini: Tests requiring Gemini API key",
+    # Provider grouping marker for unit tests
+    "providers: Provider unit tests",
 ]
 
 [tool.mypy]
