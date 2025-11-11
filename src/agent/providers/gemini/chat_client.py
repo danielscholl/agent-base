@@ -108,6 +108,30 @@ class GeminiChatClient(BaseChatClient):
             self.client = genai.Client(api_key=api_key)
             logger.info("Initialized Gemini client with API key")
 
+    def _build_call_id_mapping(self, messages: list[ChatMessage]) -> dict[str, str]:
+        """Build mapping from function call_id to function name.
+
+        Args:
+            messages: List of chat messages
+
+        Returns:
+            Dictionary mapping call_id to function name
+        """
+        call_id_to_name: dict[str, str] = {}
+        for m in messages:
+            for c in getattr(m, "contents", []) or []:
+                try:
+                    # Lazy import to avoid circular types
+                    from agent_framework import FunctionCallContent
+
+                    if isinstance(c, FunctionCallContent):
+                        call_id_to_name[c.call_id] = c.name
+                except Exception:
+                    # Ignore errors during FunctionCallContent type check
+                    # Not all contents are FunctionCallContent
+                    pass
+        return call_id_to_name
+
     def _prepare_options(
         self, messages: list[ChatMessage], chat_options: ChatOptions | None = None
     ) -> dict[str, Any]:
@@ -183,17 +207,7 @@ class GeminiChatClient(BaseChatClient):
         """
         try:
             # Build mapping from function call_id to function name
-            call_id_to_name: dict[str, str] = {}
-            for m in messages:
-                for c in getattr(m, "contents", []) or []:
-                    try:
-                        # Lazy import to avoid circular types
-                        from agent_framework import FunctionCallContent
-
-                        if isinstance(c, FunctionCallContent):
-                            call_id_to_name[c.call_id] = c.name
-                    except Exception:
-                        pass
+            call_id_to_name = self._build_call_id_mapping(messages)
 
             # Convert messages to Gemini format
             gemini_messages = [to_gemini_message(msg, call_id_to_name) for msg in messages]
@@ -250,16 +264,7 @@ class GeminiChatClient(BaseChatClient):
         """
         try:
             # Build mapping from function call_id to function name
-            call_id_to_name: dict[str, str] = {}
-            for m in messages:
-                for c in getattr(m, "contents", []) or []:
-                    try:
-                        from agent_framework import FunctionCallContent
-
-                        if isinstance(c, FunctionCallContent):
-                            call_id_to_name[c.call_id] = c.name
-                    except Exception:
-                        pass
+            call_id_to_name = self._build_call_id_mapping(messages)
 
             # Convert messages to Gemini format
             gemini_messages = [to_gemini_message(msg, call_id_to_name) for msg in messages]
