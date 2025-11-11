@@ -380,11 +380,11 @@ def run_health_check() -> None:
                     logger.debug(f"Failed to fetch Docker models: {e}")
                     # Silently continue - DMR might not be enabled
             else:
-                console.print(f"  [yellow]◉[/yellow] Not running")
+                console.print("  [yellow]◉[/yellow] Not running")
         except FileNotFoundError:
-            console.print(f"  [dim]○[/dim] Not installed")
+            console.print("  [dim]○[/dim] Not installed")
         except subprocess.TimeoutExpired:
-            console.print(f"  [yellow]◉[/yellow] Timeout (check if running)")
+            console.print("  [yellow]◉[/yellow] Timeout (check if running)")
 
         # LLM Providers - Test all with connectivity
         console.print("\n[bold]LLM Providers:[/bold]")
