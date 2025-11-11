@@ -105,7 +105,7 @@ def main(
     prompt: str = typer.Option(None, "-p", "--prompt", help="Execute a single prompt and exit"),
     check: bool = typer.Option(False, "--check", help="Show configuration and connectivity status"),
     config_flag: bool = typer.Option(
-        False, "--config", help="Show configuration and connectivity status (alias for --check)"
+        False, "--config", help="Show configuration and connectivity status"
     ),
     version_flag: bool = typer.Option(False, "--version", help="Show version"),
     telemetry: str = typer.Option(
