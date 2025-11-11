@@ -11,15 +11,16 @@ from dotenv import load_dotenv
 class AgentConfig:
     """Configuration for Agent.
 
-    Supports four LLM providers:
+    Supports five LLM providers:
     - openai: OpenAI API (gpt-5-mini, gpt-4o, etc.)
     - anthropic: Anthropic API (claude-sonnet-4-5, claude-opus-4, etc.)
     - azure: Azure OpenAI (requires deployment name)
     - foundry: Azure AI Foundry with managed models
+    - gemini: Google Gemini API (gemini-2.0-flash-exp, gemini-2.5-pro, etc.)
 
     Model selection:
     - AGENT_MODEL: Override default model for any provider
-    - Defaults: gpt-5-mini (OpenAI), claude-sonnet-4-5-20250929 (Anthropic)
+    - Defaults: gpt-5-mini (OpenAI), claude-sonnet-4-5-20250929 (Anthropic), gemini-2.0-flash-exp (Gemini)
     - Azure providers: Use deployment names (AZURE_OPENAI_DEPLOYMENT_NAME, AZURE_MODEL_DEPLOYMENT)
     """
 
@@ -45,6 +46,14 @@ class AgentConfig:
     azure_project_endpoint: str | None = None
     azure_model_deployment: str | None = None
     # Uses AzureCliCredential for auth, no API key needed
+
+    # Google Gemini (when llm_provider == "gemini")
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.0-flash-exp"
+    gemini_project_id: str | None = None
+    gemini_location: str | None = None
+    gemini_use_vertexai: bool = False
+    # Supports both API key (Gemini Developer API) and Vertex AI (GCP credentials)
 
     # Agent-specific
     agent_data_dir: Path | None = None
@@ -100,6 +109,12 @@ class AgentConfig:
             # Azure AI Foundry (deployment name is required Azure resource identifier)
             azure_project_endpoint=os.getenv("AZURE_PROJECT_ENDPOINT"),
             azure_model_deployment=os.getenv("AZURE_MODEL_DEPLOYMENT"),
+            # Google Gemini
+            gemini_api_key=os.getenv("GEMINI_API_KEY"),
+            gemini_model=agent_model or "gemini-2.0-flash-exp",
+            gemini_project_id=os.getenv("GEMINI_PROJECT_ID"),
+            gemini_location=os.getenv("GEMINI_LOCATION"),
+            gemini_use_vertexai=os.getenv("GEMINI_USE_VERTEXAI", "false").lower() == "true",
         )
 
         # Set default paths
@@ -173,10 +188,28 @@ class AgentConfig:
                     "Azure AI Foundry requires model deployment name. Set AZURE_MODEL_DEPLOYMENT environment variable."
                 )
             # Note: Uses AzureCliCredential for auth, user must be logged in via `az login`
+        elif self.llm_provider == "gemini":
+            if self.gemini_use_vertexai:
+                # Vertex AI authentication
+                if not self.gemini_project_id:
+                    raise ValueError(
+                        "Gemini Vertex AI requires project ID. Set GEMINI_PROJECT_ID environment variable."
+                    )
+                if not self.gemini_location:
+                    raise ValueError(
+                        "Gemini Vertex AI requires location. Set GEMINI_LOCATION environment variable."
+                    )
+                # Note: Uses Google Cloud default credentials
+            else:
+                # API key authentication
+                if not self.gemini_api_key:
+                    raise ValueError(
+                        "Gemini provider requires API key. Set GEMINI_API_KEY environment variable."
+                    )
         else:
             raise ValueError(
                 f"Unknown LLM provider: {self.llm_provider}. "
-                "Supported providers: openai, anthropic, azure, foundry"
+                "Supported providers: openai, anthropic, azure, foundry, gemini"
             )
 
         # Validate system prompt file if specified
@@ -206,4 +239,6 @@ class AgentConfig:
             return f"Azure OpenAI/{self.azure_openai_deployment}"
         elif self.llm_provider == "foundry":
             return f"Azure AI Foundry/{self.azure_model_deployment}"
+        elif self.llm_provider == "gemini":
+            return f"Gemini/{self.gemini_model}"
         return "Unknown"

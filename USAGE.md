@@ -62,6 +62,7 @@ LLM Providers:
   ◉ Anthropic (claude-sonnet-4-5-20250929) · ****yEPQAA
   ○ Azure OpenAI - Not configured
   ○ Azure AI Foundry - Not configured
+  ○ Google Gemini - Not configured
 ```
 
 The unified `--check` command shows:

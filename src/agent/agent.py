@@ -18,10 +18,12 @@ logger = logging.getLogger(__name__)
 class Agent:
     """Agent with multi-provider LLM support and extensible tools.
 
-    Supports three LLM providers through Microsoft Agent Framework:
+    Supports five LLM providers through Microsoft Agent Framework:
     - OpenAI: Direct OpenAI API
     - Anthropic: Direct Anthropic API
+    - Azure OpenAI: Azure-hosted OpenAI models
     - Azure AI Foundry: Microsoft's managed AI platform
+    - Google Gemini: Google's Gemini models (custom integration)
 
     Example:
         >>> config = AgentConfig.from_env()
@@ -110,6 +112,7 @@ class Agent:
         - anthropic: Anthropic API (claude-sonnet-4-5, claude-opus-4, etc.)
         - azure: Azure OpenAI (gpt-5-codex, gpt-4o, etc.)
         - foundry: Azure AI Foundry with managed models
+        - gemini: Google Gemini (gemini-2.0-flash-exp, gemini-2.5-pro, etc.)
 
         Returns:
             Configured chat client for the selected provider
@@ -179,10 +182,20 @@ class Agent:
                 model_deployment_name=self.config.azure_model_deployment,
                 async_credential=AsyncAzureCliCredential(),
             )
+        elif self.config.llm_provider == "gemini":
+            from agent.providers.gemini import GeminiChatClient
+
+            return GeminiChatClient(
+                model_id=self.config.gemini_model,
+                api_key=self.config.gemini_api_key,
+                project_id=self.config.gemini_project_id,
+                location=self.config.gemini_location,
+                use_vertexai=self.config.gemini_use_vertexai,
+            )
         else:
             raise ValueError(
                 f"Unknown provider: {self.config.llm_provider}. "
-                f"Supported: openai, anthropic, azure, foundry"
+                f"Supported: openai, anthropic, azure, foundry, gemini"
             )
 
     def _load_system_prompt(self) -> str:

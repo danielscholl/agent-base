@@ -182,6 +182,11 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
             azure_openai_api_key=config.azure_openai_api_key,
             azure_project_endpoint=config.azure_project_endpoint,
             azure_model_deployment=config.azure_model_deployment,
+            gemini_api_key=config.gemini_api_key,
+            gemini_model=config.gemini_model,
+            gemini_project_id=config.gemini_project_id,
+            gemini_location=config.gemini_location,
+            gemini_use_vertexai=config.gemini_use_vertexai,
             agent_data_dir=config.agent_data_dir,
             agent_session_dir=config.agent_session_dir,
         )
@@ -237,6 +242,7 @@ async def _test_all_providers(config: AgentConfig) -> list[tuple[str, str, bool,
         ("anthropic", "Anthropic", config.anthropic_model),
         ("azure", "Azure OpenAI", config.azure_openai_deployment or "N/A"),
         ("foundry", "Azure AI Foundry", config.azure_model_deployment or "N/A"),
+        ("gemini", "Google Gemini", config.gemini_model),
     ]
 
     results = []
@@ -347,6 +353,13 @@ def run_health_check() -> None:
                 )
             elif provider_id == "foundry" and config.azure_project_endpoint:
                 creds = "Azure CLI auth"
+            elif provider_id == "gemini":
+                if config.gemini_use_vertexai:
+                    creds = "Vertex AI auth"
+                elif config.gemini_api_key:
+                    creds = f"****{config.gemini_api_key[-6:]}"
+                else:
+                    creds = None
             else:
                 creds = None
 

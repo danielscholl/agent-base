@@ -123,6 +123,31 @@ def foundry_agent():
     return Agent(config=config)
 
 
+@pytest.fixture
+def gemini_agent():
+    """Create agent with real Gemini client.
+
+    Automatically skips if GEMINI_API_KEY is not set.
+
+    Example:
+        @pytest.mark.llm
+        @pytest.mark.requires_gemini
+        async def test_something(gemini_agent):
+            response = await gemini_agent.run("test")
+    """
+    if not os.getenv("GEMINI_API_KEY"):
+        pytest.skip("GEMINI_API_KEY not set - skipping real LLM test")
+
+    config = AgentConfig(
+        llm_provider="gemini",
+        gemini_api_key=os.getenv("GEMINI_API_KEY"),
+        # Use env var if set, otherwise use same default as main config
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"),
+    )
+
+    return Agent(config=config)
+
+
 @pytest.fixture(autouse=True)
 def track_llm_test_cost(request):
     """Track estimated cost of LLM tests (autouse for all tests in this directory).

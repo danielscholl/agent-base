@@ -7,7 +7,7 @@ A functional agent base for building AI agents with multi-provider LLM support a
 
 ## Overview
 
-Build conversational AI agents with enterprise-grade features: session management, observability, and extensible toolsets.
+Build conversational AI agents with features: session persistence, conversation memory, observability., and extensible toolsets.
 
 ```bash
 agent
@@ -34,7 +34,7 @@ Session auto-saved as '2025-11-10-11-38-07'
 Goodbye!
 ```
 
-Supports OpenAI, Anthropic, Azure OpenAI, and Azure AI Foundry. Includes session persistence, conversation memory, and local observability.
+Supports OpenAI, Anthropic, Azure OpenAI, Azure AI Foundry, and Google Gemini.
 
 ## Prerequisites
 
@@ -45,11 +45,12 @@ Supports OpenAI, Anthropic, Azure OpenAI, and Azure AI Foundry. Includes session
 - [Anthropic API](https://console.anthropic.com/) - Direct Anthropic access
 - [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/how-to/create-resource) - Azure-hosted OpenAI
 - [Azure AI Foundry](https://ai.azure.com) - Managed AI platform
+- [Google Gemini API](https://aistudio.google.com/apikey) - Google's Gemini models
 
-**Optional (for observability):**
-- [Azure Application Insights](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview) - Cloud telemetry
+**Optional:**
+- [Azure Application Insights](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview) - Cloud observability
 
-### Local Tools (Development)
+### Local Tools
 
 **Required:**
 - Python 3.12+
@@ -102,7 +103,7 @@ agent -p "Say hello to Alice"
 agent --help
 ```
 
-### Local Observability
+### Observability
 
 Monitor your agent's performance with OpenTelemetry:
 
