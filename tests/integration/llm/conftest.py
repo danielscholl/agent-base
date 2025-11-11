@@ -8,6 +8,7 @@ Fixtures automatically skip if API keys are not set.
 import os
 
 import pytest
+import requests
 
 from agent.agent import Agent
 from agent.config import AgentConfig
@@ -163,8 +164,6 @@ def local_agent():
         async def test_something(local_agent):
             response = await local_agent.run("test")
     """
-    import requests
-
     # Use env var if set, otherwise use default from config
     base_url = os.getenv("LOCAL_BASE_URL", "http://localhost:12434/engines/llama.cpp/v1")
 
