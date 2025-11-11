@@ -71,7 +71,7 @@ class AgentConfig:
     agent_session_dir: Path | None = None
 
     # Memory configuration (currently redundant with thread persistence)
-    memory_enabled: bool = False  # Default false until semantic memory implemented
+    memory_enabled: bool = True  # Enable by default for conversation memory
     memory_type: str = "in_memory"  # Future: "mem0", "langchain", etc.
     memory_dir: Path | None = None
     memory_history_limit: int = 20  # Max memories to inject as context
@@ -140,7 +140,7 @@ class AgentConfig:
         # Memory configuration
         # Note: Memory is currently redundant with thread persistence
         # Default to false until semantic memory (mem0) is implemented
-        config.memory_enabled = os.getenv("MEMORY_ENABLED", "false").lower() == "true"
+        config.memory_enabled = os.getenv("MEMORY_ENABLED", "true").lower() == "true"
         config.memory_type = os.getenv("MEMORY_TYPE", "in_memory")
         config.memory_history_limit = int(os.getenv("MEMORY_HISTORY_LIMIT", "20"))
         memory_dir = os.getenv("MEMORY_DIR")
