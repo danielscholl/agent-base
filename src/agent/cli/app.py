@@ -629,10 +629,7 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
 
         # Display response after completion summary
         if response:
-            if quiet:
-                console.print(response)
-            else:
-                console.print(f"\n{response}")
+            console.print(response)
 
     except ValueError as e:
         console.print(f"\n[red]Configuration error:[/red] {e}")
