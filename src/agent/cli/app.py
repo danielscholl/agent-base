@@ -126,19 +126,16 @@ def main(
 ) -> None:
     """Agent - Conversational Assistant with multi-provider LLM support.
 
+    \b
     Examples:
-        agent                              # Interactive mode
-        agent --check                      # Show configuration and connectivity
-        agent -p "Say hello to Alice"      # Single query (clean output)
-        agent -p "Say hello" --verbose     # Single query with execution details
-        agent --provider local --model phi4  # Use local provider with phi4
-        agent --provider openai            # Use OpenAI provider
-        agent --continue                   # Resume last session
-        agent --telemetry start            # Start observability dashboard
-
-    Note: Single prompt mode (-p) outputs clean text by default.
-          Use --verbose for detailed execution tree.
-          Interactive mode shows progress indicators.
+        agent                                       # Interactive mode
+        agent --check                               # Show configuration and connectivity
+        agent -p "Say hello to Alice"               # Single query (clean output)
+        agent -p "Say hello" --verbose              # Single query with execution details
+        agent --provider openai                     # Use OpenAI provider
+        agent --provider local --model ai/qwen3     # Use local provider with qwen3
+        agent --continue                            # Resume last session
+        agent --telemetry start                     # Start observability dashboard
     """
     # Apply CLI overrides to environment variables (temporary for this process)
     if provider:

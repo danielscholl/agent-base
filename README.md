@@ -43,23 +43,24 @@ Goodbye!
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
 
+
 ### LLM Providers
 
 **Local:**
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) - Local model serving (phi4, qwen3, etc.)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) - Local model serving 
 
 **Hosted:**
 - [OpenAI API](https://platform.openai.com/api-keys) - Direct OpenAI access
 - [Anthropic API](https://console.anthropic.com/) - Direct Anthropic access
 - [Google Gemini API](https://aistudio.google.com/apikey) - Direct Gemini access
-- [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/how-to/create-resource) - Azure-hosted OpenAI
+- [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/how-to/create-resource) - Azure hosted OpenAI access
 - [Azure AI Foundry](https://ai.azure.com) - Managed AI platform
 
 
-### Azure Enhancements
+#### Azure Provider Requirements
 
-- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) - Simplifies Azure auth
-- [Azure Application Insights](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview) - Cloud observability
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) - Azure Authentication
+- [Azure Application Insights](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview) - Azure Observability
 
 ## Quick Setup
 
@@ -67,19 +68,19 @@ Goodbye!
 # Install agent
 uv tool install --prerelease=allow git+https://github.com/danielscholl/agent-base.git
 
-# Pull a model
+# Pull model
 docker desktop enable model-runner --tcp=12434
-docker model pull ai/phi4
+docker model pull phi4
 
-# Start the interactive agent
+# Start interactive agent
 agent
 ```
 
-That's it! The agent runs locally with no API keys required.
+That's it! The agent runs locally with Docker Models.
 
-### Cloud Providers
+### Hosted Providers
 
-To use cloud providers instead, set credentials in `.env`:
+To use hosted providers instead, set required credentials as environment settings:
 
 ```bash
 # Copy example configuration
@@ -90,9 +91,6 @@ LLM_PROVIDER=openai
 
 # Set any required provider keys
 OPENAI_API_KEY=sk-your-key
-
-# For Azure use Azure CLI (no API keys needed)
-az login
 ```
 
 ## Usage
@@ -131,12 +129,8 @@ Monitor your agent's performance with OpenTelemetry:
 ENABLE_OTEL=true
 
 # Start local dashboard (requires Docker)
-agent --telemetry start
-
 # View at http://localhost:18888
-# - Traces: Full execution hierarchy
-# - Metrics: Token usage and costs
-# - Logs: Structured application logs
+agent --telemetry start
 ```
 
 See [USAGE.md](USAGE.md) for complete examples.

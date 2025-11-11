@@ -3,8 +3,6 @@ status: accepted
 contact: danielscholl
 date: 2025-11-09
 deciders: danielscholl
-consulted:
-informed:
 ---
 
 # Memory Architecture for Conversation Context

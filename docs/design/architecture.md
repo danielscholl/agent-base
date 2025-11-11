@@ -86,7 +86,7 @@ See ADR-0013 for memory architecture decisions.
                       ▼
 ┌─────────────────────────────────────────────────────┐
 │                     Agent                            │
-│   LLM orchestration, tool registration, memory      │
+│  LLM orchestration (6 providers), tool registration │
 └──┬──────────────┬──────────────┬────────────────────┘
    │              │              │
    ▼              ▼              ▼
@@ -112,9 +112,11 @@ See ADR-0013 for memory architecture decisions.
 
 **CLI** (`cli/`) - Interactive interface with Typer, prompt_toolkit, session management
 
-**Agent** (`agent.py`) - Core orchestration, multi-provider LLM support, dependency injection
+**Agent** (`agent.py`) - Core orchestration, multi-provider LLM support (6 providers), dependency injection
 
 **Toolsets** (`tools/`) - Class-based tool implementations inheriting from `AgentToolset`
+
+**Providers** (`providers/`) - Custom LLM provider implementations (Gemini custom client)
 
 **Memory** (`memory/`) - ContextProvider-based conversation storage with in-memory backend
 
@@ -190,14 +192,67 @@ Multi-provider support via `AgentConfig`:
 - **No defaults in code** - All defaults in `.env.example`
 
 **Supported providers:**
+- Local (Docker Desktop models, free, offline)
 - OpenAI (direct API)
 - Anthropic (direct API)
-- Azure OpenAI (Azure-hosted, fastest)
+- Gemini (Google Gemini API or Vertex AI)
+- Azure OpenAI (Azure-hosted)
 - Azure AI Foundry (managed platform)
 
 Provider selection changes chat client implementation but Agent interface remains identical.
 
-See ADR-0003 for configuration management decisions.
+See ADR-0003 for multi-provider architecture strategy.
+
+## Provider Architecture
+
+### Design Decision
+
+Support multiple LLM providers with three implementation patterns.
+
+**Rationale:**
+- Enable user flexibility (cost, features, compliance, offline)
+- Avoid vendor lock-in to any single provider
+- Leverage Microsoft Agent Framework's multi-provider support
+- Support free local development alongside cloud providers
+- Meet diverse user needs (students, enterprises, privacy-conscious)
+
+**Implementation patterns:**
+
+1. **Framework clients** - OpenAI, Anthropic, Azure
+   - Use official `agent-framework-{provider}` packages
+   - Zero custom client code needed
+   - Example: `OpenAIChatClient`, `AnthropicChatClient`
+
+2. **Custom clients** - Gemini
+   - Extend `BaseChatClient` for providers without framework package
+   - Implement message conversion and API integration
+   - Example: `GeminiChatClient` using `google-genai` SDK
+
+3. **Client reuse** - Local
+   - Reuse existing framework client with different endpoint
+   - Example: `OpenAIChatClient` pointed at Docker Model Runner
+   - Works with any OpenAI-compatible API
+
+**Provider capabilities:**
+- **Local**: Free, offline, privacy (qwen3, phi4, llama3.2 via Docker)
+- **OpenAI**: Latest models, highest quality (GPT-4o, o1)
+- **Anthropic**: Long context windows, constitutional AI (Claude)
+- **Gemini**: Multimodal inputs, Google Cloud integration, 2M token context
+- **Azure OpenAI**: Enterprise compliance, government clouds, data residency
+- **Azure AI Foundry**: Managed platform, model catalog, unified deployment
+
+**Decision tree for new providers:**
+```
+Does framework package exist?
+├─ YES: Use framework client (OpenAI, Anthropic)
+└─ NO: Is API OpenAI-compatible?
+   ├─ YES: Reuse OpenAIChatClient (Local)
+   └─ NO: Create custom client (Gemini)
+```
+
+See ADR-0003 for complete provider strategy and decision tree.
+See ADR-0015 for Gemini custom client implementation.
+See ADR-0016 for Local Docker Model Runner integration.
 
 ## Memory Architecture
 
@@ -279,12 +334,60 @@ Tree rendering uses Rich's tree structure, updated incrementally as events arriv
 
 See ADR-0010 for display format decisions.
 
+## Observability Architecture
+
+### Design Decision
+
+Optional OpenTelemetry integration for production monitoring.
+
+**Rationale:**
+- Production visibility into agent behavior and performance
+- Trace LLM calls, tool invocations, and execution flow
+- Industry-standard telemetry (OpenTelemetry)
+- Zero impact when disabled (opt-in only)
+- Supports both cloud (Azure) and local (Aspire Dashboard) exporters
+
+**Implementation:**
+- Microsoft Agent Framework provides built-in OpenTelemetry instrumentation
+- Automatic span creation for agent operations and LLM calls
+- Export to Azure Application Insights or local Aspire Dashboard
+- Configurable via `ENABLE_OTEL` environment variable
+- Sensitive data filtering via `ENABLE_SENSITIVE_DATA` flag
+
+**Telemetry dashboard:**
+```bash
+# Start local Aspire Dashboard (Docker-based)
+/telemetry start
+
+# Enable telemetry
+export ENABLE_OTEL=true
+
+# View traces at http://localhost:18888
+agent -p "test prompt"
+```
+
+**What gets traced:**
+- Agent initialization and configuration
+- LLM API calls (request/response, tokens, latency)
+- Tool invocations and results
+- Session management operations
+- Error conditions and exceptions
+
+**Privacy controls:**
+- Prompt/response content excluded by default
+- `ENABLE_SENSITIVE_DATA=true` includes full content for debugging
+- Azure Application Insights for cloud monitoring
+- Local-only option with Aspire Dashboard
+
+See ADR-0014 for observability integration decisions.
+
 ## Design Decisions
 
 Detailed rationale in Architecture Decision Records:
 
 **Core Architecture:**
 - [ADR-0001](../decisions/0001-module-and-package-naming-conventions.md) - Naming conventions
+- [ADR-0003](../decisions/0003-multi-provider-llm-architecture.md) - Multi-provider strategy
 - [ADR-0004](../decisions/0004-custom-exception-hierarchy-design.md) - Exception hierarchy
 - [ADR-0006](../decisions/0006-class-based-toolset-architecture.md) - Class-based toolsets
 - [ADR-0007](../decisions/0007-tool-response-format.md) - Structured responses
@@ -299,8 +402,13 @@ Detailed rationale in Architecture Decision Records:
 - [ADR-0010](../decisions/0010-display-output-format.md) - Display format
 - [ADR-0011](../decisions/0011-session-management-architecture.md) - Session persistence
 
-**Testing:**
+**Operations:**
 - [ADR-0008](../decisions/0008-testing-strategy-and-coverage-targets.md) - Testing strategy
+- [ADR-0014](../decisions/0014-observability-integration.md) - Observability integration
+
+**Provider Implementations:**
+- [ADR-0015](../decisions/0015-gemini-provider-integration.md) - Gemini custom client
+- [ADR-0016](../decisions/0016-local-provider-integration.md) - Local Docker integration
 
 ## See Also
 

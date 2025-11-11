@@ -38,26 +38,36 @@ During implementation of the agent-template specification, create ADRs for:
 
 **Rule of thumb**: If the decision could be made differently and the alternative would be reasonable, document it with an ADR.
 
-## Expected ADRs for Foundation Implementation
-
-Based on the foundation specification, the following ADRs should be created:
-
-1. **ADR-0001: Class-based Toolset Architecture** - Tool registration approach
-2. **ADR-0002: Event Bus Pattern for Loose Coupling** - Middleware/display decoupling
-3. **ADR-0003: Custom Exception Hierarchy Design** - Error type structure
-4. **ADR-0004: Agent Response Format** - Tool response structure (success/error)
-5. **ADR-0005: Configuration Management Strategy** - Config approach (env vars, dataclasses)
-6. **ADR-0006: CLI Argument Design** - CLI flags and command structure
-7. **ADR-0007: Testing Strategy and Coverage Targets** - Test organization and coverage goals
-8. **ADR-0008: Module and Package Naming Conventions** - Python naming standards
-9. **ADR-0009: Display Output Format and Verbosity Levels** - UI/UX output modes
-10. **ADR-0010: Session Management Architecture** - Session persistence approach
-
 ## Templates
 
 - **Full Template**: `adr-template.md` - Comprehensive template with all sections
 - **Short Template**: `adr-short-template.md` - Simplified template for smaller decisions
 
-## Reference Examples
+## ADR Index
 
-See `ai-examples/agent-framework/docs/decisions/` for real-world examples of well-structured ADRs.
+### Foundation & Architecture
+- [ADR-0001: Module and Package Naming Conventions](./0001-module-and-package-naming-conventions.md)
+- [ADR-0002: Repository Infrastructure and DevOps Setup](./0002-repository-infrastructure-and-devops-setup.md)
+- [ADR-0004: Custom Exception Hierarchy Design](./0004-custom-exception-hierarchy-design.md)
+- [ADR-0005: Event Bus Pattern for Loose Coupling](./0005-event-bus-pattern-for-loose-coupling.md)
+
+### LLM Provider Strategy
+- [ADR-0003: Multi-Provider LLM Architecture Strategy](./0003-multi-provider-llm-architecture.md) ⭐ _Overall provider strategy_
+  - [ADR-0015: Gemini Provider Integration](./0015-gemini-provider-integration.md) - Custom client implementation
+  - [ADR-0016: Local Provider Integration](./0016-local-provider-integration.md) - Docker Model Runner integration
+
+### Tools & Components
+- [ADR-0006: Class-Based Toolset Architecture](./0006-class-based-toolset-architecture.md)
+- [ADR-0007: Tool Response Format](./0007-tool-response-format.md)
+- [ADR-0012: Middleware Integration Strategy](./0012-middleware-integration-strategy.md)
+- [ADR-0013: Memory Architecture](./0013-memory-architecture.md)
+
+### User Interface & Experience
+- [ADR-0009: CLI Framework Selection](./0009-cli-framework-selection.md)
+- [ADR-0010: Display Output Format](./0010-display-output-format.md)
+- [ADR-0011: Session Management Architecture](./0011-session-management-architecture.md)
+
+### Quality & Operations
+- [ADR-0008: Testing Strategy and Coverage Targets](./0008-testing-strategy-and-coverage-targets.md)
+- [ADR-0014: Observability Integration](./0014-observability-integration.md)
+

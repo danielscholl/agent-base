@@ -52,7 +52,11 @@ class KeybindingManager:
         for handler in self._handlers:
             # Create closure to capture handler (prevents late-binding issues)
             def make_handler(h: KeybindingHandler) -> Callable[[Any], None]:
-                @kb.add(h.trigger_key)
+                # Use eager=True for escape key to trigger immediately
+                # without waiting for potential escape sequences
+                is_escape = h.trigger_key == "escape"
+
+                @kb.add(h.trigger_key, eager=is_escape)
                 def _(event: Any) -> None:
                     h.handle(event)
 

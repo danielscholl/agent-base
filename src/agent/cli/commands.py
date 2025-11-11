@@ -104,35 +104,123 @@ async def handle_purge_command(
 ) -> None:
     """Handle /purge command.
 
+    Deletes all agent data including:
+    - Session files (conversation threads)
+    - Memory files
+    - Log files
+    - Metadata (last_session, history)
+
     Args:
         persistence: ThreadPersistence instance
         session: PromptSession for user input
         console: Console for output
     """
+    import shutil
+
     sessions = persistence.list_sessions()
-    if not sessions:
-        console.print("\n[yellow]No sessions to purge[/yellow]\n")
+
+    # Check what exists to give accurate warning
+    data_dir = persistence.storage_dir.parent  # ~/.agent
+    logs_dir = data_dir / "logs"
+    memory_dir = persistence.memory_dir
+    last_session_file = data_dir / "last_session"
+    history_file = data_dir / ".agent_history"
+
+    items_to_delete = []
+    if sessions:
+        items_to_delete.append(f"{len(sessions)} sessions")
+    if memory_dir.exists() and next(memory_dir.iterdir(), None) is not None:
+        items_to_delete.append("memory files")
+    if logs_dir.exists() and next(logs_dir.iterdir(), None) is not None:
+        items_to_delete.append("log files")
+    if last_session_file.exists() or history_file.exists():
+        items_to_delete.append("metadata")
+
+    if not items_to_delete:
+        console.print("\n[yellow]No data to purge[/yellow]")
         return
 
     # Confirm deletion
-    console.print(f"\n[yellow]⚠ This will delete ALL {len(sessions)} saved sessions.[/yellow]")
+    items_str = ", ".join(items_to_delete)
+    console.print(f"\n[yellow]⚠ This will delete ALL agent data ({items_str}).[/yellow]")
 
     try:
         confirm = await session.prompt_async("Continue? (y/n): ")
-        if confirm.strip().lower() == "y":
-            deleted = 0
-            for sess in sessions:
-                try:
-                    persistence.delete_session(sess["name"])
-                    deleted += 1
-                except Exception as e:
-                    console.print(f"[yellow]Failed to delete {sess['name']}: {e}[/yellow]")
+        if confirm.strip().lower() != "y":
+            console.print("\n[yellow]Cancelled[/yellow]")
+            return
 
-            console.print(f"\n[green]✓ Deleted {deleted} sessions[/green]\n")
-        else:
-            console.print("\n[yellow]Cancelled[/yellow]\n")
+        deleted_count = 0
+
+        # Delete sessions (with confirmation)
+        if sessions:
+            console.print(f"\n[cyan]Delete {len(sessions)} sessions?[/cyan]")
+            confirm_sessions = await session.prompt_async("  (y/n): ")
+            if confirm_sessions.strip().lower() == "y":
+                for sess in sessions:
+                    try:
+                        persistence.delete_session(sess["name"])
+                        deleted_count += 1
+                    except Exception as e:
+                        console.print(
+                            f"[yellow]Failed to delete session {sess['name']}: {e}[/yellow]"
+                        )
+                console.print(f"  [green]✓ Deleted {deleted_count} sessions[/green]")
+            else:
+                console.print("  [dim]Skipped[/dim]")
+
+        # Delete memory directory (with confirmation)
+        if memory_dir.exists() and next(memory_dir.iterdir(), None) is not None:
+            console.print("\n[cyan]Delete memory files?[/cyan]")
+            confirm_memory = await session.prompt_async("  (y/n): ")
+            if confirm_memory.strip().lower() == "y":
+                try:
+                    shutil.rmtree(memory_dir)
+                    memory_dir.mkdir(parents=True, exist_ok=True)
+                    console.print("  [green]✓ Deleted memory files[/green]")
+                except Exception as e:
+                    console.print(f"  [yellow]Failed to delete memory files: {e}[/yellow]")
+            else:
+                console.print("  [dim]Skipped[/dim]")
+
+        # Delete logs directory (with confirmation)
+        if logs_dir.exists() and next(logs_dir.iterdir(), None) is not None:
+            console.print("\n[cyan]Delete log files?[/cyan]")
+            confirm_logs = await session.prompt_async("  (y/n): ")
+            if confirm_logs.strip().lower() == "y":
+                try:
+                    shutil.rmtree(logs_dir)
+                    logs_dir.mkdir(parents=True, exist_ok=True)
+                    console.print("  [green]✓ Deleted log files[/green]")
+                except Exception as e:
+                    console.print(f"  [yellow]Failed to delete log files: {e}[/yellow]")
+            else:
+                console.print("  [dim]Skipped[/dim]")
+
+        # Delete metadata files (with confirmation)
+        metadata_exists = last_session_file.exists() or history_file.exists()
+        if metadata_exists:
+            console.print("\n[cyan]Delete metadata (last_session, command history)?[/cyan]")
+            confirm_metadata = await session.prompt_async("  (y/n): ")
+            if confirm_metadata.strip().lower() == "y":
+                if last_session_file.exists():
+                    try:
+                        last_session_file.unlink()
+                    except Exception as e:
+                        console.print(f"  [yellow]Failed to delete last_session: {e}[/yellow]")
+                if history_file.exists():
+                    try:
+                        history_file.unlink()
+                    except Exception as e:
+                        console.print(f"  [yellow]Failed to delete command history: {e}[/yellow]")
+                console.print("  [green]✓ Deleted metadata[/green]")
+            else:
+                console.print("  [dim]Skipped[/dim]")
+
+        console.print("\n[green]✓ Purge complete[/green]")
+
     except (EOFError, KeyboardInterrupt):
-        console.print("\n[yellow]Cancelled[/yellow]\n")
+        console.print("\n[yellow]Cancelled[/yellow]")
 
 
 def show_help(console: Console) -> None:
@@ -144,7 +232,7 @@ def show_help(console: Console) -> None:
     console.print("\n[bold]Available Commands:[/bold]")
     console.print("  [cyan]/clear[/cyan]      - Clear screen and start new conversation")
     console.print("  [cyan]/continue[/cyan]   - Resume a previous session")
-    console.print("  [cyan]/purge[/cyan]      - Delete all saved sessions")
+    console.print("  [cyan]/purge[/cyan]      - Delete all agent data (sessions, logs, memory)")
     console.print("  [cyan]/telemetry[/cyan]  - Manage local observability dashboard")
     console.print("  [cyan]/help[/cyan]       - Show this help message")
     console.print("  [cyan]exit[/cyan]        - Exit interactive mode")

@@ -8,6 +8,7 @@ Fixtures automatically skip if API keys are not set.
 import os
 
 import pytest
+import requests
 
 from agent.agent import Agent
 from agent.config import AgentConfig
@@ -154,7 +155,8 @@ def gemini_agent():
 def local_agent():
     """Create agent with local Docker model client.
 
-    Automatically skips if LOCAL_BASE_URL is not set.
+    Automatically skips if local models are not available.
+    Tries default localhost:12434 first, then checks LOCAL_BASE_URL env var.
 
     Example:
         @pytest.mark.llm
@@ -162,12 +164,23 @@ def local_agent():
         async def test_something(local_agent):
             response = await local_agent.run("test")
     """
-    if not os.getenv("LOCAL_BASE_URL"):
-        pytest.skip("LOCAL_BASE_URL not set - skipping local LLM test")
+    # Use env var if set, otherwise use default from config
+    base_url = os.getenv("LOCAL_BASE_URL", "http://localhost:12434/engines/llama.cpp/v1")
+
+    # Check if local models are available by trying to list models
+    # Build models endpoint: base_url/models (e.g., http://localhost:12434/engines/llama.cpp/v1/models)
+    models_url = f"{base_url.rstrip('/')}/models"
+
+    try:
+        response = requests.get(models_url, timeout=2)
+        if response.status_code != 200:
+            pytest.skip(f"Local models not available at {base_url} - status {response.status_code}")
+    except (requests.RequestException, ConnectionError) as e:
+        pytest.skip(f"Local models not available at {base_url} - {e}")
 
     config = AgentConfig(
         llm_provider="local",
-        local_base_url=os.getenv("LOCAL_BASE_URL", "http://localhost:12434/engines/llama.cpp/v1"),
+        local_base_url=base_url,
         # Use env var if set, otherwise use same default as main config
         local_model=os.getenv("LOCAL_MODEL", "ai/phi4"),
     )

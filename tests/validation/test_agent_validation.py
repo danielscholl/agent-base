@@ -330,7 +330,8 @@ class TestAgentValidation:
 
     def test_check_command(self, validator):
         """Test health check command shows system, agent, docker, and providers."""
-        result = validator.run_command("uv run agent --check", timeout=30)
+        # Longer timeout needed when running in parallel (connectivity tests to multiple providers)
+        result = validator.run_command("uv run agent --check", timeout=60)
         # Strip ANSI codes to focus on content not formatting
         clean_output = strip_ansi(result["stdout"])
         # Should display key sections if configured, or show config error
@@ -345,7 +346,8 @@ class TestAgentValidation:
 
     def test_config_command(self, validator):
         """Test config command (alias for --check)."""
-        result = validator.run_command("uv run agent --config", timeout=30)
+        # Longer timeout needed when running in parallel (connectivity tests to multiple providers)
+        result = validator.run_command("uv run agent --config", timeout=60)
         # Strip ANSI codes to focus on content not formatting
         clean_output = strip_ansi(result["stdout"])
         # Should be identical to --check (unified view)
