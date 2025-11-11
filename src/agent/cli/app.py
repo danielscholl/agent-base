@@ -259,12 +259,12 @@ async def _test_all_providers(config: AgentConfig) -> list[tuple[str, str, bool,
         List of tuples: (provider_id, provider_name, success, status)
     """
     providers = [
+        ("local", "Local", config.local_model),
         ("openai", "OpenAI", config.openai_model),
         ("anthropic", "Anthropic", config.anthropic_model),
+        ("gemini", "Google Gemini", config.gemini_model),
         ("azure", "Azure OpenAI", config.azure_openai_deployment or "N/A"),
         ("foundry", "Azure AI Foundry", config.azure_model_deployment or "N/A"),
-        ("gemini", "Google Gemini", config.gemini_model),
-        ("local", "Local", config.local_model),
     ]
 
     results = []
