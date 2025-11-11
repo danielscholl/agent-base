@@ -28,7 +28,7 @@ def to_gemini_message(
         Dictionary in Gemini's message format
 
     Example:
-        >>> msg = ChatMessage(role="user", content=TextContent(text="Hello"))
+        >>> msg = ChatMessage(role="user", contents=[TextContent(text="Hello")])
         >>> to_gemini_message(msg)
         {"role": "user", "parts": [{"text": "Hello"}]}
     """
@@ -85,7 +85,7 @@ def to_gemini_message(
     # If no parts were added, attempt to use message.text; otherwise add empty text part
     if not parts:
         # Some ChatMessage instances may expose text; use it if present
-        text_value = getattr(message, "text", "") or ""
+        text_value = getattr(message, "text", "")
         parts.append({"text": text_value})
 
     return {"role": gemini_role, "parts": parts}

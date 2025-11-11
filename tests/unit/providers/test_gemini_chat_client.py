@@ -345,7 +345,7 @@ class TestGeminiOptionsMapping:
 
         # Define a simple ai function tool
         @ai_function
-        async def do_thing(name: str) -> dict:  # type: ignore[unused-ignore]
+        async def do_thing(name: str) -> dict:
             return {"done": True}
 
         client = GeminiChatClient(model_id=gemini_model, api_key=gemini_api_key)

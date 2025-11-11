@@ -7,6 +7,8 @@ implementation, including mock clients and test configurations.
 
 import pytest
 
+from agent.config import DEFAULT_GEMINI_MODEL
+
 
 @pytest.fixture
 def gemini_api_key() -> str:
@@ -17,7 +19,7 @@ def gemini_api_key() -> str:
 @pytest.fixture
 def gemini_model() -> str:
     """Return a test model name for Gemini."""
-    return "gemini-2.0-flash-exp"
+    return DEFAULT_GEMINI_MODEL
 
 
 @pytest.fixture

@@ -6,6 +6,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+# Default models for each provider
+DEFAULT_GEMINI_MODEL = "gemini-2.0-flash-exp"
+
 
 @dataclass
 class AgentConfig:
@@ -49,7 +52,7 @@ class AgentConfig:
 
     # Google Gemini (when llm_provider == "gemini")
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-2.0-flash-exp"
+    gemini_model: str = DEFAULT_GEMINI_MODEL
     gemini_project_id: str | None = None
     gemini_location: str | None = None
     gemini_use_vertexai: bool = False
@@ -111,7 +114,7 @@ class AgentConfig:
             azure_model_deployment=os.getenv("AZURE_MODEL_DEPLOYMENT"),
             # Google Gemini
             gemini_api_key=os.getenv("GEMINI_API_KEY"),
-            gemini_model=agent_model or "gemini-2.0-flash-exp",
+            gemini_model=agent_model or DEFAULT_GEMINI_MODEL,
             gemini_project_id=os.getenv("GEMINI_PROJECT_ID"),
             gemini_location=os.getenv("GEMINI_LOCATION"),
             gemini_use_vertexai=os.getenv("GEMINI_USE_VERTEXAI", "false").lower() == "true",

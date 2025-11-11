@@ -138,11 +138,13 @@ def gemini_agent():
     if not os.getenv("GEMINI_API_KEY"):
         pytest.skip("GEMINI_API_KEY not set - skipping real LLM test")
 
+    from agent.config import DEFAULT_GEMINI_MODEL
+
     config = AgentConfig(
         llm_provider="gemini",
         gemini_api_key=os.getenv("GEMINI_API_KEY"),
         # Use env var if set, otherwise use same default as main config
-        gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"),
+        gemini_model=os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
     )
 
     return Agent(config=config)
