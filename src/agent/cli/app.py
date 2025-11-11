@@ -579,8 +579,24 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
         config = AgentConfig.from_env()
         config.validate()
 
-        # Setup observability if enabled
-        if config.enable_otel:
+        # Setup observability with auto-detection
+        # Rules:
+        # 1. If ENABLE_OTEL explicitly set (true/false), always respect it
+        # 2. If ENABLE_OTEL not set, auto-detect endpoint availability
+        # 3. If endpoint reachable, enable telemetry automatically
+        should_enable_otel = config.enable_otel
+
+        if not config.enable_otel_explicit:
+            # User didn't set ENABLE_OTEL, check if endpoint is available
+            from agent.observability import check_telemetry_endpoint
+
+            if check_telemetry_endpoint(config.otlp_endpoint):
+                should_enable_otel = True
+                logger.info(
+                    f"Telemetry endpoint detected at {config.otlp_endpoint}, enabling observability"
+                )
+
+        if should_enable_otel:
             from agent_framework.observability import setup_observability
 
             setup_observability(
@@ -682,8 +698,24 @@ async def run_chat_mode(
         config = AgentConfig.from_env()
         config.validate()
 
-        # Setup observability if enabled
-        if config.enable_otel:
+        # Setup observability with auto-detection
+        # Rules:
+        # 1. If ENABLE_OTEL explicitly set (true/false), always respect it
+        # 2. If ENABLE_OTEL not set, auto-detect endpoint availability
+        # 3. If endpoint reachable, enable telemetry automatically
+        should_enable_otel = config.enable_otel
+
+        if not config.enable_otel_explicit:
+            # User didn't set ENABLE_OTEL, check if endpoint is available
+            from agent.observability import check_telemetry_endpoint
+
+            if check_telemetry_endpoint(config.otlp_endpoint):
+                should_enable_otel = True
+                logger.info(
+                    f"Telemetry endpoint detected at {config.otlp_endpoint}, enabling observability"
+                )
+
+        if should_enable_otel:
             from agent_framework.observability import setup_observability
 
             setup_observability(

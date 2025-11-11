@@ -1,5 +1,6 @@
 """Command handlers for CLI."""
 
+import os
 import subprocess
 import time
 from typing import Any
@@ -142,7 +143,7 @@ async def handle_purge_command(
 
     # Confirm deletion
     items_str = ", ".join(items_to_delete)
-    console.print(f"\n[yellow]⚠ This will delete ALL agent data ({items_str}).[/yellow]")
+    console.print(f"\n[yellow]! This will delete ALL agent data ({items_str}).[/yellow]")
 
     try:
         confirm = await session.prompt_async("Continue? (y/n): ")
@@ -165,7 +166,7 @@ async def handle_purge_command(
                         console.print(
                             f"[yellow]Failed to delete session {sess['name']}: {e}[/yellow]"
                         )
-                console.print(f"  [green]✓ Deleted {deleted_count} sessions[/green]")
+                console.print(f"  [green]+ Deleted {deleted_count} sessions[/green]")
             else:
                 console.print("  [dim]Skipped[/dim]")
 
@@ -177,7 +178,7 @@ async def handle_purge_command(
                 try:
                     shutil.rmtree(memory_dir)
                     memory_dir.mkdir(parents=True, exist_ok=True)
-                    console.print("  [green]✓ Deleted memory files[/green]")
+                    console.print("  [green]+ Deleted memory files[/green]")
                 except Exception as e:
                     console.print(f"  [yellow]Failed to delete memory files: {e}[/yellow]")
             else:
@@ -191,7 +192,7 @@ async def handle_purge_command(
                 try:
                     shutil.rmtree(logs_dir)
                     logs_dir.mkdir(parents=True, exist_ok=True)
-                    console.print("  [green]✓ Deleted log files[/green]")
+                    console.print("  [green]+ Deleted log files[/green]")
                 except Exception as e:
                     console.print(f"  [yellow]Failed to delete log files: {e}[/yellow]")
             else:
@@ -213,11 +214,11 @@ async def handle_purge_command(
                         history_file.unlink()
                     except Exception as e:
                         console.print(f"  [yellow]Failed to delete command history: {e}[/yellow]")
-                console.print("  [green]✓ Deleted metadata[/green]")
+                console.print("  [green]+ Deleted metadata[/green]")
             else:
                 console.print("  [dim]Skipped[/dim]")
 
-        console.print("\n[green]✓ Purge complete[/green]")
+        console.print("\n[green]+ Purge complete[/green]")
 
     except (EOFError, KeyboardInterrupt):
         console.print("\n[yellow]Cancelled[/yellow]")
@@ -324,10 +325,27 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
             # Wait for startup
             time.sleep(3)
 
-            console.print("\n[green]✓ Telemetry dashboard started successfully![/green]\n")
+            console.print("\n[green]+ Telemetry dashboard started successfully![/green]\n")
             console.print(f"  Dashboard: {DASHBOARD_URL}\n")
-            console.print("[bold]To enable telemetry:[/bold]")
-            console.print("  export ENABLE_OTEL=true\n")
+
+            # Check if ENABLE_OTEL is explicitly set
+            enable_otel_env = os.getenv("ENABLE_OTEL")
+            if enable_otel_env:
+                # User has explicitly configured it
+                if enable_otel_env.lower() == "true":
+                    console.print("[green]+ Telemetry enabled[/green] (ENABLE_OTEL=true)")
+                else:
+                    console.print(
+                        "[yellow]! Telemetry disabled[/yellow] (ENABLE_OTEL=false)\n"
+                    )
+                    console.print("To enable: Set ENABLE_OTEL=true in .env file")
+            else:
+                # Auto-detection will happen
+                console.print(
+                    "[cyan][i] Auto-detection enabled[/cyan] - Telemetry will activate automatically"
+                )
+                console.print("  (To disable: Set ENABLE_OTEL=false in .env file)")
+            console.print()
 
         elif action == "stop":
             # Stop the container
@@ -339,7 +357,7 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
             )
 
             if result.returncode == 0:
-                console.print("\n[green]✓ Telemetry dashboard stopped[/green]\n")
+                console.print("\n[green]+ Telemetry dashboard stopped[/green]\n")
             else:
                 console.print("\n[yellow]Telemetry dashboard was not running[/yellow]\n")
 
@@ -368,7 +386,7 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
                     timeout=10,
                 )
 
-                console.print("\n[green]✓ Telemetry dashboard is running[/green]")
+                console.print("\n[green]+ Telemetry dashboard is running[/green]", markup=True, highlight=False)
                 console.print(f"[dim]Status: {uptime_result.stdout.strip()}[/dim]")
                 console.print(f"[cyan]Dashboard:[/cyan] {DASHBOARD_URL}")
                 console.print(f"[cyan]OTLP Endpoint:[/cyan] {OTLP_ENDPOINT}\n")
@@ -379,8 +397,18 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
         elif action == "url":
             console.print("\n[bold]Telemetry Dashboard:[/bold]")
             console.print(f"  {DASHBOARD_URL}\n")
-            console.print("[bold]Enable telemetry:[/bold]")
-            console.print("  export ENABLE_OTEL=true\n")
+
+            # Check current telemetry configuration
+            enable_otel_env = os.getenv("ENABLE_OTEL")
+            console.print("[bold]Telemetry status:[/bold]")
+            if enable_otel_env:
+                if enable_otel_env.lower() == "true":
+                    console.print("  [green]+ Enabled[/green] (ENABLE_OTEL=true)")
+                else:
+                    console.print("  [yellow]- Disabled[/yellow] (ENABLE_OTEL=false)")
+            else:
+                console.print("  [cyan]Auto-detection[/cyan] (activates when dashboard is running)")
+            console.print()
 
         else:
             # Show help

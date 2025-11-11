@@ -81,6 +81,7 @@ class AgentConfig:
 
     # Observability configuration
     enable_otel: bool = False
+    enable_otel_explicit: bool = False  # Track if ENABLE_OTEL was explicitly set
     enable_sensitive_data: bool = False
     applicationinsights_connection_string: str | None = None
     otlp_endpoint: str | None = None
@@ -155,7 +156,11 @@ class AgentConfig:
         config.system_prompt_file = os.getenv("AGENT_SYSTEM_PROMPT")
 
         # Observability configuration
-        config.enable_otel = os.getenv("ENABLE_OTEL", "false").lower() == "true"
+        # Track whether ENABLE_OTEL was explicitly set in environment
+        enable_otel_env = os.getenv("ENABLE_OTEL")
+        config.enable_otel_explicit = enable_otel_env is not None
+        config.enable_otel = enable_otel_env.lower() == "true" if enable_otel_env else False
+
         config.enable_sensitive_data = os.getenv("ENABLE_SENSITIVE_DATA", "false").lower() == "true"
         config.applicationinsights_connection_string = os.getenv(
             "APPLICATIONINSIGHTS_CONNECTION_STRING"
