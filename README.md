@@ -46,21 +46,26 @@ Goodbye!
 
 ### LLM Providers
 
-**Local:**
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) - Local model serving 
+**Local (Docker Models)**  
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) for local model serving.
 
-**Hosted:**
-- [OpenAI API](https://platform.openai.com/api-keys) - Direct OpenAI access
-- [Anthropic API](https://console.anthropic.com/) - Direct Anthropic access
-- [Google Gemini API](https://aistudio.google.com/apikey) - Direct Gemini access
-- [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/how-to/create-resource) - Azure hosted OpenAI access
-- [Azure AI Foundry](https://ai.azure.com) - Managed AI platform
+**Hosted Providers**  
 
+| Provider | Auth Method | Notes |
+|----------|-------------|-------|
+| OpenAI | API Key | `OPENAI_API_KEY` |
+| Anthropic | API Key | `ANTHROPIC_API_KEY` |
+| Google Gemini | API Key | `GOOGLE_API_KEY` |
+| Azure OpenAI | Azure CLI  | az login |
+| Azure AI Foundry | Azure CLI | az login |
 
-#### Azure Provider Requirements
+#### Azure Provider Prerequisites
 
-- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) - Azure Authentication
-- [Azure Application Insights](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview) - Azure Observability
+Use these when selecting Azure OpenAI or Azure AI Foundry providers:
+
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) – authentication (`az login`)
+- [Azure Application Insights](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview) – observability (optional but recommended) 
+
 
 ## Quick Setup
 
@@ -75,26 +80,16 @@ uv tool upgrade agent-base
 docker desktop enable model-runner --tcp=12434
 docker model pull phi4
 
-# Start interactive agent
+# Start agent
 agent
 ```
 
-That's it! The agent runs locally with Docker Models.
 
 ### Hosted Providers
 
 To use hosted providers instead, set required credentials as environment settings:
 
-```bash
-# Copy example configuration
-cp .env.example .env
-
-# Edit .env and set default provider:
-LLM_PROVIDER=openai
-
-# Set any required provider keys
-OPENAI_API_KEY=sk-your-key
-```
+> `.env-example` lists required configuration; export to shell.
 
 ## Usage
 
@@ -128,9 +123,6 @@ agent --help
 Monitor your agent's performance with OpenTelemetry:
 
 ```bash
-# Run agent with telemetry enabled
-ENABLE_OTEL=true
-
 # Start local dashboard (requires Docker)
 # View at http://localhost:18888
 agent --telemetry start
