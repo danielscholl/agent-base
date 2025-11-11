@@ -90,8 +90,9 @@ uv run pytest tests/unit/tools/test_hello_tools.py -v
 # Run one specific test
 uv run pytest tests/unit/tools/test_hello_tools.py::test_hello_world -v
 
-# Real LLM tests (requires API key, costs money)
-uv run pytest -m llm
+# Real LLM tests (requires API key)
+### $$$ (Costs Money)
+uv run pytest -m llm -n auto
 ```
 
 ### Test Markers
@@ -147,34 +148,6 @@ See [tests/README.md](tests/README.md) for comprehensive testing guide.
 - **Minimum:** 85% overall coverage (enforced by CI)
 - **Excluded:** CLI orchestration (`cli/app.py`), display rendering, error definitions
 - **View report:** `uv run pytest --cov=src/agent --cov-report=html && open htmlcov/index.html`
-
-## Code Quality
-
-All checks must pass before merging:
-
-```bash
-# Format code
-uv run black src/agent/ tests/
-
-# Lint and auto-fix
-uv run ruff check --fix src/agent/ tests/
-
-# Type check
-uv run mypy src/agent/
-
-# Run all quality checks together
-uv run black src/agent/ tests/ && \
-uv run ruff check --fix src/agent/ tests/ && \
-uv run mypy src/agent/ && \
-uv run pytest -m "not llm" -n auto --cov=src/agent --cov-fail-under=85
-```
-
-**CI Requirements:**
-- Black (formatting)
-- Ruff (linting)
-- MyPy (type checking)
-- PyTest (85% coverage, excluding LLM tests)
-- CodeQL (security scanning)
 
 ## Code Style
 

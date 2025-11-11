@@ -1,127 +1,149 @@
-# ADR 0015: Google Gemini Provider Integration
+---
+status: accepted
+contact: danielscholl
+date: 2025-11-10
+deciders: danielscholl
+---
 
-## Status
+# Google Gemini Provider Integration
 
-Accepted
+> **Note**: This ADR documents a specific complex provider implementation decision. See [ADR-0003: Multi-Provider LLM Architecture Strategy](./0003-multi-provider-llm-architecture.md) for the overall provider strategy and when custom clients are appropriate.
 
-## Context
+## Context and Problem Statement
 
-The agent-base framework currently supports four LLM providers (OpenAI, Anthropic, Azure OpenAI, and Azure AI Foundry) but lacks support for Google's Gemini models. Users have requested Gemini integration for:
+The agent-base framework currently supports four LLM providers (OpenAI, Anthropic, Azure OpenAI, and Azure AI Foundry) but lacks support for Google's Gemini models. Users need Gemini integration for access to Google Cloud Platform infrastructure, Gemini-specific features (multimodal capabilities, long context windows), integration with existing Google Cloud services, and flexibility in provider choice for cost optimization. The Microsoft Agent Framework doesn't provide an official `agent-framework-gemini` package. How should we implement Google Gemini support while maintaining consistency with existing provider patterns?
 
-1. Access to Google Cloud Platform infrastructure
-2. Gemini-specific features (multimodal capabilities, long context windows)
-3. Integration with existing Google Cloud services
-4. Flexibility in provider choice and cost optimization
+## Decision Drivers
 
-The Microsoft Agent Framework doesn't provide an official `agent-framework-gemini` package, but its `BaseChatClient` interface makes custom provider implementations straightforward.
+- **Framework Compatibility**: Must integrate cleanly with Microsoft Agent Framework's BaseChatClient interface
+- **Feature Parity**: Support chat completions, streaming, and function calling like other providers
+- **Authentication Flexibility**: Support both API key (Developer API) and GCP credentials (Vertex AI)
+- **Maintenance Burden**: Balance functionality against long-term maintenance costs
+- **User Experience**: Provide consistent configuration and usage patterns across all providers
+- **Extensibility**: Enable future Gemini-specific features (caching, multimodal, grounding)
 
-## Decision
+## Considered Options
 
-We will implement Google Gemini support through a **custom `GeminiChatClient`** that extends `BaseChatClient` and uses the official `google-genai` Python SDK.
+1. **Custom GeminiChatClient** - Implement custom client extending BaseChatClient with google-genai SDK
+2. **Use Gemini's OpenAI-Compatible API** - Reuse OpenAIChatClient with Gemini compatibility endpoint
+3. **Wait for Official agent-framework-gemini Package** - Delay until Microsoft releases official support
+4. **Use LangChain Wrapper** - Integrate via LangChain's ChatGoogleGenerativeAI
 
-### Implementation Approach
+## Decision Outcome
 
-1. **Custom Client Pattern**: Create `GeminiChatClient` extending `BaseChatClient`
-2. **Dual Authentication**: Support both API key (Gemini Developer API) and Vertex AI (GCP credentials)
-3. **Message Conversion**: Implement bidirectional conversion between agent-framework and Gemini formats
-4. **Full Feature Parity**: Support chat completions, streaming, and function calling
+Chosen option: **"Custom GeminiChatClient extending BaseChatClient"**, because:
 
-### File Structure
+- **Full Feature Access**: Direct SDK usage enables all Gemini capabilities including future features
+- **Dual Authentication**: Users can choose between API key (prototyping) and GCP credentials (production)
+- **Framework Native**: Follows same BaseChatClient pattern as OpenAI/Anthropic implementations
+- **Clean Dependencies**: Only adds google-genai SDK, no heavy frameworks like LangChain
+- **Proven Pattern**: Matches existing provider architecture successfully used for other providers
+- **Extensibility**: Easy to add Gemini-specific features (prompt caching, grounding) later
+
+### Implementation Architecture
 
 ```
 src/agent/providers/
 └── gemini/
     ├── __init__.py          # Public API exports
-    ├── chat_client.py       # GeminiChatClient implementation
+    ├── chat_client.py       # GeminiChatClient extending BaseChatClient
     └── types.py             # Message conversion utilities
 ```
 
-## Alternatives Considered
+**Message Conversion Strategy:**
+1. `to_gemini_message()`: ChatMessage → Gemini format (maps roles, content types, function calls)
+2. `from_gemini_message()`: Gemini response → ChatMessage (extracts text and function calls)
+3. `to_gemini_tools()`: AIFunction → Gemini function declarations (converts schemas)
 
-### 1. Use Gemini's OpenAI-Compatible API
-
-**Approach**: Gemini provides OpenAI-compatible endpoints that could reuse `OpenAIChatClient`.
-
-**Pros**:
-- Less code to write and maintain
-- Immediate compatibility with existing patterns
-
-**Cons**:
-- Limited to OpenAI's feature set
-- Cannot leverage Gemini-specific capabilities (multimodal, long context)
-- Less control over error handling and response processing
-- Unclear long-term stability of compatibility layer
-
-**Decision**: Rejected - Custom client provides better control and extensibility.
-
-### 2. Wait for Official agent-framework-gemini Package
-
-**Approach**: Wait for Microsoft to release official Gemini support.
-
-**Pros**:
-- Official support and maintenance
-- Guaranteed compatibility with framework updates
-
-**Cons**:
-- Unknown timeline (may never be released)
-- Blocks current user needs
-- No guarantee of desired feature set
-
-**Decision**: Rejected - User needs are immediate, custom implementation is feasible.
-
-### 3. Use LangChain Wrapper
-
-**Approach**: Integrate via LangChain's `ChatGoogleGenerativeAI`.
-
-**Pros**:
-- Existing abstraction layer
-- Community-maintained
-
-**Cons**:
-- Adds heavy dependency (LangChain ecosystem)
-- Doesn't align with agent-framework patterns
-- Unnecessary complexity for our use case
-
-**Decision**: Rejected - Direct SDK integration is cleaner and lighter.
+**Required Methods:**
+- `_inner_get_response()`: Synchronous chat completion
+- `_inner_get_streaming_response()`: Streaming chat completion with chunk accumulation
 
 ## Consequences
 
 ### Positive
 
-1. **Full Feature Access**: Direct SDK usage enables all Gemini capabilities
-2. **Dual Authentication**: Users can choose between API key and GCP credentials
-3. **Consistent Pattern**: Follows same architecture as OpenAI/Anthropic clients
-4. **Extensibility**: Easy to add Gemini-specific features (caching, grounding)
-5. **Testability**: Clean dependency injection for mocking and testing
-
-### Negative
-
-1. **Maintenance Burden**: We own the implementation and must track SDK changes
-2. **Framework Compatibility**: Must ensure compatibility with agent-framework updates
-3. **Testing Complexity**: Requires both unit tests (mocked) and LLM tests (real API)
+- **Full Gemini API Access**: Can leverage all Gemini capabilities including multimodal and long context
+- **Dual Authentication Options**: API key for development, Vertex AI for production with SLA
+- **Consistent Provider Pattern**: Same architecture as OpenAI/Anthropic for maintainability
+- **Future Ready**: Easy to add Gemini-specific features like prompt caching and grounding
+- **Well Isolated**: Clean dependency injection enables mocking and comprehensive testing
+- **No Heavy Dependencies**: Direct SDK usage avoids unnecessary abstraction layers
 
 ### Neutral
 
-1. **Package Structure**: Creates `providers/` package for potential future provider additions
-2. **Documentation**: Requires ADR, README updates, and usage examples
+- **New Package Structure**: Creates `providers/` directory for potential future custom providers
+- **Testing Scope**: Requires both unit tests (mocked SDK) and LLM integration tests (real API)
+- **Configuration Fields**: Adds 5 new environment variables (API key, project, location, model, use_vertexai)
 
-## Implementation Details
+### Negative
 
-### Authentication Methods
+- **Maintenance Ownership**: Team owns implementation and must track google-genai SDK changes
+- **Framework Compatibility Risk**: Must ensure compatibility with Agent Framework updates
+- **Documentation Burden**: Requires README updates, usage examples, and this ADR
 
-#### Option 1: API Key (Gemini Developer API)
+## Pros and Cons of the Options
+
+### Custom GeminiChatClient
+
+Direct implementation using google-genai SDK.
+
+- Good, because provides full access to Gemini-specific features (multimodal, long context, caching)
+- Good, because supports both API key (Developer API) and Vertex AI (GCP credentials) authentication
+- Good, because follows proven BaseChatClient pattern used by other providers
+- Good, because enables future extensibility for Gemini-specific capabilities
+- Neutral, because creates new `providers/` package structure for custom implementations
+- Bad, because team owns maintenance and must track SDK breaking changes
+- Bad, because requires comprehensive test coverage for message conversion logic
+
+### Use Gemini's OpenAI-Compatible API
+
+Reuse OpenAIChatClient with Gemini compatibility endpoint.
+
+- Good, because minimal code changes and immediate compatibility
+- Good, because leverages existing well-tested OpenAI client code
+- Neutral, because Gemini compatibility layer may have unknown long-term stability
+- Bad, because limited to OpenAI's feature set, cannot access Gemini-specific capabilities
+- Bad, because less control over error handling and response processing
+- Bad, because cannot leverage multimodal inputs or 2M token context windows
+
+### Wait for Official agent-framework-gemini Package
+
+Delay implementation until Microsoft releases official package.
+
+- Good, because would provide official support and guaranteed framework compatibility
+- Good, because Microsoft would handle maintenance and SDK updates
+- Neutral, because release timeline is completely unknown (may never happen)
+- Bad, because blocks current user needs and requests
+- Bad, because no guarantee Microsoft's implementation would meet our requirements
+- Bad, because users cannot access Gemini today despite clear demand
+
+### Use LangChain Wrapper
+
+Integrate via LangChain's ChatGoogleGenerativeAI.
+
+- Good, because provides existing abstraction layer maintained by community
+- Good, because LangChain has wide adoption and active development
+- Neutral, because adds LangChain ecosystem as heavy dependency
+- Bad, because doesn't align with Agent Framework patterns and architecture
+- Bad, because introduces unnecessary complexity for our simple use case
+- Bad, because larger dependency footprint for limited benefit
+
+## More Information
+
+**Authentication Methods:**
+
+API Key (Gemini Developer API):
 ```python
 client = GeminiChatClient(
     model_id="gemini-2.0-flash-exp",
     api_key=os.getenv("GEMINI_API_KEY")
 )
 ```
+- Use case: Quick prototyping, development, personal projects
+- Limitations: Lower rate limits, no SLA
 
-**Use case**: Quick prototyping, development, personal projects
-
-**Limitations**: Lower rate limits, no SLA
-
-#### Option 2: Vertex AI (GCP Credentials)
+Vertex AI (GCP Credentials):
 ```python
 client = GeminiChatClient(
     model_id="gemini-2.5-pro",
@@ -130,62 +152,18 @@ client = GeminiChatClient(
     use_vertexai=True
 )
 ```
+- Use case: Production deployments, enterprise applications
+- Benefits: Higher rate limits, SLA, Google Cloud integration
 
-**Use case**: Production deployments, enterprise applications
+**Future Considerations:**
+- Multimodal support (image inputs)
+- Long context handling (up to 2M tokens)
+- Prompt caching for cost optimization
+- Grounding with Google Search (Vertex AI)
+- Batch requests for bulk operations
+- Model version tracking (2.0 → 2.5, etc.)
 
-**Benefits**: Higher rate limits, SLA, integration with Google Cloud
-
-### Message Conversion Strategy
-
-We implement three core conversion functions in `types.py`:
-
-1. **`to_gemini_message()`**: ChatMessage → Gemini format
-   - Maps roles (user, assistant, system)
-   - Converts content types (text, function calls, function results)
-
-2. **`from_gemini_message()`**: Gemini response → ChatMessage
-   - Extracts text and function calls from response
-   - Handles streaming chunk accumulation
-
-3. **`to_gemini_tools()`**: AIFunction → Gemini function declarations
-   - Converts tool definitions to Gemini's schema format
-   - Maps parameter types and required fields
-
-### Required Methods
-
-As a `BaseChatClient` subclass, `GeminiChatClient` must implement:
-
-1. **`_inner_get_response()`**: Synchronous chat completion
-2. **`_inner_get_streaming_response()`**: Streaming chat completion
-
-Both methods handle:
-- Message conversion
-- Generation config preparation
-- Response processing
-- Error handling
-- Usage metadata extraction
-
-## Future Considerations
-
-1. **Multimodal Support**: Gemini supports image inputs - consider adding in future
-2. **Long Context**: Gemini models support up to 2M tokens - may need special handling
-3. **Prompt Caching**: Gemini offers caching for cost optimization
-4. **Grounding**: Vertex AI provides Google Search grounding capabilities
-5. **Batch Requests**: Consider batch API support for bulk operations
-6. **Model Versioning**: Track and handle model version changes (2.0 → 2.5, etc.)
-
-## References
-
+**References:**
 - [Google Gen AI Python SDK](https://ai.google.dev/gemini-api/docs/sdks/python)
 - [Vertex AI Documentation](https://cloud.google.com/vertex-ai/docs/generative-ai/start/quickstarts/api-quickstart)
 - [Microsoft Agent Framework](https://github.com/microsoft/agent-framework)
-- [ADR 0001: Provider Architecture Pattern](./0001-provider-architecture.md)
-
-## Date
-
-2025-11-10
-
-## Authors
-
-- danielscholl (Implementation)
-- Claude (AI Assistant)

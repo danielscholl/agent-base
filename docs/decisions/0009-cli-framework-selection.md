@@ -3,8 +3,6 @@ status: accepted
 contact: danielscholl
 date: 2025-11-07
 deciders: danielscholl
-consulted:
-informed:
 ---
 
 # Title: CLI Framework Selection - Typer vs Argparse

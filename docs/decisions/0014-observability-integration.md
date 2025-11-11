@@ -1,7 +1,8 @@
 ---
 status: accepted
+contact: danielscholl
 date: 2025-11-10
-deciders: Agent Template Team
+deciders: danielscholl
 ---
 
 # Observability Integration with OpenTelemetry

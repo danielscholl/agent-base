@@ -3,8 +3,6 @@ status: accepted
 contact: danielscholl
 date: 2025-11-07
 deciders: danielscholl
-consulted:
-informed:
 ---
 
 # Title: Event Bus Pattern for Loose Coupling

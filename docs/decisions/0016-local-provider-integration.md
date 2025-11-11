@@ -1,268 +1,215 @@
-# ADR 0016: Local Provider Integration with Docker Models
+---
+status: accepted
+contact: danielscholl
+date: 2025-11-10
+deciders: danielscholl
+---
 
-## Status
+# Local Provider Integration with Docker Models
 
-Accepted
+> **Note**: This ADR documents a specific complex provider implementation decision. See [ADR-0003: Multi-Provider LLM Architecture Strategy](./0003-multi-provider-llm-architecture.md) for the overall provider strategy and when client reuse is appropriate.
 
-## Context
+## Context and Problem Statement
 
-The agent-base framework currently supports five cloud-based LLM providers (OpenAI, Anthropic, Azure OpenAI, Azure AI Foundry, and Google Gemini), but all require internet connectivity and API keys. Users have requested local model support for:
+The agent-base framework currently supports five cloud-based LLM providers (OpenAI, Anthropic, Azure OpenAI, Azure AI Foundry, and Google Gemini), but all require internet connectivity, API keys, and incur usage costs. Users need local model support for cost-free development, offline operation, data privacy (all data stays local), fast iteration without network latency, and educational use without credit card requirements. Docker Desktop now provides built-in model serving with OpenAI-compatible API endpoints, enabling local execution of models like phi4, qwen3, and llama3.2. How should we implement local model support while minimizing complexity and maintenance burden?
 
-1. **Cost-free development**: Cloud API calls incur charges, making extensive testing expensive
-2. **Offline operation**: Ability to work without internet connectivity or cloud service availability
-3. **Data privacy**: All prompts and responses stay on local machine, no third-party data sharing
-4. **Fast iteration**: Eliminate network latency for rapid development cycles
-5. **Educational use**: Students and learners need free access without credit card requirements
+## Decision Drivers
 
-Docker Desktop now provides built-in model serving with OpenAI-compatible API endpoints, enabling local execution of models like phi4, llama3.2, and mistral. However, agent-base lacks a provider configuration to utilize these local endpoints.
+- **Cost Efficiency**: Enable free local development without API charges
+- **Simplicity**: Minimize code changes and dependencies
+- **Compatibility**: Leverage existing OpenAI-compatible standards
+- **Offline Capability**: Work without internet connectivity
+- **Ease of Setup**: Use widely-installed Docker Desktop, not additional software
+- **Maintenance Burden**: Avoid creating new client implementations if possible
+- **Testing Support**: Enable free LLM testing without API costs
 
-## Decision
+## Considered Options
 
-We will implement a **"local" provider** that leverages Docker Desktop's model serving capability by **reusing the existing `OpenAIChatClient`** with a custom `base_url` pointing to the local Docker endpoint.
+1. **Reuse OpenAIChatClient with Docker endpoint** - Point existing OpenAI client to local Docker URL
+2. **Ollama Integration** - Integrate with Ollama's model serving platform
+3. **LM Studio Integration** - Support LM Studio's local model serving
+4. **Custom LocalChatClient** - Create dedicated client similar to GeminiChatClient
 
-### Implementation Approach
+## Decision Outcome
 
-1. **Reuse OpenAI Client**: Docker Model Runner exposes OpenAI-compatible API, so we use `OpenAIChatClient` directly
-2. **Configuration Fields**: Add `local_base_url` and `local_model` to `AgentConfig`
-3. **Default Endpoint**: Use `http://localhost:12434/engines/llama.cpp/v1` as default (DMR standard endpoint)
-4. **No Authentication**: Docker Model Runner doesn't require API keys for local access, use placeholder value
-5. **Model Flexibility**: Support any model pulled via `docker model pull` command
+Chosen option: **"Reuse OpenAIChatClient with Docker endpoint"**, because:
 
-### Architecture
+- **Zero New Code**: Docker Model Runner exposes OpenAI-compatible API, direct reuse of existing client
+- **Minimal Configuration**: Only adds two config fields (`local_base_url`, `local_model`)
+- **No New Dependencies**: No additional Python packages required beyond what we already have
+- **Docker Ecosystem**: Leverages widely-installed Docker Desktop (70M+ users)
+- **OpenAI Compatibility**: Works with any OpenAI-compatible local server, not just Docker
+- **Proven Pattern**: OpenAIChatClient already battle-tested with cloud OpenAI
+- **Simple Maintenance**: No custom client code to maintain for local provider
+
+### Implementation Pattern
 
 ```python
 # Configuration
 config = AgentConfig(
     llm_provider="local",
-    local_base_url="http://localhost:12434/engines/llama.cpp/v1",  # DMR endpoint
+    local_base_url="http://localhost:12434/engines/llama.cpp/v1",
     local_model="ai/phi4",
 )
 
-# Client Creation (in Agent._create_chat_client)
+# Client creation (in Agent._create_chat_client)
 elif self.config.llm_provider == "local":
     from agent_framework.openai import OpenAIChatClient
 
     return OpenAIChatClient(
         model_id=self.config.local_model,
         base_url=self.config.local_base_url,
-        api_key="not-needed",  # Docker doesn't authenticate
+        api_key="not-needed",  # Docker doesn't authenticate locally
     )
 ```
 
-## Alternatives Considered
-
-### 1. Ollama Integration
-
-**Approach**: Integrate with Ollama's model serving platform.
-
-**Pros**:
-- Popular open-source solution
-- Large model library
-- Active community
-
-**Cons**:
-- Separate installation required (not built into Docker Desktop)
-- Different API format (not OpenAI-compatible out of box)
-- Requires custom client implementation similar to Gemini
-- Less standardized than Docker's approach
-
-**Decision**: Rejected - Docker Desktop is more widely installed, provides OpenAI-compatible API.
-
-### 2. LM Studio Integration
-
-**Approach**: Support LM Studio's local model serving.
-
-**Pros**:
-- User-friendly GUI for model management
-- Good model performance
-
-**Cons**:
-- Less standardized API
-- GUI-focused (less suitable for headless/CI environments)
-- Additional software installation
-- Smaller user base than Docker
-
-**Decision**: Rejected - Docker Desktop integration is cleaner and more accessible.
-
-### 3. Custom Local Provider Client
-
-**Approach**: Create dedicated `LocalChatClient` similar to `GeminiChatClient`.
-
-**Pros**:
-- More explicit provider naming
-- Could add local-specific features later
-
-**Cons**:
-- Unnecessary code duplication
-- Docker models are already OpenAI-compatible
-- More maintenance burden
-- No immediate benefit over reusing OpenAI client
-
-**Decision**: Rejected - Reusing OpenAI client minimizes complexity and maintenance.
-
-### 4. No Local Support
-
-**Approach**: Continue requiring cloud providers only.
-
-**Pros**:
-- No code changes needed
-- Fewer providers to maintain
-
-**Cons**:
-- Excludes users without cloud API access
-- Increases development costs for all users
-- Misses Docker Desktop's built-in capability
-- Reduces framework accessibility
-
-**Decision**: Rejected - User need is clear and implementation is straightforward.
+**No custom provider code needed** - just configuration and client instantiation.
 
 ## Consequences
 
 ### Positive
 
-1. **Minimal Code Changes**: Reuses proven `OpenAIChatClient`, only adds configuration
-2. **Zero New Dependencies**: No new Python packages required
-3. **Cost-Free Operation**: Completely free to run after model download
-4. **Docker Ecosystem**: Leverages widely-installed Docker Desktop
-5. **OpenAI Compatibility**: Any OpenAI-compatible local server works (not just Docker)
-6. **Easy Testing**: Developers can test without burning through API credits
-7. **Offline Capability**: Full functionality without internet connection
-
-### Negative
-
-1. **Docker Dependency**: Requires Docker Desktop installation (not available on all systems)
-2. **Model Quality**: Local models (phi4, llama3.2) are capable but not GPT-4 level
-3. **Resource Requirements**: Models need significant RAM (8GB+ recommended)
-4. **Function Calling Variance**: Tool support depends on specific model capabilities
-5. **Download Sizes**: Models are large (~5GB+), slow initial setup
-6. **Limited Documentation**: Docker model serving is relatively new feature
+- **Completely Free**: Zero API costs after initial model download
+- **Minimal Code Changes**: Only configuration additions, no new client implementation
+- **Zero New Dependencies**: No new Python packages required
+- **Offline Capability**: Full functionality without internet connection
+- **Docker Ecosystem**: Uses widely-installed Docker Desktop
+- **Fast Testing**: Developers can iterate without burning API credits
+- **Data Privacy**: All prompts and responses stay on local machine
+- **OpenAI Standard**: Any OpenAI-compatible server works (Ollama, LM Studio with compat mode)
 
 ### Neutral
 
-1. **Provider Count**: Increases provider count from 5 to 6
-2. **Configuration Complexity**: Adds two more environment variables
-3. **Testing Scope**: Requires new integration tests marked `@pytest.mark.requires_local`
+- **Provider Count**: Increases total providers from 5 to 6
+- **Configuration Scope**: Adds 2 environment variables (`LOCAL_BASE_URL`, `AGENT_MODEL`)
+- **Testing Markers**: Requires `@pytest.mark.requires_local` for LLM tests using local models
 
-## Implementation Details
+### Negative
 
-### Configuration
+- **Docker Dependency**: Requires Docker Desktop installation (not available on all systems)
+- **Model Quality Gap**: Local models (phi4, llama3.2) capable but not GPT-4o level
+- **Resource Requirements**: Models need significant RAM (8GB+ recommended for good performance)
+- **Function Calling Variance**: Tool support quality depends on specific model capabilities
+- **Large Downloads**: Model files are 5GB+, slow first-time setup
+- **Limited Documentation**: Docker model serving is relatively new feature with sparse docs
 
-```python
-# AgentConfig dataclass fields
-local_base_url: str | None = None
-local_model: str = "ai/phi4"  # Default model
+## Pros and Cons of the Options
+
+### Reuse OpenAIChatClient with Docker endpoint
+
+Point existing OpenAI client to local Docker Model Runner.
+
+- Good, because requires zero new client implementation code
+- Good, because no new Python dependencies to manage
+- Good, because Docker Desktop widely installed (70M+ users)
+- Good, because Docker provides OpenAI-compatible API out of box
+- Good, because works with any OpenAI-compatible local server (Ollama, LM Studio)
+- Good, because proven OpenAIChatClient already battle-tested
+- Neutral, because adds Docker as system dependency
+- Bad, because Docker Model Runner documentation still limited
+- Bad, because local models not as capable as cloud GPT-4o/Claude
+
+### Ollama Integration
+
+Integrate with Ollama's model serving platform.
+
+- Good, because popular open-source solution with active community
+- Good, because large model library with easy management
+- Neutral, because requires separate Ollama installation (not built into Docker)
+- Bad, because Ollama's API not natively OpenAI-compatible (needs custom client)
+- Bad, because requires custom client implementation similar to GeminiChatClient
+- Bad, because less standardized than Docker's approach
+- Bad, because another system dependency to install and manage
+
+### LM Studio Integration
+
+Support LM Studio's local model serving.
+
+- Good, because provides user-friendly GUI for model management
+- Good, because good model performance and optimization
+- Neutral, because GUI-focused (less suitable for headless/CI environments)
+- Bad, because less standardized API requires custom implementation
+- Bad, because additional software installation needed
+- Bad, because smaller user base compared to Docker Desktop
+- Bad, because primarily desktop application, not infrastructure tool
+
+### Custom LocalChatClient
+
+Create dedicated local client implementation extending BaseChatClient.
+
+- Good, because more explicit provider naming and separation
+- Good, because could add local-specific features later (model switching, management)
+- Neutral, because follows same pattern as GeminiChatClient
+- Bad, because unnecessary code duplication of OpenAIChatClient
+- Bad, because Docker models already OpenAI-compatible, no value add
+- Bad, because creates maintenance burden for identical functionality
+- Bad, because no immediate benefit over reusing existing proven client
+
+## More Information
+
+**Setup Instructions:**
+
+```bash
+# 1. Enable Docker Model Runner
+docker desktop enable model-runner --tcp=12434
+
+# 2. Pull a model (qwen3 recommended for best tool calling)
+docker model pull ai/qwen3
+
+# 3. Verify model availability
+curl http://localhost:12434/engines/llama.cpp/v1/models
+
+# 4. Configure agent-base
+export LLM_PROVIDER=local
+export AGENT_MODEL=ai/qwen3
+
+# 5. Run agent
+agent --check  # Verify setup
+agent          # Start interactive session
 ```
 
-### Environment Variables
+**Recommended Models (in priority order):**
+
+1. **ai/qwen3** (RECOMMENDED) - Best tool-calling accuracy among local models
+   - Excellent function calling support
+   - 8B/14B parameter variants available
+   - [Docker evaluation shows best tool-calling results](https://www.docker.com/blog/local-llm-tool-calling-a-practical-evaluation/)
+
+2. **ai/phi4** - Microsoft's phi-4 (14B parameters)
+   - Good general-purpose capabilities
+   - Solid instruction following
+   - Decent function calling support
+
+3. **ai/llama3.2** - Meta's Llama 3.2
+   - Strong reasoning abilities
+   - Good multilingual support
+   - Larger context window
+
+4. **ai/mistral** - Mistral AI
+   - Excellent multilingual capabilities
+   - Good code understanding
+   - Efficient inference
+
+**Environment Variables:**
 
 ```bash
 LLM_PROVIDER=local
 LOCAL_BASE_URL=http://localhost:12434/engines/llama.cpp/v1  # Optional, has default
-AGENT_MODEL=ai/phi4  # Optional, overrides default
+AGENT_MODEL=ai/qwen3  # Overrides default model
 ```
 
-### Validation
+**Future Considerations:**
+- Model health check on startup with helpful error messages
+- Multi-model support (switch models mid-session)
+- CLI commands for model management (list, pull, remove via `docker model`)
+- Performance metrics tracking (local vs cloud latency comparison)
+- Ollama support if user demand justifies custom client complexity
+- Model download progress indicators
+- Memory optimization guidance for Docker Desktop resource allocation
+- GPU acceleration documentation for users with NVIDIA GPUs
 
-```python
-elif self.llm_provider == "local":
-    if not self.local_base_url:
-        raise ValueError(
-            "Local provider requires base URL. Set LOCAL_BASE_URL environment variable "
-            "(e.g., http://localhost:12434/engines/llama.cpp/v1). Ensure Docker Desktop is running "
-            "with Model Runner enabled and model is pulled (e.g., docker model pull phi4)."
-        )
-```
-
-### Display Name
-
-```python
-elif self.llm_provider == "local":
-    return f"Local/{self.local_model}"  # e.g., "Local/phi4"
-```
-
-### Recommended Models
-
-1. **phi4** (default) - Microsoft's phi-4 (7B parameters)
-   - Excellent instruction following
-   - Good reasoning capabilities
-   - Supports function calling
-   - Fast inference on consumer hardware
-
-2. **llama3.2** - Meta's Llama 3.2
-   - Very capable general-purpose model
-   - Strong reasoning
-   - Good multilingual support
-
-3. **mistral** - Mistral AI
-   - Strong multilingual capabilities
-   - Good code understanding
-   - Efficient inference
-
-4. **codellama** - Meta's Code Llama
-   - Optimized for code tasks
-   - Good for development assistance
-   - Code-specific training
-
-## Future Considerations
-
-1. **Model Health Check**: Ping endpoint on startup, provide helpful error if Docker not running
-2. **Multi-Model Support**: Allow switching models mid-session without restart
-3. **Model Management UI**: CLI commands to list, pull, remove models via `docker model` commands
-4. **Performance Metrics**: Track local vs cloud latency and token throughput
-5. **Ollama Support**: Add similar integration for Ollama if user demand exists
-6. **Model Download Progress**: Show progress during `docker model pull` operations
-7. **Memory Optimization**: Guidance on Docker Desktop resource allocation for optimal performance
-8. **Model Caching**: Best practices for managing multiple downloaded models
-9. **GPU Acceleration**: Documentation for users with NVIDIA GPUs
-
-## Testing Strategy
-
-### Unit Tests
-
-- Configuration loading from environment variables
-- Validation logic (requires `base_url`, no API key needed)
-- Display name generation
-- Model override via `AGENT_MODEL`
-
-### Integration Tests
-
-- Basic chat completion with local model
-- Streaming responses
-- Function calling (if model supports it)
-- Multi-turn conversation state
-- Marked with `@pytest.mark.requires_local` to skip when Docker not available
-
-### Manual Testing
-
-```bash
-# Setup
-docker desktop enable model-runner --tcp 12434
-docker model pull phi4
-export LLM_PROVIDER=local
-export LOCAL_MODEL=phi4
-
-# Test configuration
-agent --check
-
-# Test chat
-agent -p "Say hello in one sentence"
-
-# Test interactive session
-agent
-```
-
-## References
-
+**References:**
 - [Docker Desktop Model Serving](https://docs.docker.com/desktop/features/models/)
+- [Docker Tool Calling Evaluation](https://www.docker.com/blog/local-llm-tool-calling-a-practical-evaluation/)
 - [OpenAI API Compatibility](https://platform.openai.com/docs/api-reference)
 - [Microsoft phi-4 Model](https://huggingface.co/microsoft/phi-4)
-- [Agent Framework OpenAI Client](https://github.com/microsoft/agent-framework)
-
-## Date
-
-2025-11-10
-
-## Authors
-
-- danielscholl (Implementation)
-- Claude (AI Assistant)

@@ -1,7 +1,8 @@
 ---
 status: accepted
+contact: danielscholl
 date: 2025-11-07
-deciders: Agent Template Team
+deciders: danielscholl
 ---
 
 # Middleware Integration Strategy
