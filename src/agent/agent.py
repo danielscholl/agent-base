@@ -326,88 +326,16 @@ Be helpful, concise, and clear in your responses."""
             context_providers.append(memory_provider)
             logger.info("Memory context provider enabled")
 
-        # Normalize middleware into the structure expected by the client
-        middleware_config = self._prepare_middleware(self.middleware)
-
+        # IMPORTANT: Pass middleware as a list, not dict
+        # Agent Framework automatically categorizes middleware by signature
+        # Converting to dict breaks middleware invocation
         return self.chat_client.create_agent(
             name="Agent",
             instructions=instructions,
             tools=self.tools,
-            middleware=middleware_config,
+            middleware=self.middleware,  # Must be list, not dict
             context_providers=context_providers if context_providers else None,
         )
-
-    def _prepare_middleware(self, middleware: Any) -> dict:
-        """Normalize middleware into a dict keyed by stage.
-
-        Some chat clients expect middleware in the form:
-        {"agent": [...], "function": [...]}.
-        Our project often stores middleware as a flat list and relies on
-        the framework to categorize. To be robust across clients, this
-        helper groups middleware by signature when a list is provided.
-
-        Args:
-            middleware: List or dict of middleware callables
-
-        Returns:
-            Dict with keys "agent" and "function" when possible.
-        """
-        # If already a dict, assume caller provided correct shape
-        if isinstance(middleware, dict):
-            return middleware
-
-        # Otherwise, attempt to categorize a flat list by signature
-        try:
-            from inspect import signature
-            from typing import get_type_hints
-
-            # Agent Framework context types (only used for isinstance checks)
-            from agent_framework import AgentRunContext, FunctionInvocationContext
-
-            agent_mw: list = []
-            function_mw: list = []
-
-            for mw in middleware or []:
-                try:
-                    # Prefer explicit type hints on the first parameter
-                    hints = get_type_hints(mw)
-                    ctx_type = hints.get("context")
-                except Exception:
-                    ctx_type = None
-
-                if ctx_type is None:
-                    # Fallback: infer from parameter annotations directly
-                    try:
-                        params = signature(mw).parameters
-                        if "context" in params:
-                            ctx_type = params["context"].annotation
-                    except Exception:
-                        ctx_type = None
-
-                # Classify based on context type when available
-                try:
-                    if ctx_type is AgentRunContext:
-                        agent_mw.append(mw)
-                        continue
-                    if ctx_type is FunctionInvocationContext:
-                        function_mw.append(mw)
-                        continue
-                except (AttributeError, TypeError):
-                    # Middleware doesn't have proper type hints, fall back to heuristic
-                    pass
-
-                # Last resort: name heuristic
-                name = getattr(mw, "__name__", "")
-                if "function" in name or "tool" in name:
-                    function_mw.append(mw)
-                else:
-                    agent_mw.append(mw)
-
-            return {"agent": agent_mw, "function": function_mw}
-        except Exception:
-            # If anything goes wrong, pass through in a backward-compatible way
-            # letting the client categorize or ignore as needed.
-            return {"agent": list(middleware or [])}
 
     def get_new_thread(self) -> Any:
         """Create a new conversation thread.
