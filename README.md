@@ -7,7 +7,7 @@ A functional agent base for building AI agents with multi-provider LLM support a
 
 ## Overview
 
-Build conversational AI agents with features: session persistence, conversation memory, observability, and extensible toolsets.
+Build conversational AI agents with enterprise-grade features: session persistence, conversation memory, observability, and extensible toolsets.
 
 ```bash
 agent
