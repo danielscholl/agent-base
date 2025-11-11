@@ -183,10 +183,19 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
     Returns:
         Tuple of (success, status_message)
     """
-    # Temporarily suppress ERROR logs from middleware during connectivity test
-    middleware_logger = logging.getLogger("agent.middleware")
-    original_level = middleware_logger.level
-    middleware_logger.setLevel(logging.CRITICAL)
+    # Temporarily suppress ERROR logs during connectivity test
+    # This includes Azure identity, agent-framework auth, and middleware loggers
+    loggers_to_suppress = [
+        logging.getLogger("agent.middleware"),
+        logging.getLogger("azure.identity"),
+        logging.getLogger("azure.identity._internal.decorators"),
+        logging.getLogger("azure.identity._credentials.chained"),
+        logging.getLogger("agent_framework.azure._entra_id_authentication"),
+    ]
+    original_levels = [(logger, logger.level) for logger in loggers_to_suppress]
+
+    for logger in loggers_to_suppress:
+        logger.setLevel(logging.CRITICAL)
 
     try:
         # Create temporary config for this provider
@@ -236,6 +245,15 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
 
         except Exception as e:
             logger.debug(f"Connectivity test for {provider} failed: {e}")
+
+            # Provide more specific error messages for Azure authentication issues
+            error_str = str(e).lower()
+            if provider in ["azure", "foundry"]:
+                if "az login" in error_str or "azurecredential" in error_str:
+                    return False, "Auth failed (run 'az login')"
+                elif "failed to retrieve azure token" in error_str:
+                    return False, "Auth failed (run 'az login')"
+
             return False, "Connection failed"
         finally:
             # Final cleanup attempt
@@ -249,8 +267,9 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
         logger.debug(f"Provider test for {provider} failed: {e}")
         return False, "Error testing provider"
     finally:
-        # Restore original logging level
-        middleware_logger.setLevel(original_level)
+        # Restore original logging levels
+        for logger, level in original_levels:
+            logger.setLevel(level)
 
 
 async def _test_all_providers(config: AgentConfig) -> list[tuple[str, str, bool, str]]:
