@@ -9,6 +9,8 @@ A functional agent base for building AI agents with multi-provider LLM support a
 
 Build conversational AI agents with enterprise-grade features: session persistence, conversation memory, observability, and extensible toolsets.
 
+Supports Local (Docker Models), OpenAI, Anthropic, Google Gemini, Azure OpenAI, and Azure AI Foundry.
+
 ```bash
 agent
 
@@ -34,8 +36,6 @@ Session auto-saved as '2025-11-10-11-38-07'
 Goodbye!
 ```
 
-Supports Local (Docker Models), OpenAI, Anthropic, Azure OpenAI, Azure AI Foundry, and Google Gemini.
-
 ## Prerequisites
 
 ### Required
@@ -43,12 +43,12 @@ Supports Local (Docker Models), OpenAI, Anthropic, Azure OpenAI, Azure AI Foundr
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
 
-### LLM Provider (Choose One)
+### LLM Providers
 
 **Local:**
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) - Local model serving (phi4, qwen3, etc.)
 
-**Cloud Alternatives:**
+**Hosted:**
 - [OpenAI API](https://platform.openai.com/api-keys) - Direct OpenAI access
 - [Anthropic API](https://console.anthropic.com/) - Direct Anthropic access
 - [Google Gemini API](https://aistudio.google.com/apikey) - Direct Gemini access
@@ -56,54 +56,41 @@ Supports Local (Docker Models), OpenAI, Anthropic, Azure OpenAI, Azure AI Foundr
 - [Azure AI Foundry](https://ai.azure.com) - Managed AI platform
 
 
-### Optional Enhancements
+### Azure Enhancements
 
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) - Simplifies Azure auth
 - [Azure Application Insights](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview) - Cloud observability
 
 ## Quick Setup
 
-### Local Model Setup
-
-Run locally with Docker Models:
-
-```bash
-# Enable Model Runner and pull phi4
-docker desktop enable model-runner --tcp=12434
-docker model pull phi4
-```
-
-### Agent Setup
-
-```bash
-# Install agent
-uv tool install --prerelease=allow git+https://github.com/danielscholl/agent-base.git
-
-# Verify setup
-agent --check
-```
-
-### Cloud Provider Setup
-
-For cloud-based models (OpenAI, Anthropic, Azure, Gemini):
-
 ```bash
 # 1. Install agent
 uv tool install --prerelease=allow git+https://github.com/danielscholl/agent-base.git
 
-# 2. Configure credentials
+# 2. Pull a local model (free!)
+docker desktop enable model-runner --tcp=12434
+docker model pull phi4
+
+# 3. Run the agent
+agent
+```
+
+That's it! The agent runs locally with no API keys required.
+
+### Cloud Providers
+
+To use cloud providers instead, set credentials in `.env`:
+
+```bash
+# Copy example configuration
 cp .env.example .env
-# Edit .env: Set LLM_PROVIDER and add API keys
 
-# Option A: Use CLI authentication (Azure only)
-az login  # For Azure providers (OpenAI, AI Foundry)
-
-# Option B: Use API keys
+# Edit .env and set your provider:
 # LLM_PROVIDER=openai
 # OPENAI_API_KEY=sk-your-key
 
-# 3. Verify setup
-agent --check
+# Or use Azure CLI (no API keys needed)
+az login
 ```
 
 ## Usage
