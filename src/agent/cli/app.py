@@ -117,6 +117,14 @@ def main(
     ),
     quiet: bool = typer.Option(False, "--quiet", help="Minimal output mode"),
     resume: bool = typer.Option(False, "--continue", help="Resume last saved session"),
+    provider: str = typer.Option(
+        None,
+        "--provider",
+        help="LLM provider (local, openai, anthropic, azure, foundry, gemini)",
+    ),
+    model: str = typer.Option(
+        None, "--model", help="Model name (overrides AGENT_MODEL environment variable)"
+    ),
 ) -> None:
     """Agent - Conversational Assistant with multi-provider LLM support.
 
@@ -124,12 +132,20 @@ def main(
         agent                              # Interactive mode
         agent --check                      # Show configuration and connectivity
         agent -p "Say hello to Alice"      # Single query
+        agent --provider local --model phi4  # Use local provider with phi4
+        agent --provider openai            # Use OpenAI provider
         agent --continue                   # Resume last session
         agent --verbose                    # Show execution details
         agent --telemetry start            # Start observability dashboard
 
     Note: Type /help in interactive mode to see available commands.
     """
+    # Apply CLI overrides to environment variables (temporary for this process)
+    if provider:
+        os.environ["LLM_PROVIDER"] = provider
+    if model:
+        os.environ["AGENT_MODEL"] = model
+
     if version_flag:
         console.print(f"Agent version {__version__}")
         return

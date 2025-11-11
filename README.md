@@ -45,19 +45,16 @@ Supports Local (Docker Models), OpenAI, Anthropic, Azure OpenAI, Azure AI Foundr
 
 ### LLM Provider (Choose One)
 
-**Recommended (Free):**
+**Local:**
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) - Local model serving (phi4, qwen3, etc.)
-  - ✅ Completely free
-  - ✅ No API keys required
-  - ✅ Works offline
-  - ✅ Full control over data
 
 **Cloud Alternatives:**
 - [OpenAI API](https://platform.openai.com/api-keys) - Direct OpenAI access
 - [Anthropic API](https://console.anthropic.com/) - Direct Anthropic access
+- [Google Gemini API](https://aistudio.google.com/apikey) - Direct Gemini access
 - [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/how-to/create-resource) - Azure-hosted OpenAI
 - [Azure AI Foundry](https://ai.azure.com) - Managed AI platform
-- [Google Gemini API](https://aistudio.google.com/apikey) - Google's Gemini models
+
 
 ### Optional Enhancements
 
@@ -66,30 +63,27 @@ Supports Local (Docker Models), OpenAI, Anthropic, Azure OpenAI, Azure AI Foundr
 
 ## Quick Setup
 
-### Free Local Setup (Recommended)
+### Local Model Setup
 
-Run completely free with Docker Desktop and local models:
+Run locally with Docker Models:
 
 ```bash
-# 1. Install Docker Desktop
-# Download from https://www.docker.com/products/docker-desktop/
-
-# 2. Enable Model Runner and pull phi4
+# Enable Model Runner and pull phi4
 docker desktop enable model-runner --tcp=12434
 docker model pull phi4
+```
 
-# 3. Install agent
+### Agent Setup
+
+```bash
+# Install agent
 uv tool install --prerelease=allow git+https://github.com/danielscholl/agent-base.git
 
-# 4. Configure for local provider
-cp .env.example .env
-# Edit .env: Set LLM_PROVIDER=local (default)
-
-# 5. Verify setup
+# Verify setup
 agent --check
 ```
 
-### Cloud Provider Setup (Alternative)
+### Cloud Provider Setup
 
 For cloud-based models (OpenAI, Anthropic, Azure, Gemini):
 
@@ -120,6 +114,14 @@ agent
 
 # Single query
 agent -p "Say hello to Alice"
+
+# Switch providers on the fly
+agent --provider openai --model gpt-5-mini -p "Hello"
+agent --provider local --model ai/qwen3 -p "Hello"
+agent --provider anthropic -p "Hello"
+
+# Start interactive session with specific provider
+agent --provider local --model ai/phi4
 
 # Get help
 agent --help
