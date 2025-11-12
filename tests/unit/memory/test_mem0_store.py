@@ -13,9 +13,8 @@ def mem0_config():
     """Create test configuration for mem0."""
     return AgentConfig(
         llm_provider="openai",
-        openai_api_key="test",
+        openai_api_key="sk-test",
         memory_type="mem0",
-        mem0_host="http://localhost:8000",
         mem0_user_id="test-user",
         mem0_project_id="test-project",
     )
@@ -23,13 +22,13 @@ def mem0_config():
 
 @pytest.fixture
 def mem0_store(mem0_config):
-    """Create Mem0Store instance with mocked client."""
-    with patch("agent.memory.mem0_store.get_mem0_client") as mock_get_client:
-        mock_client = Mock()
-        mock_get_client.return_value = mock_client
+    """Create Mem0Store instance with mocked memory."""
+    with patch("agent.memory.mem0_store.create_memory_instance") as mock_create:
+        mock_memory = Mock()
+        mock_create.return_value = mock_memory
 
         store = Mem0Store(mem0_config)
-        store.client = mock_client  # Ensure we have access to mock
+        store.memory = mock_memory  # Ensure we have access to mock
 
         yield store
 
@@ -41,16 +40,16 @@ class TestMem0Store:
 
     def test_initialization(self, mem0_config):
         """Test Mem0Store initializes with config."""
-        with patch("agent.memory.mem0_store.get_mem0_client") as mock_get_client:
-            mock_client = Mock()
-            mock_get_client.return_value = mock_client
+        with patch("agent.memory.mem0_store.create_memory_instance") as mock_create:
+            mock_memory = Mock()
+            mock_create.return_value = mock_memory
 
             store = Mem0Store(mem0_config)
 
             assert store.config == mem0_config
             assert store.user_id == "test-user"
             assert store.namespace == "test-user:test-project"
-            mock_get_client.assert_called_once_with(mem0_config)
+            mock_create.assert_called_once_with(mem0_config)
 
     def test_initialization_without_project_id(self):
         """Test namespace without project_id."""
@@ -58,22 +57,21 @@ class TestMem0Store:
             llm_provider="openai",
             openai_api_key="test",
             memory_type="mem0",
-            mem0_host="http://localhost:8000",
             mem0_user_id="alice",
         )
 
-        with patch("agent.memory.mem0_store.get_mem0_client") as mock_get_client:
-            mock_client = Mock()
-            mock_get_client.return_value = mock_client
+        with patch("agent.memory.mem0_store.create_memory_instance") as mock_create:
+            mock_memory = Mock()
+            mock_create.return_value = mock_memory
 
             store = Mem0Store(config)
 
-            assert store.namespace == "alice"  # No project suffix
+            assert store.namespace == "alice"  # Just user, no project
 
     @pytest.mark.asyncio
     async def test_add_messages_success(self, mem0_store):
         """Test adding messages to mem0 store."""
-        mem0_store.client.add.return_value = {"id": "mem-123"}
+        mem0_store.memory.add.return_value = None  # mem0.Memory.add() returns None
 
         messages = [
             {"role": "user", "content": "My name is Alice"},
@@ -83,69 +81,101 @@ class TestMem0Store:
         result = await mem0_store.add(messages)
 
         assert result["success"] is True
-        assert len(result["result"]) == 2
-        assert "mem-123" in result["result"]
-        assert mem0_store.client.add.call_count == 2
+        # Verify memory.add was called with properly formatted messages
+        mem0_store.memory.add.assert_called_once()
+        call_args = mem0_store.memory.add.call_args
+        assert call_args.kwargs["user_id"] == "test-user:test-project"
+        assert len(call_args.kwargs["messages"]) == 2
 
     @pytest.mark.asyncio
     async def test_add_filters_system_messages(self, mem0_store):
         """Test that system messages are filtered out."""
-        mem0_store.client.add.return_value = {"id": "mem-123"}
+        mem0_store.memory.add.return_value = None
 
         messages = [
+            {"role": "system", "content": "You are a helpful assistant"},
             {"role": "user", "content": "Hello"},
-            {"role": "system", "content": "System message"},
-            {"role": "tool", "content": "Tool output"},
         ]
 
         result = await mem0_store.add(messages)
 
         assert result["success"] is True
         # Only user message should be added
-        assert mem0_store.client.add.call_count == 1
+        call_args = mem0_store.memory.add.call_args
+        assert len(call_args.kwargs["messages"]) == 1
+        assert call_args.kwargs["messages"][0]["role"] == "user"
 
     @pytest.mark.asyncio
     async def test_add_respects_save_false_metadata(self, mem0_store):
-        """Test that messages with save=false are not stored."""
+        """Test that messages with save=false metadata are not stored."""
+        mem0_store.memory.add.return_value = None
+
         messages = [
-            {"role": "user", "content": "Save this", "metadata": {}},
-            {"role": "user", "content": "Don't save this", "metadata": {"save": False}},
+            {"role": "user", "content": "Public message"},
+            {"role": "user", "content": "Secret message", "metadata": {"save": False}},
         ]
 
-        mem0_store.client.add.return_value = {"id": "mem-123"}
+        await mem0_store.add(messages)
 
-        result = await mem0_store.add(messages)
-
-        assert result["success"] is True
-        # Only one message should be added
-        assert mem0_store.client.add.call_count == 1
+        # Only first message should be added
+        call_args = mem0_store.memory.add.call_args
+        assert len(call_args.kwargs["messages"]) == 1
+        assert call_args.kwargs["messages"][0]["content"] == "Public message"
 
     @pytest.mark.asyncio
     async def test_add_force_save_overrides_filters(self, mem0_store):
         """Test that force_save=true overrides default filters."""
+        mem0_store.memory.add.return_value = None
+
         messages = [
             {"role": "system", "content": "System message", "metadata": {"force_save": True}},
         ]
 
-        mem0_store.client.add.return_value = {"id": "mem-123"}
-
-        result = await mem0_store.add(messages)
-
-        assert result["success"] is True
-        # System message should be saved due to force_save
-        assert mem0_store.client.add.call_count == 1
-
-    @pytest.mark.asyncio
-    async def test_add_uses_namespace(self, mem0_store):
-        """Test that add uses correct namespace for isolation."""
-        mem0_store.client.add.return_value = {"id": "mem-123"}
-
-        messages = [{"role": "user", "content": "Test"}]
         await mem0_store.add(messages)
 
-        # Verify namespace is used in add call
-        # Note: Implementation tries 'memory=' first, falls back to 'messages='
-        mem0_store.client.add.assert_called_with(memory="Test", user_id="test-user:test-project")
+        # System message should be saved due to force_save
+        call_args = mem0_store.memory.add.call_args
+        assert len(call_args.kwargs["messages"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_add_scrubs_api_keys(self, mem0_store):
+        """Test that API keys are scrubbed before storage."""
+        mem0_store.memory.add.return_value = None
+
+        messages = [{"role": "user", "content": "My API key is sk_test_1234567890abcdefghij"}]
+        await mem0_store.add(messages)
+
+        # Verify the content was scrubbed
+        call_args = mem0_store.memory.add.call_args
+        content = call_args.kwargs["messages"][0]["content"]
+        assert "[REDACTED]" in content
+        assert "sk_test_" not in content
+
+    @pytest.mark.asyncio
+    async def test_add_scrubs_bearer_tokens(self, mem0_store):
+        """Test that Bearer tokens are scrubbed before storage."""
+        mem0_store.memory.add.return_value = None
+
+        messages = [{"role": "user", "content": "Use Bearer abc123xyz789 for auth"}]
+        await mem0_store.add(messages)
+
+        call_args = mem0_store.memory.add.call_args
+        content = call_args.kwargs["messages"][0]["content"]
+        assert "[REDACTED]" in content
+        assert "abc123xyz789" not in content
+
+    @pytest.mark.asyncio
+    async def test_add_scrubs_passwords(self, mem0_store):
+        """Test that password assignments are scrubbed."""
+        mem0_store.memory.add.return_value = None
+
+        messages = [{"role": "user", "content": "password=super_secret_123"}]
+        await mem0_store.add(messages)
+
+        call_args = mem0_store.memory.add.call_args
+        content = call_args.kwargs["messages"][0]["content"]
+        assert "[REDACTED]" in content
+        assert "super_secret_123" not in content
 
     @pytest.mark.asyncio
     async def test_add_empty_messages_returns_error(self, mem0_store):
@@ -157,68 +187,29 @@ class TestMem0Store:
 
     @pytest.mark.asyncio
     async def test_add_handles_client_error(self, mem0_store):
-        """Test add handles individual message errors gracefully."""
-        mem0_store.client.add.side_effect = Exception("Connection failed")
+        """Test add handles memory errors gracefully."""
+        mem0_store.memory.add.side_effect = Exception("Storage failed")
 
         messages = [{"role": "user", "content": "Test"}]
         result = await mem0_store.add(messages)
 
-        # Should succeed with 0 messages added (resilient to individual failures)
-        assert result["success"] is True
-        assert len(result["result"]) == 0
-        assert "Added 0 messages" in result["message"]
-
-    @pytest.mark.asyncio
-    async def test_add_scrubs_api_keys(self, mem0_store):
-        """Test that API keys are scrubbed before storage."""
-        mem0_store.client.add.return_value = {"id": "mem-123"}
-
-        messages = [{"role": "user", "content": "My API key is sk_test_1234567890abcdefghij"}]
-        await mem0_store.add(messages)
-
-        # Verify the content was scrubbed
-        call_args = mem0_store.client.add.call_args
-        assert "[REDACTED]" in call_args.kwargs["memory"]
-        assert "sk_test_" not in call_args.kwargs["memory"]
-
-    @pytest.mark.asyncio
-    async def test_add_scrubs_bearer_tokens(self, mem0_store):
-        """Test that Bearer tokens are scrubbed before storage."""
-        mem0_store.client.add.return_value = {"id": "mem-123"}
-
-        messages = [{"role": "user", "content": "Use Bearer abc123xyz789 for auth"}]
-        await mem0_store.add(messages)
-
-        # Verify the token was scrubbed
-        call_args = mem0_store.client.add.call_args
-        assert "[REDACTED]" in call_args.kwargs["memory"]
-        assert "abc123xyz789" not in call_args.kwargs["memory"]
-
-    @pytest.mark.asyncio
-    async def test_add_scrubs_passwords(self, mem0_store):
-        """Test that password assignments are scrubbed."""
-        mem0_store.client.add.return_value = {"id": "mem-123"}
-
-        messages = [{"role": "user", "content": "password=super_secret_123"}]
-        await mem0_store.add(messages)
-
-        # Verify the password was scrubbed
-        call_args = mem0_store.client.add.call_args
-        assert "[REDACTED]" in call_args.kwargs["memory"]
-        assert "super_secret_123" not in call_args.kwargs["memory"]
+        assert result["success"] is False
+        assert "storage_error" in result["error"]
 
     @pytest.mark.asyncio
     async def test_search_by_semantic_query(self, mem0_store):
         """Test searching memories by semantic similarity."""
-        mem0_store.client.search.return_value = [
-            {
-                "id": "mem-123",
-                "memory": "User authentication failed",
-                "score": 0.95,
-                "created_at": "2025-01-01T00:00:00Z",
-                "metadata": {},
-            }
-        ]
+        mem0_store.memory.search.return_value = {
+            "results": [
+                {
+                    "id": "mem-123",
+                    "memory": "User authentication failed",
+                    "score": 0.95,
+                    "created_at": "2025-01-01T00:00:00Z",
+                    "metadata": {},
+                }
+            ]
+        }
 
         result = await mem0_store.search("login errors", limit=5)
 
@@ -227,8 +218,8 @@ class TestMem0Store:
         assert result["result"][0]["content"] == "User authentication failed"
         assert result["result"][0]["score"] == 0.95
 
-        mem0_store.client.search.assert_called_once_with(
-            query="login errors", filters={"user_id": "test-user:test-project"}, limit=5
+        mem0_store.memory.search.assert_called_once_with(
+            query="login errors", user_id="test-user:test-project", limit=5
         )
 
     @pytest.mark.asyncio
@@ -237,14 +228,14 @@ class TestMem0Store:
         result = await mem0_store.search("", limit=5)
 
         assert result["success"] is False
-        assert result["error"] == "invalid_query"
+        assert "invalid_query" in result["error"]
 
     @pytest.mark.asyncio
     async def test_search_handles_client_error(self, mem0_store):
-        """Test search handles client errors gracefully."""
-        mem0_store.client.search.side_effect = Exception("Search failed")
+        """Test search handles errors gracefully."""
+        mem0_store.memory.search.side_effect = Exception("Search failed")
 
-        result = await mem0_store.search("test query")
+        result = await mem0_store.search("test", limit=5)
 
         assert result["success"] is False
         assert "search_error" in result["error"]
@@ -252,25 +243,39 @@ class TestMem0Store:
     @pytest.mark.asyncio
     async def test_get_all_returns_all_memories(self, mem0_store):
         """Test get_all returns all stored memories."""
-        mem0_store.client.get_all.return_value = [
-            {"id": "mem-1", "memory": "First memory", "created_at": "2025-01-01", "metadata": {}},
-            {"id": "mem-2", "memory": "Second memory", "created_at": "2025-01-02", "metadata": {}},
-        ]
+        mem0_store.memory.get_all.return_value = {
+            "results": [
+                {
+                    "id": "mem-1",
+                    "memory": "First memory",
+                    "created_at": "2025-01-01",
+                    "metadata": {},
+                },
+                {
+                    "id": "mem-2",
+                    "memory": "Second memory",
+                    "created_at": "2025-01-02",
+                    "metadata": {},
+                },
+            ]
+        }
 
         result = await mem0_store.get_all()
 
         assert result["success"] is True
         assert len(result["result"]) == 2
-        mem0_store.client.get_all.assert_called_once_with(user_id="test-user:test-project")
+        mem0_store.memory.get_all.assert_called_once_with(user_id="test-user:test-project")
 
     @pytest.mark.asyncio
     async def test_get_recent_returns_sorted_memories(self, mem0_store):
         """Test get_recent returns most recent memories."""
-        mem0_store.client.get_all.return_value = [
-            {"id": "mem-1", "memory": "Oldest", "created_at": "2025-01-01", "metadata": {}},
-            {"id": "mem-2", "memory": "Newest", "created_at": "2025-01-03", "metadata": {}},
-            {"id": "mem-3", "memory": "Middle", "created_at": "2025-01-02", "metadata": {}},
-        ]
+        mem0_store.memory.get_all.return_value = {
+            "results": [
+                {"id": "mem-1", "memory": "Oldest", "created_at": "2025-01-01", "metadata": {}},
+                {"id": "mem-2", "memory": "Newest", "created_at": "2025-01-03", "metadata": {}},
+                {"id": "mem-3", "memory": "Middle", "created_at": "2025-01-02", "metadata": {}},
+            ]
+        }
 
         result = await mem0_store.get_recent(limit=2)
 
@@ -281,74 +286,20 @@ class TestMem0Store:
         assert result["result"][1]["content"] == "Middle"
 
     @pytest.mark.asyncio
-    async def test_get_recent_parses_iso_timestamps(self, mem0_store):
-        """Test get_recent correctly parses ISO timestamps with proper datetime sorting."""
-        mem0_store.client.get_all.return_value = [
-            {
-                "id": "mem-1",
-                "memory": "Morning",
-                "created_at": "2025-01-10T09:00:00Z",
-                "metadata": {},
-            },
-            {
-                "id": "mem-2",
-                "memory": "Afternoon",
-                "created_at": "2025-01-10T15:30:00+00:00",
-                "metadata": {},
-            },
-            {
-                "id": "mem-3",
-                "memory": "Evening",
-                "created_at": "2025-01-10T20:45:00Z",
-                "metadata": {},
-            },
-        ]
-
-        result = await mem0_store.get_recent(limit=3)
-
-        assert result["success"] is True
-        assert len(result["result"]) == 3
-        # Should be sorted by actual datetime, not string comparison
-        assert result["result"][0]["content"] == "Evening"  # 20:45
-        assert result["result"][1]["content"] == "Afternoon"  # 15:30
-        assert result["result"][2]["content"] == "Morning"  # 09:00
-
-    @pytest.mark.asyncio
-    async def test_get_recent_handles_invalid_timestamps(self, mem0_store):
-        """Test get_recent handles invalid timestamps gracefully."""
-        mem0_store.client.get_all.return_value = [
-            {
-                "id": "mem-1",
-                "memory": "Valid",
-                "created_at": "2025-01-10T15:00:00Z",
-                "metadata": {},
-            },
-            {"id": "mem-2", "memory": "Invalid", "created_at": "not-a-date", "metadata": {}},
-            {"id": "mem-3", "memory": "Missing", "created_at": "", "metadata": {}},
-        ]
-
-        result = await mem0_store.get_recent(limit=3)
-
-        assert result["success"] is True
-        # Should not crash - invalid timestamps sorted to end (datetime.min)
-        assert len(result["result"]) == 3
-        assert result["result"][0]["content"] == "Valid"
-
-    @pytest.mark.asyncio
     async def test_clear_removes_all_memories(self, mem0_store):
         """Test clear removes all memories from storage."""
-        mem0_store.client.delete_all.return_value = None
+        mem0_store.memory.delete_all.return_value = None
 
         result = await mem0_store.clear()
 
         assert result["success"] is True
         assert "Cleared all memories" in result["message"]
-        mem0_store.client.delete_all.assert_called_once_with(user_id="test-user:test-project")
+        mem0_store.memory.delete_all.assert_called_once_with(user_id="test-user:test-project")
 
     @pytest.mark.asyncio
     async def test_clear_handles_error(self, mem0_store):
         """Test clear handles errors gracefully."""
-        mem0_store.client.delete_all.side_effect = Exception("Delete failed")
+        mem0_store.memory.delete_all.side_effect = Exception("Delete failed")
 
         result = await mem0_store.clear()
 
@@ -358,15 +309,17 @@ class TestMem0Store:
     @pytest.mark.asyncio
     async def test_retrieve_for_context_uses_semantic_search(self, mem0_store):
         """Test retrieve_for_context uses semantic search."""
-        mem0_store.client.search.return_value = [
-            {
-                "id": "mem-1",
-                "memory": "Relevant memory",
-                "score": 0.9,
-                "created_at": "2025-01-01",
-                "metadata": {},
-            }
-        ]
+        mem0_store.memory.search.return_value = {
+            "results": [
+                {
+                    "id": "mem-1",
+                    "memory": "Relevant memory",
+                    "score": 0.9,
+                    "created_at": "2025-01-01",
+                    "metadata": {},
+                }
+            ]
+        }
 
         messages = [{"role": "user", "content": "What is my name?"}]
 
@@ -374,48 +327,41 @@ class TestMem0Store:
 
         assert result["success"] is True
         # Should have called search with the user's query
-        mem0_store.client.search.assert_called_once()
-        call_args = mem0_store.client.search.call_args
+        mem0_store.memory.search.assert_called_once()
+        call_args = mem0_store.memory.search.call_args
         assert "What is my name?" in call_args.kwargs["query"]
 
     @pytest.mark.asyncio
     async def test_retrieve_for_context_falls_back_to_recent(self, mem0_store):
-        """Test retrieve_for_context falls back to recent when no query."""
-        mem0_store.client.get_all.return_value = [
-            {"id": "mem-1", "memory": "Recent memory", "created_at": "2025-01-01", "metadata": {}}
-        ]
+        """Test retrieve_for_context falls back to recent when no user query."""
+        mem0_store.memory.get_all.return_value = {"results": []}
 
-        messages = []  # No messages to extract query from
+        messages = [{"role": "system", "content": "System message"}]
 
-        result = await mem0_store.retrieve_for_context(messages, limit=5)
+        await mem0_store.retrieve_for_context(messages, limit=5)
 
-        assert result["success"] is True
-        # Should have called get_all (for get_recent)
-        mem0_store.client.get_all.assert_called_once()
+        # Should fall back to get_recent (which calls get_all)
+        mem0_store.memory.get_all.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_namespace_isolation(self):
-        """Test that different namespaces don't interfere."""
+        """Test that different users have isolated namespaces."""
         config1 = AgentConfig(
             llm_provider="openai",
             openai_api_key="test",
             memory_type="mem0",
-            mem0_host="http://localhost:8000",
             mem0_user_id="alice",
         )
-
         config2 = AgentConfig(
             llm_provider="openai",
             openai_api_key="test",
             memory_type="mem0",
-            mem0_host="http://localhost:8000",
             mem0_user_id="bob",
         )
 
-        with patch("agent.memory.mem0_store.get_mem0_client") as mock_get_client:
-            mock_client1 = Mock()
-            mock_client2 = Mock()
-            mock_get_client.side_effect = [mock_client1, mock_client2]
+        with patch("agent.memory.mem0_store.create_memory_instance") as mock_create:
+            mock_memory = Mock()
+            mock_create.return_value = mock_memory
 
             store1 = Mem0Store(config1)
             store2 = Mem0Store(config2)

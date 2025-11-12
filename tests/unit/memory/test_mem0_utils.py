@@ -1,11 +1,12 @@
 """Unit tests for mem0 utility functions."""
 
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 
 from agent.config import AgentConfig
-from agent.memory.mem0_utils import check_mem0_endpoint, get_mem0_client
+from agent.memory.mem0_utils import create_memory_instance, extract_llm_config, get_storage_path
 
 
 @pytest.mark.unit
@@ -13,179 +14,186 @@ from agent.memory.mem0_utils import check_mem0_endpoint, get_mem0_client
 class TestMem0Utils:
     """Tests for mem0 utility functions."""
 
-    def test_check_mem0_endpoint_success(self):
-        """Test endpoint check succeeds when HTTP request is successful."""
-        with patch("agent.memory.mem0_utils.urlopen") as mock_urlopen:
-            # Mock successful HTTP response
-            mock_response = Mock()
-            mock_response.status = 200
-            mock_response.__enter__ = Mock(return_value=mock_response)
-            mock_response.__exit__ = Mock(return_value=False)
-            mock_urlopen.return_value = mock_response
+    def test_extract_llm_config_openai(self):
+        """Test LLM config extraction for OpenAI provider."""
+        config = AgentConfig(
+            llm_provider="openai",
+            openai_model="gpt-4o",
+            openai_api_key="sk-test123",
+        )
 
-            result = check_mem0_endpoint("http://localhost:8000")
+        llm_config = extract_llm_config(config)
 
-            assert result is True
+        assert llm_config["provider"] == "openai"
+        assert llm_config["config"]["model"] == "gpt-4o"
+        assert llm_config["config"]["api_key"] == "sk-test123"
 
-    def test_check_mem0_endpoint_failure(self):
-        """Test endpoint check fails when HTTP request fails."""
-        with patch("agent.memory.mem0_utils.urlopen") as mock_urlopen:
-            # Mock URLError (connection failed)
-            from urllib.error import URLError
+    def test_extract_llm_config_openai_default_model(self):
+        """Test OpenAI config uses config's openai_model field."""
+        config = AgentConfig(llm_provider="openai", openai_api_key="sk-test")
 
-            mock_urlopen.side_effect = URLError("Connection refused")
+        llm_config = extract_llm_config(config)
 
-            result = check_mem0_endpoint("http://localhost:8000")
+        # Should use the default from AgentConfig.openai_model
+        assert llm_config["config"]["model"] == config.openai_model
 
-            assert result is False
+    def test_extract_llm_config_anthropic(self):
+        """Test LLM config extraction for Anthropic provider."""
+        config = AgentConfig(
+            llm_provider="anthropic",
+            anthropic_model="claude-3-opus-20240229",
+            anthropic_api_key="sk-ant-test",
+        )
 
-    def test_check_mem0_endpoint_default_url(self):
-        """Test endpoint check uses default URL when none provided."""
-        with patch("agent.memory.mem0_utils.urlopen") as mock_urlopen:
-            mock_response = Mock()
-            mock_response.status = 200
-            mock_response.__enter__ = Mock(return_value=mock_response)
-            mock_response.__exit__ = Mock(return_value=False)
-            mock_urlopen.return_value = mock_response
+        llm_config = extract_llm_config(config)
 
-            result = check_mem0_endpoint()
+        assert llm_config["provider"] == "anthropic"
+        assert llm_config["config"]["model"] == "claude-3-opus-20240229"
+        assert llm_config["config"]["api_key"] == "sk-ant-test"
 
-            assert result is True
-            # Should call urlopen with a Request for localhost:8000
-            assert mock_urlopen.called
-            request = mock_urlopen.call_args[0][0]
-            assert request.full_url == "http://localhost:8000/"
+    def test_extract_llm_config_azure(self):
+        """Test LLM config extraction for Azure OpenAI provider."""
+        config = AgentConfig(
+            llm_provider="azure",
+            azure_model_deployment="gpt-4o",
+            azure_openai_api_key="test-key",
+            azure_openai_endpoint="https://test.openai.azure.com/",
+            azure_openai_api_version="2024-10-21",
+        )
 
-    def test_check_mem0_endpoint_custom_port(self):
-        """Test endpoint check with custom port."""
-        with patch("agent.memory.mem0_utils.urlopen") as mock_urlopen:
-            mock_response = Mock()
-            mock_response.status = 200
-            mock_response.__enter__ = Mock(return_value=mock_response)
-            mock_response.__exit__ = Mock(return_value=False)
-            mock_urlopen.return_value = mock_response
+        llm_config = extract_llm_config(config)
 
-            result = check_mem0_endpoint("http://localhost:9000")
+        assert llm_config["provider"] == "azure_openai"
+        assert llm_config["config"]["model"] == "gpt-4o"
+        assert llm_config["config"]["api_key"] == "test-key"
+        assert llm_config["config"]["azure_endpoint"] == "https://test.openai.azure.com/"
+        assert llm_config["config"]["api_version"] == "2024-10-21"
 
-            assert result is True
+    def test_extract_llm_config_gemini(self):
+        """Test LLM config extraction for Gemini provider."""
+        config = AgentConfig(
+            llm_provider="gemini",
+            gemini_model="gemini-pro",
+            gemini_api_key="test-gemini-key",
+        )
 
-    def test_check_mem0_endpoint_handles_exception(self):
-        """Test endpoint check handles exceptions gracefully."""
-        with patch("agent.memory.mem0_utils.urlopen") as mock_urlopen:
-            # Mock generic exception
-            mock_urlopen.side_effect = Exception("Unknown error")
+        llm_config = extract_llm_config(config)
 
-            result = check_mem0_endpoint("http://localhost:8000")
+        assert llm_config["provider"] == "gemini"
+        assert llm_config["config"]["model"] == "gemini-pro"
+        assert llm_config["config"]["api_key"] == "test-gemini-key"
 
-            # Should return False on exception, not raise
-            assert result is False
+    def test_extract_llm_config_unknown_provider_defaults_to_openai(self):
+        """Test unknown provider defaults to OpenAI."""
+        config = AgentConfig(llm_provider="unknown", openai_api_key="sk-test")
 
-    def test_check_mem0_endpoint_server_error(self):
-        """Test endpoint check returns False for 500+ errors."""
-        with patch("agent.memory.mem0_utils.urlopen") as mock_urlopen:
-            # Mock 500 error response
-            mock_response = Mock()
-            mock_response.status = 500
-            mock_response.__enter__ = Mock(return_value=mock_response)
-            mock_response.__exit__ = Mock(return_value=False)
-            mock_urlopen.return_value = mock_response
+        llm_config = extract_llm_config(config)
 
-            result = check_mem0_endpoint("http://localhost:8000")
+        assert llm_config["provider"] == "openai"
 
-            assert result is False
-
-    def test_get_mem0_client_self_hosted(self):
-        """Test get_mem0_client creates self-hosted client."""
+    def test_get_storage_path_custom(self):
+        """Test get_storage_path uses custom path if provided."""
         config = AgentConfig(
             llm_provider="openai",
             openai_api_key="test",
-            memory_type="mem0",
-            mem0_host="http://localhost:8000",
+            mem0_storage_path=Path("/custom/path"),
         )
 
-        # Patch the import inside the function
-        with patch("mem0.MemoryClient") as mock_client:
+        path = get_storage_path(config)
+
+        assert path == Path("/custom/path")
+
+    def test_get_storage_path_memory_dir(self):
+        """Test get_storage_path uses memory_dir/chroma_db if no custom path."""
+        config = AgentConfig(
+            llm_provider="openai",
+            openai_api_key="test",
+            memory_dir=Path("/tmp/memory"),
+        )
+
+        path = get_storage_path(config)
+
+        assert path == Path("/tmp/memory/chroma_db")
+
+    def test_get_storage_path_default(self):
+        """Test get_storage_path falls back to agent_data_dir."""
+        config = AgentConfig(
+            llm_provider="openai",
+            openai_api_key="test",
+            agent_data_dir=Path("/tmp/agent"),
+        )
+
+        path = get_storage_path(config)
+
+        assert path == Path("/tmp/agent/mem0_data/chroma_db")
+
+    def test_create_memory_instance_local_mode(self):
+        """Test create_memory_instance creates local Chroma instance."""
+        config = AgentConfig(
+            llm_provider="openai",
+            openai_api_key="sk-test",
+            memory_dir=Path("/tmp/memory"),
+        )
+
+        with patch("mem0.Memory") as mock_memory_class:
             mock_instance = Mock()
-            mock_client.return_value = mock_instance
+            mock_memory_class.from_config.return_value = mock_instance
 
-            client = get_mem0_client(config)
+            memory = create_memory_instance(config)
 
-            assert client == mock_instance
-            mock_client.assert_called_once_with(host="http://localhost:8000")
+            assert memory == mock_instance
+            # Verify it was configured for local Chroma storage
+            call_args = mock_memory_class.from_config.call_args[0][0]
+            assert call_args["vector_store"]["provider"] == "chroma"
+            assert "/tmp/memory/chroma_db" in call_args["vector_store"]["config"]["path"]
 
-    def test_get_mem0_client_cloud(self):
-        """Test get_mem0_client creates cloud client."""
+    def test_create_memory_instance_cloud_mode(self):
+        """Test create_memory_instance creates cloud instance when API keys provided."""
         config = AgentConfig(
             llm_provider="openai",
-            openai_api_key="test",
-            memory_type="mem0",
-            mem0_api_key="test-key",
-            mem0_org_id="test-org",
+            openai_api_key="sk-test",
+            mem0_api_key="mem0-key",
+            mem0_org_id="org-123",
         )
 
-        # Patch the import inside the function
-        with patch("mem0.MemoryClient") as mock_client:
+        with patch("mem0.Memory") as mock_memory_class:
             mock_instance = Mock()
-            mock_client.return_value = mock_instance
+            mock_memory_class.from_config.return_value = mock_instance
 
-            client = get_mem0_client(config)
+            memory = create_memory_instance(config)
 
-            assert client == mock_instance
-            mock_client.assert_called_once_with(api_key="test-key", org_id="test-org")
+            assert memory == mock_instance
+            # Verify it was configured for cloud mode
+            call_args = mock_memory_class.from_config.call_args[0][0]
+            assert call_args["vector_store"]["provider"] == "mem0"
+            assert call_args["vector_store"]["config"]["api_key"] == "mem0-key"
+            assert call_args["vector_store"]["config"]["org_id"] == "org-123"
 
-    def test_get_mem0_client_missing_config_raises(self):
-        """Test get_mem0_client raises when config is incomplete."""
-        config = AgentConfig(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_type="mem0",
-            # No mem0_host or (mem0_api_key + mem0_org_id)
-        )
+    def test_create_memory_instance_missing_import_raises(self):
+        """Test create_memory_instance raises clear error when mem0 not installed."""
+        config = AgentConfig(llm_provider="openai", openai_api_key="test")
 
-        with pytest.raises(ValueError, match="Invalid mem0 configuration"):
-            get_mem0_client(config)
-
-    def test_get_mem0_client_missing_import_raises(self):
-        """Test get_mem0_client raises clear error when mem0 not installed."""
-        config = AgentConfig(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_type="mem0",
-            mem0_host="http://localhost:8000",
-        )
-
-        # Mock ImportError when trying to import mem0
         with patch("builtins.__import__", side_effect=ImportError("No module named 'mem0'")):
             with pytest.raises(ImportError, match="mem0ai package not installed"):
-                get_mem0_client(config)
+                create_memory_instance(config)
 
-    def test_get_mem0_client_self_hosted_failure(self):
-        """Test get_mem0_client handles self-hosted client initialization failure."""
+    def test_create_memory_instance_reuses_agent_llm_config(self):
+        """Test that mem0 uses the same LLM config as the agent."""
         config = AgentConfig(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_type="mem0",
-            mem0_host="http://localhost:8000",
+            llm_provider="anthropic",
+            anthropic_model="claude-3-5-sonnet-20241022",
+            anthropic_api_key="sk-ant-test",
+            agent_data_dir=Path("/tmp/agent"),
         )
 
-        with patch("mem0.MemoryClient") as mock_client:
-            mock_client.side_effect = Exception("Connection failed")
+        with patch("mem0.Memory") as mock_memory_class:
+            mock_instance = Mock()
+            mock_memory_class.from_config.return_value = mock_instance
 
-            with pytest.raises(ValueError, match="Failed to initialize mem0 self-hosted client"):
-                get_mem0_client(config)
+            create_memory_instance(config)
 
-    def test_get_mem0_client_cloud_failure(self):
-        """Test get_mem0_client handles cloud client initialization failure."""
-        config = AgentConfig(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_type="mem0",
-            mem0_api_key="test-key",
-            mem0_org_id="test-org",
-        )
-
-        with patch("mem0.MemoryClient") as mock_client:
-            mock_client.side_effect = Exception("Auth failed")
-
-            with pytest.raises(ValueError, match="Failed to initialize mem0 cloud client"):
-                get_mem0_client(config)
+            # Verify LLM config matches agent config
+            call_args = mock_memory_class.from_config.call_args[0][0]
+            assert call_args["llm"]["provider"] == "anthropic"
+            assert call_args["llm"]["config"]["model"] == "claude-3-5-sonnet-20241022"
+            assert call_args["llm"]["config"]["api_key"] == "sk-ant-test"

@@ -77,8 +77,10 @@ class AgentConfig:
     memory_history_limit: int = 20  # Max memories to inject as context
 
     # Mem0 semantic memory configuration
-    mem0_host: str | None = None  # Self-hosted endpoint (e.g., http://localhost:8000)
-    mem0_api_key: str | None = None  # Cloud mode API key
+    mem0_storage_path: Path | None = (
+        None  # Local Chroma storage path (default: memory_dir/chroma_db)
+    )
+    mem0_api_key: str | None = None  # Cloud mode API key (mem0.ai)
     mem0_org_id: str | None = None  # Cloud mode organization ID
     mem0_user_id: str | None = None  # User namespace (default: username)
     mem0_project_id: str | None = None  # Project namespace for isolation
@@ -159,8 +161,10 @@ class AgentConfig:
         else:
             config.memory_dir = config.agent_data_dir / "memory"
 
-        # Mem0 configuration
-        config.mem0_host = os.getenv("MEM0_HOST")
+        # Mem0 semantic memory configuration
+        mem0_storage_env = os.getenv("MEM0_STORAGE_PATH")
+        if mem0_storage_env:
+            config.mem0_storage_path = Path(mem0_storage_env).expanduser()
         config.mem0_api_key = os.getenv("MEM0_API_KEY")
         config.mem0_org_id = os.getenv("MEM0_ORG_ID")
         config.mem0_user_id = os.getenv("MEM0_USER_ID") or os.getenv("USER") or "default-user"
@@ -256,14 +260,14 @@ class AgentConfig:
                 "Supported providers: openai, anthropic, azure, foundry, gemini, local"
             )
 
-        # Validate mem0 configuration if enabled
-        if self.memory_type == "mem0":
-            if not self.mem0_host and not (self.mem0_api_key and self.mem0_org_id):
+        # Validate mem0 cloud configuration if API key provided
+        if self.memory_type == "mem0" and self.mem0_api_key:
+            if not self.mem0_org_id:
                 raise ValueError(
-                    "Mem0 memory requires either:\n"
-                    "  - Self-hosted: MEM0_HOST environment variable\n"
-                    "  - Cloud: MEM0_API_KEY and MEM0_ORG_ID environment variables"
+                    "Mem0 cloud mode requires both MEM0_API_KEY and MEM0_ORG_ID.\n"
+                    "Get credentials from https://app.mem0.ai"
                 )
+        # Note: Local mode (default) requires no validation - uses local Chroma storage
 
         # Validate system prompt file if specified
         if self.system_prompt_file:

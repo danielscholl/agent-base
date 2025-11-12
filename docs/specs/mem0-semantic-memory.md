@@ -46,17 +46,17 @@ This represents the primary gap in agent-base's architecture, as noted in qualit
 
 ## Solution Statement
 
-Introduce a `Mem0Store` implementation that provides semantic memory capabilities through two deployment modes—self-hosted containerized (privacy/local development) and cloud-hosted (managed service convenience)—following the proven telemetry pattern.
+Introduce a `Mem0Store` implementation that integrates the mem0 Python library directly into the agent process, providing semantic memory capabilities through local file-based storage or cloud-hosted service, reusing the agent's existing LLM configuration.
 
 **Architecture Design**:
 
-1. **Dual-Mode Deployment**:
-   - **Self-Hosted**: Docker container running mem0 server locally
-     - CLI: `agent memory start` (launches container)
-     - Auto-detection: Checks `http://localhost:8000` for availability
-     - Config: `MEMORY_TYPE=mem0` + `MEM0_HOST=http://localhost:8000`
-   - **Cloud-Hosted**: mem0.ai managed service
-     - Config: `MEMORY_TYPE=mem0` + `MEM0_API_KEY=<key>` + `MEM0_ORG_ID=<org>`
+1. **Python Library Integration** (In-Process):
+   - mem0 runs as a Python library within the agent process (not separate server)
+   - **Reuses agent's existing LLM client** - no duplicate API calls
+   - Two storage modes:
+     - **Local**: Chroma file-based vector DB in `~/.agent/mem0_data/`
+     - **Cloud**: mem0.ai managed service via API
+   - Zero Docker complexity
 
 2. **MemoryManager Implementation**:
    - New `Mem0Store` class implementing abstract `MemoryManager` interface
@@ -68,26 +68,26 @@ Introduce a `Mem0Store` implementation that provides semantic memory capabilitie
    - `add()`: Store messages with automatic vector embeddings and entity extraction
    - `search()`: Semantic similarity search using vector embeddings
    - `get_recent()`: Time-weighted relevance retrieval
-   - `get_all()`: Full memory export (with pagination for large datasets)
-   - `clear()`: Namespace-aware cleanup
+   - `get_all()`: Full memory export
+   - `clear()`: Delete local storage or cloud namespace
 
-4. **Container Management** (following telemetry pattern):
-   - CLI commands: `/memory start|stop|status|url`
-   - Auto-detection via endpoint check
-   - Docker container lifecycle management
-   - Health checks and startup validation
+4. **LLM Configuration Reuse**:
+   - Extract LLM config from `AgentConfig` (OpenAI, Anthropic, Azure, etc.)
+   - Pass to mem0 so it uses the **same provider and model** as the agent
+   - Single LLM configuration, shared between agent and memory
+   - Cost-efficient: no duplicate embedding/extraction API calls
 
 ## Relevant Files
 
 ### Existing Files to Modify
 
-- **src/agent/config.py** (lines 73-77, 143-153)
+- **src/agent/config.py**
   - Add mem0-specific configuration fields:
-    - Connection: `MEM0_HOST`, `MEM0_API_KEY`, `MEM0_ORG_ID`, `MEM0_USER_ID`, `MEM0_PROJECT_ID`
-    - Tuning: `MEMORY_RETRIEVAL_TOP_K` (default: 10), `MEMORY_RETRIEVAL_MIN_SCORE` (default: 0.5)
-    - Limits: `MEMORY_SNIPPET_MAX_CHARS` (default: 500), `MEMORY_FILTER_SYSTEM_MSGS` (default: true)
-  - Update `AgentConfig.from_env()` to load all environment variables
-  - Add validation for mem0 configuration in `validate()` method
+    - Storage: `mem0_storage_path` (local Chroma DB path, default: `~/.agent/mem0_data/`)
+    - Cloud: `MEM0_API_KEY`, `MEM0_ORG_ID` (for cloud mode)
+    - User: `MEM0_USER_ID`, `MEM0_PROJECT_ID` (namespace isolation)
+  - Update `AgentConfig.from_env()` to load environment variables
+  - No validation needed (graceful fallback to InMemoryStore)
 
 - **src/agent/memory/__init__.py** (lines 30-45)
   - Extend `create_memory_manager()` factory to route to `Mem0Store` when `config.memory_type == "mem0"`
@@ -118,53 +118,41 @@ Introduce a `Mem0Store` implementation that provides semantic memory capabilitie
   - Add mem0 configuration section with examples for both self-hosted and cloud modes
 
 - **pyproject.toml** (dependencies section)
-  - Add `mem0ai>=0.1.0` dependency (optional dependency group or main dependencies)
-  - Add httpx for health checks (may already be present via dependencies)
+  - Add to `[mem0]` optional dependency group:
+    - `mem0ai>=1.0.0` - Core mem0 library
+    - `chromadb>=0.5.0` - Local vector storage
 
 ### New Files to Create
 
 - **src/agent/memory/mem0_store.py**
   - `Mem0Store` class implementing `MemoryManager` abstract base
-  - Connection management (self-hosted vs cloud)
-  - Semantic search implementation using mem0 client
-  - Entity extraction and metadata enrichment
-  - Error handling and graceful degradation
-  - User/session namespacing for multi-user scenarios
+  - Uses `mem0.Memory` Python library (in-process integration)
+  - Configures mem0 to reuse agent's existing LLM client
+  - Supports local storage (Chroma) and cloud storage (mem0.ai)
+  - Semantic search via vector embeddings
+  - Secret scrubbing (API keys, tokens, passwords)
+  - User/project namespacing for isolation
+  - Async operations with `asyncio.to_thread()` for non-blocking I/O
 
 - **src/agent/memory/mem0_utils.py**
-  - `check_mem0_endpoint()`: Fast health check (20ms timeout) for mem0 availability
-  - `get_mem0_client()`: Factory for mem0 client instances (self-hosted vs cloud)
-  - Validates configuration and provides clear error messages
-
-  **Future enhancements** (not in current implementation):
-  - Circuit breaker for mem0 calls (fail-fast after N failures)
-  - Connection pooling and retry logic with exponential backoff
+  - `extract_llm_config()`: Convert `AgentConfig` → mem0 LLM configuration
+  - Supports all agent providers: OpenAI, Anthropic, Azure OpenAI, Gemini, Local
+  - Maps provider-specific auth (API keys, endpoints, versions)
+  - Returns mem0-compatible config dict
 
 - **tests/unit/memory/test_mem0_store.py**
   - Unit tests for `Mem0Store` class
-  - Mock mem0 API responses
+  - Mock `mem0.Memory` class (not HTTP responses)
   - Test semantic search operations
-  - Test error handling and fallbacks
+  - Test LLM config integration
+  - Test local vs cloud mode
   - Test namespace isolation
+  - Test secret scrubbing
 
 - **tests/unit/memory/test_mem0_utils.py**
-  - Tests for utility functions
-  - Endpoint health check tests
-  - Client factory tests
-  - Mock connection scenarios
-
-- **tests/integration/test_mem0_integration.py** *(Future enhancement)*
-  - Integration tests with real mem0 instance (requires Docker)
-  - End-to-end semantic search workflows
-  - Cross-session memory persistence
-  - Container lifecycle management tests
-
-- **docker/mem0/docker-compose.yml** ✅ (PRIMARY deployment method)
-  - Docker Compose configuration for mem0 server
-  - Postgres database for vector storage (required for mem0)
-  - Environment variable configuration
-  - Volume mounts for data persistence
-  - Health checks for both services
+  - Tests for LLM config extraction
+  - Test all provider mappings (OpenAI, Anthropic, Azure, etc.)
+  - Test config validation and defaults
 
 ## Implementation Plan
 

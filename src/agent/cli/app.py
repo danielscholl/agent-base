@@ -112,9 +112,7 @@ def main(
     telemetry: str = typer.Option(
         None, "--telemetry", help="Manage telemetry dashboard (start|stop|status|url)"
     ),
-    memory: str = typer.Option(
-        None, "--memory", help="Manage semantic memory server (start|stop|status|url)"
-    ),
+    memory: str = typer.Option(None, "--memory", help="Show memory configuration (help|info)"),
     verbose: bool = typer.Option(
         False, "--verbose", help="Show detailed execution tree (single prompt mode only)"
     ),
@@ -358,33 +356,24 @@ def run_health_check() -> None:
         console.print(f"  [cyan]◉[/cyan] Backend: [cyan]{memory_type}[/cyan]")
 
         if memory_type == "mem0":
-            # Check mem0 endpoint availability
-            from agent.memory.mem0_utils import check_mem0_endpoint
+            # Check if using cloud or local mode
+            from agent.memory.mem0_utils import get_storage_path
 
-            mem0_host = config.mem0_host or "http://localhost:8000"
-            is_reachable = check_mem0_endpoint(mem0_host)
+            is_cloud = bool(config.mem0_api_key and config.mem0_org_id)
 
-            if is_reachable:
+            if is_cloud:
                 console.print(
-                    f"  [green]◉[/green] Endpoint: [dim cyan]{mem0_host}[/dim cyan] [green]✓ reachable[/green]",
+                    "  [green]◉[/green] Mode: [green]Cloud (mem0.ai)[/green]",
                     highlight=False,
                 )
+                console.print(f"  [cyan]◉[/cyan] Organization: [dim]{config.mem0_org_id}[/dim]")
             else:
+                storage_path = get_storage_path(config)
                 console.print(
-                    f"  [yellow]◉[/yellow] Endpoint: [dim cyan]{mem0_host}[/dim cyan] [yellow]⚠ not reachable[/yellow]",
+                    "  [green]◉[/green] Mode: [green]Local (Chroma)[/green]",
                     highlight=False,
                 )
-                # Add actionable hints
-                if mem0_host == "http://localhost:8000":
-                    console.print(
-                        "  [dim]→ Try: [cyan]agent --memory start[/cyan] to start self-hosted mem0[/dim]",
-                        highlight=False,
-                    )
-                else:
-                    console.print(
-                        "  [dim]→ Check MEM0_HOST configuration or network connectivity[/dim]",
-                        highlight=False,
-                    )
+                console.print(f"  [cyan]◉[/cyan] Storage: [dim]{storage_path}[/dim]")
 
             # Show namespace
             namespace = config.mem0_user_id or "default-user"

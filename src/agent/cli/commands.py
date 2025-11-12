@@ -431,259 +431,63 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
 
 
 async def handle_memory_command(user_input: str, console: Console) -> None:
-    """Handle /memory command for managing semantic memory server.
+    """Handle /memory command for memory configuration help.
 
     Args:
-        user_input: Full user input (e.g., "/memory start")
+        user_input: Full user input (e.g., "/memory help")
         console: Console for output
 
     Commands:
-        /memory start  - Start mem0 server with Docker Compose
-        /memory stop   - Stop mem0 server
-        /memory status - Check if running
-        /memory url    - Show endpoint URL and setup
+        /memory help - Show memory configuration help
+        /memory info - Show current memory configuration
     """
     parts = user_input.strip().split()
     action = parts[1].lower() if len(parts) > 1 else "help"
 
-    COMPOSE_FILE = "docker/mem0/docker-compose.yml"
-    MEM0_ENDPOINT = "http://localhost:8000"
+    if action == "info":
+        # Show current memory configuration
+        memory_type = os.getenv("MEMORY_TYPE", "in_memory")
+        console.print("\n[bold]Memory Configuration:[/bold]")
+        console.print(f"  Backend: [cyan]{memory_type}[/cyan]")
 
-    try:
-        if action == "start":
-            # Check if Docker is available
-            try:
-                subprocess.run(
-                    ["docker", "--version"],
-                    capture_output=True,
-                    check=True,
-                    timeout=5,
-                )
-            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-                console.print("\n[red]Error: Docker is not installed or not running[/red]")
-                console.print(
-                    "[yellow]Install Docker from: https://docs.docker.com/get-docker/[/yellow]\n"
-                )
-                return
+        if memory_type == "mem0":
+            # Check if using cloud or local mode
+            api_key = os.getenv("MEM0_API_KEY")
+            org_id = os.getenv("MEM0_ORG_ID")
+            storage_path = os.getenv("MEM0_STORAGE_PATH", "~/.agent/mem0_data/chroma_db")
 
-            # Check if Docker Compose file exists
-            if not os.path.exists(COMPOSE_FILE):
-                console.print(
-                    f"\n[red]Error: Docker Compose file not found: {COMPOSE_FILE}[/red]\n"
-                )
-                return
-
-            # Check if already running
-            result = subprocess.run(
-                ["docker", "ps", "--filter", "name=mem0-server", "--format", "{{.Names}}"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-
-            if "mem0-server" in result.stdout:
-                console.print("\n[yellow]Mem0 server is already running![/yellow]")
-                console.print(f"[cyan]Endpoint:[/cyan] {MEM0_ENDPOINT}\n")
-                return
-
-            # Start mem0 with Docker Compose
-            console.print("\n[dim]Starting mem0 semantic memory server...[/dim]")
-            subprocess.run(
-                ["docker", "compose", "-f", COMPOSE_FILE, "up", "-d"],
-                check=True,
-                capture_output=True,
-                timeout=120,
-            )
-
-            # Wait for startup with health polling
-            console.print("[dim]Waiting for services to start...[/dim]")
-
-            # Poll for health with backoff
-            from agent.memory.mem0_utils import check_mem0_endpoint
-
-            max_attempts = 15
-            base_delay = 0.5
-
-            for attempt in range(1, max_attempts + 1):
-                if check_mem0_endpoint(MEM0_ENDPOINT):
-                    console.print(f"[dim]Ready after {attempt} check(s)[/dim]")
-                    break
-
-                # Exponential backoff with cap
-                delay = min(base_delay * (1.5 ** (attempt - 1)), 3.0)
-                time.sleep(delay)
-
-                if attempt % 3 == 0:
-                    console.print(f"[dim]Still starting... ({attempt}/{max_attempts})[/dim]")
+            if api_key and org_id:
+                console.print("  Mode: [green]Cloud (mem0.ai)[/green]")
+                console.print(f"  Organization: {org_id}")
+                console.print("  API Key: [dim]" + ("*" * 20) + api_key[-4:] + "[/dim]")
             else:
-                console.print("[yellow]⚠ Server may still be starting up[/yellow]")
+                console.print("  Mode: [green]Local (Chroma)[/green]")
+                console.print(f"  Storage: {storage_path}")
 
-            # Check container health status
-            health_result = subprocess.run(
-                ["docker", "compose", "-f", COMPOSE_FILE, "ps", "--format", "json"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
+            user_id = os.getenv("MEM0_USER_ID", os.getenv("USER", "default-user"))
+            project_id = os.getenv("MEM0_PROJECT_ID")
+            console.print(f"  User: {user_id}")
+            if project_id:
+                console.print(f"  Project: {project_id}")
+        console.print()
 
-            containers_healthy = True
-            if health_result.returncode == 0:
-                import json
-
-                try:
-                    containers = json.loads(health_result.stdout)
-                    for container in containers:
-                        if container.get("Health") == "unhealthy":
-                            containers_healthy = False
-                            console.print(
-                                f"\n[yellow]⚠ Warning: {container.get('Service')} container is unhealthy[/yellow]"
-                            )
-                except json.JSONDecodeError:
-                    pass
-
-            console.print("\n[green]+ Mem0 container started[/green]\n")
-            console.print(f"  Endpoint: {MEM0_ENDPOINT}")
-            console.print("  Storage: Ephemeral (resets on container stop)\n")
-
-            if not containers_healthy:
-                console.print("[yellow]⚠ Container health check failed[/yellow]")
-                console.print(
-                    "[yellow]  The official mem0-api-server image has known dependency issues.[/yellow]"
-                )
-                console.print("\n[cyan]Recommended:[/cyan] Use cloud-hosted mem0 instead:")
-                console.print("  1. Sign up at https://app.mem0.ai")
-                console.print("  2. Add to .env:")
-                console.print("     MEMORY_TYPE=mem0")
-                console.print("     MEM0_API_KEY=<your-api-key>")
-                console.print("     MEM0_ORG_ID=<your-org-id>")
-                console.print("\n[dim]See docker/mem0/README.md for details[/dim]\n")
-            else:
-                # Check if MEMORY_TYPE is set
-                memory_type = os.getenv("MEMORY_TYPE")
-                if memory_type == "mem0":
-                    console.print("[green]+ Semantic memory enabled[/green] (MEMORY_TYPE=mem0)")
-                else:
-                    console.print("[yellow]! Semantic memory not enabled[/yellow]\n")
-                    console.print("To enable semantic memory:")
-                    console.print("  1. Add to .env file:")
-                    console.print("     MEMORY_TYPE=mem0")
-                    console.print(f"     MEM0_HOST={MEM0_ENDPOINT}")
-                    console.print("  2. Or export environment variables:")
-                    console.print("     export MEMORY_TYPE=mem0")
-                    console.print(f"     export MEM0_HOST={MEM0_ENDPOINT}")
-                console.print()
-
-        elif action == "stop":
-            # Stop the containers
-            result = subprocess.run(
-                ["docker", "compose", "-f", COMPOSE_FILE, "down"],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-
-            if result.returncode == 0:
-                console.print("\n[green]+ Mem0 server stopped[/green]\n")
-            else:
-                console.print("\n[yellow]Mem0 server was not running[/yellow]\n")
-
-        elif action == "status":
-            # Check if running
-            result = subprocess.run(
-                ["docker", "ps", "--filter", "name=mem0-server", "--format", "{{.Names}}"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-
-            if "mem0-server" in result.stdout:
-                # Get uptime
-                uptime_result = subprocess.run(
-                    [
-                        "docker",
-                        "ps",
-                        "--filter",
-                        "name=mem0-server",
-                        "--format",
-                        "{{.Status}}",
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                )
-
-                # Check endpoint health
-                from agent.memory.mem0_utils import check_mem0_endpoint
-
-                is_healthy = check_mem0_endpoint(MEM0_ENDPOINT)
-
-                if is_healthy:
-                    console.print(
-                        "\n[green]+ Mem0 server is running and healthy[/green]",
-                        markup=True,
-                        highlight=False,
-                    )
-                else:
-                    console.print(
-                        "\n[yellow]⚠ Mem0 server container running but not responding[/yellow]",
-                        markup=True,
-                        highlight=False,
-                    )
-                    console.print("[dim]Container may still be starting up...[/dim]")
-
-                console.print(f"[dim]Status: {uptime_result.stdout.strip()}[/dim]")
-                console.print(f"[cyan]Endpoint:[/cyan] {MEM0_ENDPOINT}")
-
-                # Show memory configuration
-                memory_type = os.getenv("MEMORY_TYPE")
-                mem0_host = os.getenv("MEM0_HOST")
-                console.print(f"[cyan]Memory Type:[/cyan] {memory_type or 'in_memory (default)'}")
-                if mem0_host:
-                    console.print(f"[cyan]Configured Host:[/cyan] {mem0_host}")
-                console.print()
-            else:
-                console.print("\n[yellow]Mem0 server is not running[/yellow]")
-                console.print("[dim]Start with: /memory start[/dim]\n")
-
-        elif action == "url":
-            console.print("\n[bold]Mem0 Semantic Memory:[/bold]")
-            console.print(f"  Endpoint: {MEM0_ENDPOINT}\n")
-
-            # Check current memory configuration
-            memory_type = os.getenv("MEMORY_TYPE")
-            mem0_host = os.getenv("MEM0_HOST")
-
-            console.print("[bold]Configuration:[/bold]")
-            console.print(f"  Memory Type: {memory_type or 'in_memory (default)'}")
-            if mem0_host:
-                console.print(f"  MEM0_HOST: {mem0_host}")
-            else:
-                console.print("  MEM0_HOST: [dim]not set[/dim]")
-
-            console.print("\n[bold]To enable semantic memory:[/bold]")
-            console.print("  1. Ensure mem0 server is running (/memory start)")
-            console.print("  2. Set environment variables:")
-            console.print("     MEMORY_TYPE=mem0")
-            console.print(f"     MEM0_HOST={MEM0_ENDPOINT}")
-            console.print()
-
-        else:
-            # Show help
-            console.print("\n[bold]Memory Commands:[/bold]")
-            console.print("  [cyan]/memory start[/cyan]  - Start mem0 server (Docker Compose)")
-            console.print("  [cyan]/memory stop[/cyan]   - Stop mem0 server")
-            console.print("  [cyan]/memory status[/cyan] - Check if running")
-            console.print("  [cyan]/memory url[/cyan]    - Show endpoint and setup")
-            console.print()
-            console.print("[bold]Deployment Modes:[/bold]")
-            console.print("  [cyan]Self-hosted:[/cyan] Set MEM0_HOST=http://localhost:8000")
-            console.print("  [cyan]Cloud:[/cyan]       Set MEM0_API_KEY + MEM0_ORG_ID")
-            console.print("  [dim]Get cloud credentials from https://app.mem0.ai[/dim]")
-            console.print()
-
-    except subprocess.TimeoutExpired:
-        console.print("\n[red]Error: Docker command timed out[/red]\n")
-    except subprocess.CalledProcessError as e:
-        console.print(f"\n[red]Error: {e}[/red]\n")
-    except Exception as e:
-        console.print(f"\n[red]Unexpected error: {e}[/red]\n")
+    else:
+        # Show help
+        console.print("\n[bold]Mem0 Semantic Memory:[/bold]")
+        console.print()
+        console.print("[cyan]Local Mode[/cyan] (File-based, no setup required):")
+        console.print("  MEMORY_TYPE=mem0")
+        console.print("  # Stores in ~/.agent/mem0_data/chroma_db by default")
+        console.print()
+        console.print("[cyan]Cloud Mode[/cyan] (mem0.ai service):")
+        console.print("  MEMORY_TYPE=mem0")
+        console.print("  MEM0_API_KEY=<your-api-key>")
+        console.print("  MEM0_ORG_ID=<your-org-id>")
+        console.print("  # Get credentials from https://app.mem0.ai")
+        console.print()
+        console.print("[bold]Commands:[/bold]")
+        console.print("  [cyan]/memory help[/cyan] - Show this help")
+        console.print("  [cyan]/memory info[/cyan] - Show current configuration")
+        console.print()
+        console.print("[dim]Memory works across sessions - enable once and it persists![/dim]")
+        console.print()

@@ -148,11 +148,10 @@ class TestCreateMemoryManager:
             llm_provider="openai",
             openai_api_key="test",
             memory_type="mem0",
-            mem0_host="http://localhost:8000",
         )
 
-        with patch("agent.memory.mem0_store.get_mem0_client") as mock_get_client:
-            mock_get_client.return_value = Mock()
+        with patch("agent.memory.mem0_store.create_memory_instance") as mock_create:
+            mock_create.return_value = Mock()
 
             manager = create_memory_manager(config)
 
@@ -164,11 +163,10 @@ class TestCreateMemoryManager:
             llm_provider="openai",
             openai_api_key="test",
             memory_type="mem0",
-            mem0_host="http://localhost:8000",
         )
 
-        with patch("agent.memory.mem0_store.get_mem0_client") as mock_get_client:
-            mock_get_client.side_effect = Exception("Connection failed")
+        with patch("agent.memory.mem0_store.create_memory_instance") as mock_create:
+            mock_create.side_effect = Exception("Connection failed")
 
             manager = create_memory_manager(config)
 

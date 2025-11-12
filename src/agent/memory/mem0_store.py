@@ -1,7 +1,7 @@
 """Mem0-based semantic memory storage implementation.
 
-This module provides semantic memory storage using mem0's vector-based
-search capabilities with support for self-hosted and cloud deployments.
+This module provides semantic memory storage using mem0's Python library
+with support for local Chroma storage and cloud mem0.ai service.
 """
 
 import asyncio
@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 
 from agent.config import AgentConfig
 from agent.memory.manager import MemoryManager
-from agent.memory.mem0_utils import get_mem0_client
+from agent.memory.mem0_utils import create_memory_instance
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +26,14 @@ SENSITIVE_PATTERNS = [
 
 
 class Mem0Store(MemoryManager):
-    """Semantic memory storage using mem0 vector database.
+    """Semantic memory storage using mem0 Python library.
 
-    Provides semantic search capabilities with automatic entity extraction
-    and relationship mapping. Supports both self-hosted and cloud deployments.
+    Integrates mem0 directly into the agent process, reusing the agent's
+    existing LLM configuration. Supports local Chroma storage or cloud mem0.ai.
 
     Attributes:
         config: Agent configuration with mem0 settings
-        client: Mem0 MemoryClient instance
+        memory: mem0.Memory instance
         user_id: User namespace for memory isolation
         namespace: Combined user:project namespace
 
@@ -51,11 +51,12 @@ class Mem0Store(MemoryManager):
 
         Raises:
             ValueError: If mem0 configuration is invalid
+            ImportError: If mem0ai or chromadb not installed
         """
         super().__init__(config)
 
         try:
-            self.client = get_mem0_client(config)
+            self.memory = create_memory_instance(config)
             logger.info("Mem0Store initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Mem0Store: {e}")
@@ -128,7 +129,7 @@ class Mem0Store(MemoryManager):
             messages: List of message dicts with role and content
 
         Returns:
-            Structured response dict with success status and added memory IDs
+            Structured response dict with success status
 
         Example:
             >>> await store.add([
@@ -142,8 +143,8 @@ class Mem0Store(MemoryManager):
             )
 
         try:
-            added_memories = []
-
+            # Filter and prepare messages
+            messages_to_add = []
             for msg in messages:
                 # Validate message structure
                 if not isinstance(msg, dict) or "role" not in msg or "content" not in msg:
@@ -154,50 +155,29 @@ class Mem0Store(MemoryManager):
                 if not self._should_save_message(msg):
                     continue
 
-                # Add to mem0 with user_id for namespacing
-                content = msg.get("content", "")
-                if not content.strip():
+                content = msg.get("content", "").strip()
+                if not content:
                     continue
 
-                # Scrub sensitive content before storage
+                # Scrub sensitive content
                 scrubbed_content, was_scrubbed = self._scrub_sensitive_content(content)
 
-                # Store in mem0 (wrapped to avoid blocking event loop)
-                # Try both parameter names for compatibility
-                try:
-                    # First try 'memory' parameter (common in mem0 examples)
-                    try:
-                        result = await asyncio.to_thread(
-                            self.client.add,
-                            memory=scrubbed_content,
-                            user_id=self.namespace,
-                        )
-                    except TypeError:
-                        # Fall back to 'messages' parameter
-                        result = await asyncio.to_thread(
-                            self.client.add,
-                            messages=scrubbed_content,
-                            user_id=self.namespace,
-                        )
+                messages_to_add.append({"role": msg["role"], "content": scrubbed_content})
 
-                    # Extract memory ID from result
-                    if isinstance(result, dict):
-                        memory_id = result.get("id") or result.get("memory_id")
-                    else:
-                        memory_id = str(result) if result else None
+            if not messages_to_add:
+                return self._create_success_response(
+                    result=[], message="No messages to add after filtering"
+                )
 
-                    if memory_id:
-                        added_memories.append(memory_id)
-                        logger.debug(f"Added memory to mem0: {memory_id}")
+            # Add to mem0 (wrapped to avoid blocking event loop)
+            await asyncio.to_thread(
+                self.memory.add, messages=messages_to_add, user_id=self.namespace
+            )
 
-                except Exception as e:
-                    logger.warning(f"Failed to add message to mem0: {e}")
-                    continue
-
-            logger.debug(f"Added {len(added_memories)} messages to mem0")
+            logger.debug(f"Added {len(messages_to_add)} messages to mem0")
 
             return self._create_success_response(
-                result=added_memories, message=f"Added {len(added_memories)} messages to memory"
+                result=messages_to_add, message=f"Added {len(messages_to_add)} messages to memory"
             )
 
         except Exception as e:
@@ -230,26 +210,23 @@ class Mem0Store(MemoryManager):
 
         try:
             # Search mem0 with semantic similarity
-            # Use filters parameter for user_id filtering
-            # Wrapped to avoid blocking event loop
             results = await asyncio.to_thread(
-                self.client.search, query=query, filters={"user_id": self.namespace}, limit=limit
+                self.memory.search, query=query, user_id=self.namespace, limit=limit
             )
 
             # Convert mem0 results to standardized format
             memories = []
-            if isinstance(results, list):
-                for result in results:
-                    if isinstance(result, dict):
-                        memory = {
-                            "id": result.get("id") or result.get("memory_id"),
-                            "role": "assistant",  # Mem0 doesn't store role
-                            "content": result.get("memory") or result.get("content", ""),
-                            "timestamp": result.get("created_at") or result.get("timestamp", ""),
-                            "metadata": result.get("metadata", {}),
-                            "score": result.get("score"),  # Semantic similarity score
-                        }
-                        memories.append(memory)
+            if results and "results" in results:
+                for result in results["results"]:
+                    memory = {
+                        "id": result.get("id") or result.get("memory_id"),
+                        "role": "assistant",  # mem0 doesn't store role separately
+                        "content": result.get("memory", ""),
+                        "timestamp": result.get("created_at") or result.get("updated_at", ""),
+                        "metadata": result.get("metadata", {}),
+                        "score": result.get("score"),  # Semantic similarity score
+                    }
+                    memories.append(memory)
 
             logger.debug(f"Search for '{query}' returned {len(memories)} results")
 
@@ -271,21 +248,20 @@ class Mem0Store(MemoryManager):
             Structured response dict with all memories
         """
         try:
-            # Get all memories for user (wrapped to avoid blocking)
-            results = await asyncio.to_thread(self.client.get_all, user_id=self.namespace)
+            # Get all memories for user
+            results = await asyncio.to_thread(self.memory.get_all, user_id=self.namespace)
 
             memories = []
-            if isinstance(results, list):
-                for result in results:
-                    if isinstance(result, dict):
-                        memory = {
-                            "id": result.get("id") or result.get("memory_id"),
-                            "role": "assistant",
-                            "content": result.get("memory") or result.get("content", ""),
-                            "timestamp": result.get("created_at") or result.get("timestamp", ""),
-                            "metadata": result.get("metadata", {}),
-                        }
-                        memories.append(memory)
+            if results and "results" in results:
+                for result in results["results"]:
+                    memory = {
+                        "id": result.get("id") or result.get("memory_id"),
+                        "role": "assistant",
+                        "content": result.get("memory", ""),
+                        "timestamp": result.get("created_at") or result.get("updated_at", ""),
+                        "metadata": result.get("metadata", {}),
+                    }
+                    memories.append(memory)
 
             return self._create_success_response(result=memories, message="Retrieved all memories")
 
@@ -350,8 +326,8 @@ class Mem0Store(MemoryManager):
             Structured response dict with success status
         """
         try:
-            # Delete all memories for user (wrapped to avoid blocking)
-            await asyncio.to_thread(self.client.delete_all, user_id=self.namespace)
+            # Delete all memories for user
+            await asyncio.to_thread(self.memory.delete_all, user_id=self.namespace)
 
             logger.info(f"Cleared all memories for namespace: {self.namespace}")
 
