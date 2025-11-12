@@ -49,6 +49,7 @@ try:
 
     __all__.append("Mem0Store")
 except ImportError:
+    # Mem0Store is optional; ignore if mem0ai package not installed
     pass
 
 
