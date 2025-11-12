@@ -234,7 +234,7 @@ def show_help(console: Console) -> None:
     console.print("  [cyan]/clear[/cyan]      - Clear screen and start new conversation")
     console.print("  [cyan]/continue[/cyan]   - Resume a previous session")
     console.print("  [cyan]/purge[/cyan]      - Delete all agent data (sessions, logs, memory)")
-    console.print("  [cyan]/memory[/cyan]     - Manage semantic memory server (mem0)")
+    console.print("  [cyan]/memory[/cyan]     - Manage memory configuration (mem0)")
     console.print("  [cyan]/telemetry[/cyan]  - Manage local observability dashboard")
     console.print("  [cyan]/help[/cyan]       - Show this help message")
     console.print("  [cyan]exit[/cyan]        - Exit interactive mode")

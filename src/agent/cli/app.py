@@ -47,6 +47,10 @@ app = typer.Typer(help="Agent - Conversational Assistant")
 console = Console()
 logger = logging.getLogger(__name__)
 
+# Cache git branch lookup to avoid spawning a subprocess every prompt
+_BRANCH_CACHE_CWD: Path | None = None
+_BRANCH_CACHE_VALUE: str = ""
+
 
 def _render_startup_banner(config: AgentConfig) -> None:
     """Render startup banner with branding.
@@ -77,22 +81,30 @@ def _get_status_bar_text() -> str:
     except ValueError:
         cwd_display = str(cwd)
 
-    # Get git branch
+    # Get git branch (cached per CWD to reduce startup/prompt lag)
     branch_display = ""
+    global _BRANCH_CACHE_CWD, _BRANCH_CACHE_VALUE
     try:
-        result = subprocess.run(
-            ["git", "branch", "--show-current"],
-            capture_output=True,
-            text=True,
-            timeout=1,
-            cwd=cwd,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            branch = result.stdout.strip()
-            branch_display = f" [⎇ {branch}]"
+        if _BRANCH_CACHE_CWD != cwd:
+            # Compute branch once for this working directory
+            result = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True,
+                text=True,
+                timeout=0.3,
+                cwd=cwd,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                _BRANCH_CACHE_VALUE = result.stdout.strip()
+            else:
+                _BRANCH_CACHE_VALUE = ""
+            _BRANCH_CACHE_CWD = cwd
+
+        if _BRANCH_CACHE_VALUE:
+            branch_display = f" [⎇ {_BRANCH_CACHE_VALUE}]"
     except (subprocess.SubprocessError, OSError):
         # Silently ignore git errors - branch info is optional
-        pass
+        _BRANCH_CACHE_VALUE = ""
 
     # Right-justify the path and branch
     status = f"{cwd_display}{branch_display}"
@@ -870,11 +882,12 @@ async def run_chat_mode(
         )
 
         # Interactive loop
+        status_bar_enabled = os.getenv("AGENT_STATUS_BAR", "1").lower() not in ("0", "false", "off")
         first_prompt = True
         while True:
             try:
                 # Print status bar before prompt
-                if not quiet:
+                if not quiet and status_bar_enabled:
                     status_text = _get_status_bar_text()
                     # Don't add newline before first prompt (already follows banner)
                     separator = "" if first_prompt else "\n"
@@ -911,6 +924,12 @@ async def run_chat_mode(
                         agent,
                     )
                     console.print("\n[dim]Goodbye![/dim]")
+                    # Attempt to close chat client cleanly to avoid exit lag
+                    try:
+                        if hasattr(agent, "chat_client") and hasattr(agent.chat_client, "close"):
+                            await agent.chat_client.close()
+                    except Exception:
+                        pass
                     break
 
                 # Dispatch other commands - cleaner than if/elif chain
@@ -969,6 +988,12 @@ async def run_chat_mode(
                     agent,
                 )
                 console.print("\n[dim]Goodbye![/dim]")
+                # Attempt to close chat client cleanly to avoid exit lag
+                try:
+                    if hasattr(agent, "chat_client") and hasattr(agent.chat_client, "close"):
+                        await agent.chat_client.close()
+                except Exception:
+                    pass
                 break
 
     except ValueError as e:

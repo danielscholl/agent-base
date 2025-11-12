@@ -62,11 +62,6 @@ class Mem0Store(MemoryManager):
             logger.error(f"Failed to initialize Mem0Store: {e}")
             raise
 
-        # Detect mode based on instance type
-        # MemoryClient = cloud mode (mem0.ai platform)
-        # Memory = local mode (self-hosted Chroma)
-        self.is_cloud_mode = self.memory.__class__.__name__ == "MemoryClient"
-
         # Set up namespacing for user/project isolation
         self.user_id = config.mem0_user_id or "default-user"
 
@@ -76,9 +71,7 @@ class Mem0Store(MemoryManager):
         else:
             self.namespace = self.user_id
 
-        logger.debug(
-            f"Mem0Store namespace: {self.namespace} (mode: {'cloud' if self.is_cloud_mode else 'local'})"
-        )
+        logger.debug(f"Mem0Store namespace: {self.namespace}")
 
     def _scrub_sensitive_content(self, content: str) -> tuple[str, bool]:
         """Scrub potential secrets from content before storage.
@@ -177,10 +170,8 @@ class Mem0Store(MemoryManager):
                 )
 
             # Add to mem0 (wrapped to avoid blocking event loop)
-            # Cloud mode (MemoryClient) uses user_id in API call
-            # Local mode (Memory) uses user_id in API call (same signature)
             await asyncio.to_thread(
-                self.memory.add, messages=messages_to_add, user_id=self.user_id
+                self.memory.add, messages=messages_to_add, user_id=self.namespace
             )
 
             logger.debug(f"Added {len(messages_to_add)} messages to mem0")
@@ -219,19 +210,9 @@ class Mem0Store(MemoryManager):
 
         try:
             # Search mem0 with semantic similarity
-            # Cloud mode (MemoryClient) uses filters parameter
-            # Local mode (Memory) uses user_id parameter
-            if self.is_cloud_mode:
-                results = await asyncio.to_thread(
-                    self.memory.search,
-                    query=query,
-                    filters={"user_id": self.user_id},
-                    limit=limit,
-                )
-            else:
-                results = await asyncio.to_thread(
-                    self.memory.search, query=query, user_id=self.namespace, limit=limit
-                )
+            results = await asyncio.to_thread(
+                self.memory.search, query=query, user_id=self.namespace, limit=limit
+            )
 
             # Convert mem0 results to standardized format
             memories = []

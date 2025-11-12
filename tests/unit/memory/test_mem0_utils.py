@@ -83,13 +83,12 @@ class TestMem0Utils:
         assert llm_config["config"]["model"] == "gemini-pro"
         assert llm_config["config"]["api_key"] == "test-gemini-key"
 
-    def test_extract_llm_config_unknown_provider_defaults_to_openai(self):
-        """Test unknown provider defaults to OpenAI."""
+    def test_extract_llm_config_unknown_provider_raises_error(self):
+        """Test unknown provider raises ValueError with strict validation."""
         config = AgentConfig(llm_provider="unknown", openai_api_key="sk-test")
 
-        llm_config = extract_llm_config(config)
-
-        assert llm_config["provider"] == "openai"
+        with pytest.raises(ValueError, match="mem0 does not support 'unknown' provider"):
+            extract_llm_config(config)
 
     def test_get_storage_path_custom(self):
         """Test get_storage_path uses custom path if provided."""

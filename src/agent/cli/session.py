@@ -109,8 +109,10 @@ async def auto_save_session(
                 messages=messages,
             )
 
-            # Save memory state if agent has memory enabled
-            if agent and agent.memory_manager:
+            # Save memory state if agent has memory enabled and using in-memory backend
+            # For semantic backends (mem0), memory is already persisted externally and
+            # fetching all entries can introduce noticeable exit latency.
+            if agent and agent.memory_manager and getattr(agent.config, "memory_type", "in_memory") == "in_memory":
                 try:
                     memory_result = await agent.memory_manager.get_all()
                     if memory_result.get("success") and memory_result["result"]:

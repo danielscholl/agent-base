@@ -166,6 +166,8 @@ class TestMemoryConfiguration:
         with patch.dict(
             os.environ,
             {
+                "LLM_PROVIDER": "openai",
+                "OPENAI_API_KEY": "sk-test",
                 "MEMORY_TYPE": "mem0",
                 "MEM0_STORAGE_PATH": "/custom/mem0/path",
                 "MEM0_USER_ID": "alice",
@@ -178,7 +180,7 @@ class TestMemoryConfiguration:
             assert config.mem0_storage_path == Path("/custom/mem0/path")
             assert config.mem0_user_id == "alice"
 
-            # Should validate successfully (local mode needs no API keys)
+            # Should validate successfully
             config.validate()  # Should not raise
 
     def test_mem0_config_cloud(self):
@@ -186,6 +188,8 @@ class TestMemoryConfiguration:
         with patch.dict(
             os.environ,
             {
+                "LLM_PROVIDER": "openai",
+                "OPENAI_API_KEY": "sk-test",
                 "MEMORY_TYPE": "mem0",
                 "MEM0_API_KEY": "test-key",
                 "MEM0_ORG_ID": "test-org",
@@ -202,18 +206,27 @@ class TestMemoryConfiguration:
             config.validate()  # Should not raise
 
     def test_mem0_config_validation_passes_local_mode(self):
-        """Test mem0 validation passes for local mode (no API keys needed)."""
-        with patch.dict(os.environ, {"MEMORY_TYPE": "mem0"}, clear=True):
+        """Test mem0 validation passes for local mode."""
+        with patch.dict(
+            os.environ,
+            {"LLM_PROVIDER": "openai", "OPENAI_API_KEY": "sk-test", "MEMORY_TYPE": "mem0"},
+            clear=True,
+        ):
             config = AgentConfig.from_env()
 
-            # Should validate successfully - local mode needs no API keys
+            # Should validate successfully
             config.validate()  # Should not raise
 
     def test_mem0_config_validation_passes_with_only_api_key(self):
         """Test mem0 validation passes with only API key (falls back to local)."""
         with patch.dict(
             os.environ,
-            {"MEMORY_TYPE": "mem0", "MEM0_API_KEY": "test-key"},
+            {
+                "LLM_PROVIDER": "openai",
+                "OPENAI_API_KEY": "sk-test",
+                "MEMORY_TYPE": "mem0",
+                "MEM0_API_KEY": "test-key",
+            },
             clear=True,
         ):
             config = AgentConfig.from_env()
@@ -256,7 +269,7 @@ class TestMemoryConfiguration:
         """Test mem0 project_id is optional."""
         with patch.dict(
             os.environ,
-            {"MEMORY_TYPE": "mem0", "MEM0_HOST": "http://localhost:8000"},
+            {"LLM_PROVIDER": "openai", "OPENAI_API_KEY": "sk-test", "MEMORY_TYPE": "mem0"},
             clear=True,
         ):
             config = AgentConfig.from_env()

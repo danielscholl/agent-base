@@ -135,13 +135,16 @@ def get_storage_path(config: AgentConfig) -> Path:
 
 
 def create_memory_instance(config: AgentConfig) -> Any:
-    """Create mem0 Memory or MemoryClient instance with proper configuration.
+    """Create mem0 Memory instance with proper configuration.
+
+    Uses Memory.from_config for both local (Chroma) and cloud (mem0.ai) modes,
+    ensuring consistent API across both deployment options.
 
     Args:
         config: Agent configuration with mem0 and LLM settings
 
     Returns:
-        Configured mem0.Memory (local) or mem0.MemoryClient (cloud) instance
+        Configured mem0.Memory instance
 
     Raises:
         ImportError: If mem0ai or chromadb packages not installed
@@ -151,41 +154,37 @@ def create_memory_instance(config: AgentConfig) -> Any:
         >>> config = AgentConfig.from_env()
         >>> memory = create_memory_instance(config)
     """
+    try:
+        from mem0 import Memory  # type: ignore[import-untyped]
+    except ImportError:
+        raise ImportError(
+            "mem0ai package not installed. "
+            "Install with: uv pip install -e '.[mem0]' (or pip install -e '.[mem0]')"
+        )
+
     # Determine if using cloud or local mode
     is_cloud_mode = bool(config.mem0_api_key and config.mem0_org_id)
 
     if is_cloud_mode:
-        # Cloud mode - use MemoryClient for mem0.ai platform
-        try:
-            from mem0 import MemoryClient  # type: ignore[import-untyped]
-        except ImportError:
-            raise ImportError(
-                "mem0ai package not installed. "
-                "Install with: uv pip install -e '.[mem0]' (or pip install -e '.[mem0]')"
-            )
-
-        logger.info("Initializing mem0 in cloud mode (mem0.ai platform)")
-        try:
-            client = MemoryClient(api_key=config.mem0_api_key)
-            logger.debug("mem0 MemoryClient created successfully for cloud mode")
-            return client
-        except Exception as e:
-            raise ValueError(f"Failed to initialize mem0 MemoryClient: {e}")
+        # Cloud mode - use mem0.ai service
+        logger.info("Initializing mem0 in cloud mode (mem0.ai)")
+        mem0_config = {
+            "llm": extract_llm_config(config),
+            "vector_store": {
+                "provider": "mem0",
+                "config": {
+                    "api_key": config.mem0_api_key,
+                    "org_id": config.mem0_org_id,
+                },
+            },
+        }
     else:
-        # Local mode - use Memory with Chroma file-based storage
-        try:
-            from mem0 import Memory  # type: ignore[import-untyped]
-        except ImportError:
-            raise ImportError(
-                "mem0ai package not installed. "
-                "Install with: uv pip install -e '.[mem0]' (or pip install -e '.[mem0]')"
-            )
-
+        # Local mode - use Chroma file-based storage
         storage_path = get_storage_path(config)
         logger.info(f"Initializing mem0 in local mode: {storage_path}")
 
         # Ensure storage directory exists
-        storage_path.parent.mkdir(parents=True, exist_ok=True)
+        storage_path.mkdir(parents=True, exist_ok=True)
 
         mem0_config = {
             "llm": extract_llm_config(config),
@@ -198,9 +197,11 @@ def create_memory_instance(config: AgentConfig) -> Any:
             },
         }
 
-        try:
-            memory = Memory.from_config(mem0_config)
-            logger.debug("mem0 Memory instance created successfully for local mode")
-            return memory
-        except Exception as e:
-            raise ValueError(f"Failed to initialize mem0 Memory: {e}")
+    try:
+        memory = Memory.from_config(mem0_config)
+        logger.debug(
+            f"mem0 Memory instance created successfully ({'cloud' if is_cloud_mode else 'local'} mode)"
+        )
+        return memory
+    except Exception as e:
+        raise ValueError(f"Failed to initialize mem0 Memory: {e}")
