@@ -260,14 +260,10 @@ class AgentConfig:
                 "Supported providers: openai, anthropic, azure, foundry, gemini, local"
             )
 
-        # Validate mem0 cloud configuration if API key provided
-        if self.memory_type == "mem0" and self.mem0_api_key:
-            if not self.mem0_org_id:
-                raise ValueError(
-                    "Mem0 cloud mode requires both MEM0_API_KEY and MEM0_ORG_ID.\n"
-                    "Get credentials from https://app.mem0.ai"
-                )
-        # Note: Local mode (default) requires no validation - uses local Chroma storage
+        # Mem0 validation: No validation needed!
+        # - If both MEM0_API_KEY and MEM0_ORG_ID are set → cloud mode
+        # - If neither or only one is set → local Chroma mode (default)
+        # - Graceful fallback handled in mem0_utils.create_memory_instance()
 
         # Validate system prompt file if specified
         if self.system_prompt_file:

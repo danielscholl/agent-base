@@ -209,8 +209,8 @@ class TestMemoryConfiguration:
             # Should validate successfully - local mode needs no API keys
             config.validate()  # Should not raise
 
-    def test_mem0_config_validation_fails_with_only_api_key(self):
-        """Test mem0 validation fails with only API key (missing org ID)."""
+    def test_mem0_config_validation_passes_with_only_api_key(self):
+        """Test mem0 validation passes with only API key (falls back to local)."""
         with patch.dict(
             os.environ,
             {"MEMORY_TYPE": "mem0", "MEM0_API_KEY": "test-key"},
@@ -218,9 +218,8 @@ class TestMemoryConfiguration:
         ):
             config = AgentConfig.from_env()
 
-            # Should fail - need both api_key AND org_id for cloud mode
-            with pytest.raises(ValueError, match="Mem0 cloud mode requires both"):
-                config.validate()
+            # Should pass - will fall back to local mode when org_id missing
+            config.validate()  # Should not raise
 
     def test_mem0_config_user_id_defaults_to_username(self):
         """Test mem0 user_id defaults to $USER environment variable."""
