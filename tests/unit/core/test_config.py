@@ -14,7 +14,7 @@ from agent.config import AgentConfig
 class TestAgentConfig:
     """Tests for AgentConfig class."""
 
-    @patch("agent.config.load_dotenv")  # Prevent loading from .env file
+    @patch("agent.config.legacy.load_dotenv")  # Prevent loading from .env file
     def test_from_env_defaults_to_local(self, mock_load_dotenv):
         """Test from_env defaults to Local provider when no env vars set."""
         with patch.dict(os.environ, {}, clear=True):

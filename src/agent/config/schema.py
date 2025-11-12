@@ -1,0 +1,247 @@
+"""Pydantic models for agent configuration schema."""
+
+from pathlib import Path
+from typing import Any
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+class LocalProviderConfig(BaseModel):
+    """Local provider configuration (Docker Desktop Model Runner)."""
+
+    enabled: bool = True
+    base_url: str = "http://localhost:12434/engines/llama.cpp/v1"
+    model: str = "ai/phi4"
+
+
+class OpenAIProviderConfig(BaseModel):
+    """OpenAI provider configuration."""
+
+    enabled: bool = False
+    api_key: str | None = None
+    model: str = "gpt-5-mini"
+
+
+class AnthropicProviderConfig(BaseModel):
+    """Anthropic provider configuration."""
+
+    enabled: bool = False
+    api_key: str | None = None
+    model: str = "claude-haiku-4-5-20251001"
+
+
+class AzureOpenAIProviderConfig(BaseModel):
+    """Azure OpenAI provider configuration."""
+
+    enabled: bool = False
+    endpoint: str | None = None
+    deployment: str | None = None
+    api_version: str = "2025-03-01-preview"
+    api_key: str | None = None
+
+
+class FoundryProviderConfig(BaseModel):
+    """Azure AI Foundry provider configuration."""
+
+    enabled: bool = False
+    project_endpoint: str | None = None
+    model_deployment: str | None = None
+
+
+class GeminiProviderConfig(BaseModel):
+    """Google Gemini provider configuration."""
+
+    enabled: bool = False
+    api_key: str | None = None
+    model: str = "gemini-2.0-flash-exp"
+    use_vertexai: bool = False
+    project_id: str | None = None
+    location: str | None = None
+
+
+class ProviderConfig(BaseModel):
+    """Provider configurations."""
+
+    enabled: list[str] = Field(default_factory=list)
+    local: LocalProviderConfig = Field(default_factory=LocalProviderConfig)
+    openai: OpenAIProviderConfig = Field(default_factory=OpenAIProviderConfig)
+    anthropic: AnthropicProviderConfig = Field(default_factory=AnthropicProviderConfig)
+    azure: AzureOpenAIProviderConfig = Field(default_factory=AzureOpenAIProviderConfig)
+    foundry: FoundryProviderConfig = Field(default_factory=FoundryProviderConfig)
+    gemini: GeminiProviderConfig = Field(default_factory=GeminiProviderConfig)
+
+    @field_validator("enabled")
+    @classmethod
+    def validate_enabled_providers(cls, v: list[str]) -> list[str]:
+        """Validate that enabled providers list contains valid provider names."""
+        valid_providers = {"local", "openai", "anthropic", "azure", "foundry", "gemini"}
+        invalid = set(v) - valid_providers
+        if invalid:
+            raise ValueError(
+                f"Invalid provider names in enabled list: {invalid}. "
+                f"Valid providers: {valid_providers}"
+            )
+        return v
+
+    @model_validator(mode="after")
+    def sync_enabled_flags(self) -> "ProviderConfig":
+        """Sync enabled list with individual provider enabled flags."""
+        # Update individual provider enabled flags based on enabled list
+        self.local.enabled = "local" in self.enabled
+        self.openai.enabled = "openai" in self.enabled
+        self.anthropic.enabled = "anthropic" in self.enabled
+        self.azure.enabled = "azure" in self.enabled
+        self.foundry.enabled = "foundry" in self.enabled
+        self.gemini.enabled = "gemini" in self.enabled
+        return self
+
+
+class AgentConfig(BaseModel):
+    """Agent-specific configuration."""
+
+    data_dir: str = "~/.agent"
+    log_level: str = "info"
+
+    @field_validator("data_dir")
+    @classmethod
+    def expand_data_dir(cls, v: str) -> str:
+        """Expand user home directory in data_dir."""
+        return str(Path(v).expanduser())
+
+
+class TelemetryConfig(BaseModel):
+    """Telemetry and observability configuration."""
+
+    enabled: bool = False
+    enable_sensitive_data: bool = False
+    otlp_endpoint: str = "http://localhost:4317"
+    applicationinsights_connection_string: str | None = None
+
+
+class Mem0Config(BaseModel):
+    """Mem0-specific configuration."""
+
+    storage_path: str | None = None
+    api_key: str | None = None
+    org_id: str | None = None
+    user_id: str | None = None
+    project_id: str | None = None
+
+    @field_validator("storage_path")
+    @classmethod
+    def expand_storage_path(cls, v: str | None) -> str | None:
+        """Expand user home directory in storage_path."""
+        if v:
+            return str(Path(v).expanduser())
+        return v
+
+
+class MemoryConfig(BaseModel):
+    """Memory configuration."""
+
+    enabled: bool = True
+    type: str = "in_memory"
+    history_limit: int = 20
+    mem0: Mem0Config = Field(default_factory=Mem0Config)
+
+    @field_validator("type")
+    @classmethod
+    def validate_memory_type(cls, v: str) -> str:
+        """Validate memory type."""
+        valid_types = {"in_memory", "mem0"}
+        if v not in valid_types:
+            raise ValueError(f"Invalid memory type: {v}. Valid types: {valid_types}")
+        return v
+
+
+class AgentSettings(BaseModel):
+    """Root configuration model for agent settings."""
+
+    version: str = "1.0"
+    providers: ProviderConfig = Field(default_factory=ProviderConfig)
+    agent: AgentConfig = Field(default_factory=AgentConfig)
+    telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
+    memory: MemoryConfig = Field(default_factory=MemoryConfig)
+
+    def model_dump_json_pretty(self, **kwargs: Any) -> str:
+        """Dump model to pretty-printed JSON string."""
+        return self.model_dump_json(indent=2, exclude_none=False, **kwargs)
+
+    @classmethod
+    def get_json_schema(cls) -> dict[str, Any]:
+        """Get JSON schema for the settings model."""
+        return cls.model_json_schema()
+
+    def validate_enabled_providers(self) -> list[str]:
+        """Validate all enabled providers have required configuration.
+
+        Returns:
+            List of validation errors (empty if all valid)
+        """
+        errors = []
+
+        for provider_name in self.providers.enabled:
+            provider = getattr(self.providers, provider_name)
+
+            if provider_name == "openai":
+                if not provider.api_key:
+                    errors.append(
+                        "OpenAI provider enabled but missing api_key. "
+                        "Run: agent config enable openai"
+                    )
+
+            elif provider_name == "anthropic":
+                if not provider.api_key:
+                    errors.append(
+                        "Anthropic provider enabled but missing api_key. "
+                        "Run: agent config enable anthropic"
+                    )
+
+            elif provider_name == "azure":
+                if not provider.endpoint:
+                    errors.append(
+                        "Azure provider enabled but missing endpoint. "
+                        "Run: agent config enable azure"
+                    )
+                if not provider.deployment:
+                    errors.append(
+                        "Azure provider enabled but missing deployment. "
+                        "Run: agent config enable azure"
+                    )
+
+            elif provider_name == "foundry":
+                if not provider.project_endpoint:
+                    errors.append(
+                        "Foundry provider enabled but missing project_endpoint. "
+                        "Run: agent config enable foundry"
+                    )
+                if not provider.model_deployment:
+                    errors.append(
+                        "Foundry provider enabled but missing model_deployment. "
+                        "Run: agent config enable foundry"
+                    )
+
+            elif provider_name == "gemini":
+                if provider.use_vertexai:
+                    if not provider.project_id:
+                        errors.append(
+                            "Gemini Vertex AI enabled but missing project_id. "
+                            "Run: agent config enable gemini"
+                        )
+                    if not provider.location:
+                        errors.append(
+                            "Gemini Vertex AI enabled but missing location. "
+                            "Run: agent config enable gemini"
+                        )
+                else:
+                    if not provider.api_key:
+                        errors.append(
+                            "Gemini provider enabled but missing api_key. "
+                            "Run: agent config enable gemini"
+                        )
+
+            elif provider_name == "local":
+                # Local provider doesn't require API keys
+                pass
+
+        return errors

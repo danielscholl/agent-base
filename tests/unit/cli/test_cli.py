@@ -153,12 +153,12 @@ class TestCLIExecution:
         # Just verify it runs and produces output
         assert result.stdout  # Should have some output
 
-    def test_config_flag_runs(self):
-        """Test --config flag executes."""
-        result = self.runner.invoke(app, ["--config"])
-        # May succeed or fail depending on configuration
-        # Just verify it runs and produces output
-        assert result.stdout  # Should have some output
+    def test_config_command_runs(self):
+        """Test config command shows help."""
+        result = self.runner.invoke(app, ["config"])
+        # Should show config help
+        assert result.exit_code == 0
+        assert "Manage agent configuration" in result.stdout or "Commands" in result.stdout
 
 
 @pytest.mark.unit

@@ -55,7 +55,7 @@ Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) for l
 |----------|-------------|-------|
 | OpenAI | API Key | `OPENAI_API_KEY` |
 | Anthropic | API Key | `ANTHROPIC_API_KEY` |
-| Google Gemini | API Key | `GOOGLE_API_KEY` |
+| Google Gemini | API Key | `GEMINI_API_KEY` |
 | Azure OpenAI | Azure CLI  | az login |
 | Azure AI Foundry | Azure CLI | az login |
 
@@ -70,26 +70,70 @@ Use these when selecting Azure OpenAI or Azure AI Foundry providers:
 ## Quick Setup
 
 ```bash
-# Install agent
+# 1. Install agent
 uv tool install --prerelease=allow git+https://github.com/danielscholl/agent-base.git
 
-# Upgrade agent
-uv tool upgrade agent-base
+# 2. Configure (choose one method)
 
-# Pull model
+# Option A: Interactive setup (recommended)
+agent config init
+
+# Option B: Enable local provider (no API keys needed)
 docker desktop enable model-runner --tcp=12434
 docker model pull phi4
+agent config enable local
 
-# Start agent
+# Option C: Environment variables (for CI/CD)
+export LLM_PROVIDER=local
+# OR
+export LLM_PROVIDER=openai
+export OPENAI_API_KEY=sk-...
+
+# 3. Start agent
 agent
 ```
 
+### Configuration
 
-### Hosted Providers
+Agent supports two configuration methods:
 
-To use hosted providers instead, set required credentials as environment settings:
+**1. Interactive Configuration (Recommended)**
 
-> `.env-example` lists required configuration; export to shell.
+```bash
+# First-time setup wizard
+agent config init
+
+# View current configuration
+agent config show
+
+# Enable additional providers
+agent config enable openai
+agent config enable anthropic
+
+# Edit configuration file
+agent config edit
+
+# Validate configuration
+agent config validate
+```
+
+**2. Environment Variables**
+
+Environment variables override file settings and work for CI/CD:
+
+```bash
+export LLM_PROVIDER=openai
+export OPENAI_API_KEY=sk-...
+agent
+```
+
+> See `.env.example` for all available environment variables.
+
+**Configuration Precedence:**
+1. CLI arguments (highest priority)
+2. Environment variables
+3. Configuration file (`~/.agent/settings.json`)
+4. Default values (lowest priority)
 
 ## Usage
 
@@ -129,6 +173,146 @@ agent --telemetry start
 ```
 
 See [USAGE.md](USAGE.md) for complete examples.
+
+
+## Configuration Guide
+
+### Configuration File Structure
+
+Agent stores configuration in `~/.agent/settings.json`:
+
+```json
+{
+  "version": "1.0",
+  "providers": {
+    "enabled": ["local"],
+    "local": {
+      "enabled": true,
+      "base_url": "http://localhost:12434/engines/llama.cpp/v1",
+      "model": "ai/phi4"
+    },
+    "openai": {
+      "enabled": false,
+      "api_key": null,
+      "model": "gpt-5-mini"
+    }
+  },
+  "agent": {
+    "data_dir": "~/.agent",
+    "log_level": "info"
+  },
+  "telemetry": {
+    "enabled": false,
+    "otlp_endpoint": "http://localhost:4317"
+  },
+  "memory": {
+    "enabled": true,
+    "type": "in_memory",
+    "history_limit": 20
+  }
+}
+```
+
+### Configuration Commands
+
+```bash
+# Interactive setup wizard
+agent config init
+
+# View current settings
+agent config show
+
+# Enable providers
+agent config enable openai      # Prompts for API key
+agent config enable anthropic   # Prompts for API key
+agent config enable azure       # Prompts for endpoint and deployment
+agent config enable gemini      # Prompts for API key or Vertex AI
+
+# Disable providers
+agent config disable openai
+
+# Edit configuration file directly
+agent config edit               # Opens in VSCode, vim, or nano
+
+# Validate configuration
+agent config validate
+```
+
+### Provider Configuration
+
+**Local (Docker Models)**
+- No API keys required
+- Enabled by default
+- Uses Docker Desktop Model Runner
+
+**OpenAI**
+```bash
+agent config enable openai
+# Enter API key when prompted
+```
+
+**Anthropic**
+```bash
+agent config enable anthropic
+# Enter API key when prompted
+```
+
+**Azure OpenAI**
+```bash
+agent config enable azure
+# Enter endpoint, deployment, and optionally API key
+# Uses Azure CLI credentials if no API key provided
+```
+
+**Google Gemini**
+```bash
+agent config enable gemini
+# Choose between API key or Vertex AI
+# Enter credentials when prompted
+```
+
+### Environment Variable Overrides
+
+Environment variables always override file settings:
+
+```bash
+# Override provider
+export LLM_PROVIDER=openai
+
+# Override API key
+export OPENAI_API_KEY=sk-new-key
+
+# Override model
+export AGENT_MODEL=gpt-4o
+
+# Run agent (uses overrides)
+agent
+```
+
+### Troubleshooting
+
+**Configuration not found**
+```bash
+# Create new configuration
+agent config init
+```
+
+**Provider not connecting**
+```bash
+# Validate configuration
+agent config validate
+
+# Check connectivity
+agent --check
+```
+
+**Want to use environment variables only**
+```bash
+# Just set environment variables - file is optional
+export LLM_PROVIDER=openai
+export OPENAI_API_KEY=sk-...
+agent
+```
 
 
 ## Contributing
