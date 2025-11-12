@@ -70,15 +70,30 @@ def extract_llm_config(config: AgentConfig) -> dict[str, Any]:
         }
 
     elif config.llm_provider == "local":
-        # Local provider uses OpenAI-compatible API
-        return {
-            "provider": "openai",
-            "config": {
-                "model": config.local_model,
-                "api_key": "not-needed",
-                "base_url": config.local_base_url or "http://localhost:11434/v1",
-            },
-        }
+        # Local provider uses OpenAI-compatible API but mem0 doesn't support base_url
+        # Fall back to OpenAI API with a standard model
+        if config.openai_api_key:
+            logger.info(
+                "Local LLM provider detected. mem0 will use OpenAI API (gpt-4o-mini) "
+                "for memory extraction since local models aren't directly supported."
+            )
+            return {
+                "provider": "openai",
+                "config": {
+                    "model": "gpt-4o-mini",  # Use standard OpenAI model
+                    "api_key": config.openai_api_key,
+                },
+            }
+        else:
+            logger.warning(
+                "Local LLM provider without OpenAI API key. "
+                "mem0 requires an LLM API for memory extraction. "
+                "Set OPENAI_API_KEY or use MEMORY_TYPE=in_memory."
+            )
+            raise ValueError(
+                "Cannot use mem0 with local provider without OPENAI_API_KEY. "
+                "Either set OPENAI_API_KEY or use MEMORY_TYPE=in_memory."
+            )
 
     else:
         # Default to OpenAI for foundry/unknown providers
