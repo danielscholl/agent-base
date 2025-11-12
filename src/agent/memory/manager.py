@@ -103,9 +103,7 @@ class MemoryManager(ABC):
         """
         pass
 
-    async def retrieve_for_context(
-        self, messages: list[dict], limit: int = 10
-    ) -> dict:
+    async def retrieve_for_context(self, messages: list[dict], limit: int = 10) -> dict:
         """Retrieve memories relevant for context injection.
 
         Default implementation extracts query from latest user message and searches,

@@ -64,10 +64,9 @@ class MemoryContextProvider(ContextProvider):
             for msg in msg_list:
                 text = self._get_message_text(msg)
                 if text:
-                    messages_dicts.append({
-                        "role": str(getattr(msg, "role", "user")),
-                        "content": text
-                    })
+                    messages_dicts.append(
+                        {"role": str(getattr(msg, "role", "user")), "content": text}
+                    )
 
             # Retrieve relevant memories using new method
             result = await self.memory_manager.retrieve_for_context(
