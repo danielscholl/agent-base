@@ -4,6 +4,7 @@ This module provides semantic memory storage using mem0's vector-based
 search capabilities with support for self-hosted and cloud deployments.
 """
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Any
@@ -128,9 +129,10 @@ class Mem0Store(MemoryManager):
                 if not content.strip():
                     continue
 
-                # Store in mem0
+                # Store in mem0 (wrapped to avoid blocking event loop)
                 try:
-                    result = self.client.add(
+                    result = await asyncio.to_thread(
+                        self.client.add,
                         messages=content,
                         user_id=self.namespace,
                     )
@@ -187,9 +189,12 @@ class Mem0Store(MemoryManager):
 
         try:
             # Search mem0 with semantic similarity
-            results = self.client.search(
+            # Use filters parameter for user_id filtering
+            # Wrapped to avoid blocking event loop
+            results = await asyncio.to_thread(
+                self.client.search,
                 query=query,
-                user_id=self.namespace,
+                filters={"user_id": self.namespace},
                 limit=limit
             )
 
@@ -229,8 +234,11 @@ class Mem0Store(MemoryManager):
             Structured response dict with all memories
         """
         try:
-            # Get all memories for user
-            results = self.client.get_all(user_id=self.namespace)
+            # Get all memories for user (wrapped to avoid blocking)
+            results = await asyncio.to_thread(
+                self.client.get_all,
+                user_id=self.namespace
+            )
 
             memories = []
             if isinstance(results, list):
@@ -304,8 +312,11 @@ class Mem0Store(MemoryManager):
             Structured response dict with success status
         """
         try:
-            # Delete all memories for user
-            self.client.delete_all(user_id=self.namespace)
+            # Delete all memories for user (wrapped to avoid blocking)
+            await asyncio.to_thread(
+                self.client.delete_all,
+                user_id=self.namespace
+            )
 
             logger.info(f"Cleared all memories for namespace: {self.namespace}")
 

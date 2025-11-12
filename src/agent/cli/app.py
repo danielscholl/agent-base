@@ -352,6 +352,37 @@ def run_health_check() -> None:
 
         console.print(f"  [magenta]◉[/magenta] System Prompt: [magenta]{prompt_display}[/magenta]")
 
+        # Memory Backend
+        console.print("\n[bold]Memory:[/bold]")
+        memory_type = config.memory_type
+        console.print(f"  [cyan]◉[/cyan] Backend: [cyan]{memory_type}[/cyan]")
+
+        if memory_type == "mem0":
+            # Check mem0 endpoint availability
+            from agent.memory.mem0_utils import check_mem0_endpoint
+
+            mem0_host = config.mem0_host or "http://localhost:8000"
+            is_reachable = check_mem0_endpoint(mem0_host)
+
+            if is_reachable:
+                console.print(
+                    f"  [green]◉[/green] Endpoint: [dim cyan]{mem0_host}[/dim cyan] [green]✓ reachable[/green]",
+                    highlight=False,
+                )
+            else:
+                console.print(
+                    f"  [yellow]◉[/yellow] Endpoint: [dim cyan]{mem0_host}[/dim cyan] [yellow]⚠ not reachable[/yellow]",
+                    highlight=False,
+                )
+
+            # Show namespace
+            namespace = config.mem0_user_id or "default-user"
+            if config.mem0_project_id:
+                namespace = f"{namespace}:{config.mem0_project_id}"
+            console.print(f"  [cyan]◉[/cyan] Namespace: [dim]{namespace}[/dim]")
+        else:
+            console.print("  [dim]In-memory storage (ephemeral, keyword search)[/dim]")
+
         # Docker
         console.print("\n[bold]Docker:[/bold]")
         try:

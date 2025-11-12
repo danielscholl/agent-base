@@ -555,11 +555,24 @@ async def handle_memory_command(user_input: str, console: Console) -> None:
                     timeout=10,
                 )
 
-                console.print(
-                    "\n[green]+ Mem0 server is running[/green]",
-                    markup=True,
-                    highlight=False,
-                )
+                # Check endpoint health
+                from agent.memory.mem0_utils import check_mem0_endpoint
+                is_healthy = check_mem0_endpoint(MEM0_ENDPOINT)
+
+                if is_healthy:
+                    console.print(
+                        "\n[green]+ Mem0 server is running and healthy[/green]",
+                        markup=True,
+                        highlight=False,
+                    )
+                else:
+                    console.print(
+                        "\n[yellow]⚠ Mem0 server container running but not responding[/yellow]",
+                        markup=True,
+                        highlight=False,
+                    )
+                    console.print("[dim]Container may still be starting up...[/dim]")
+
                 console.print(f"[dim]Status: {uptime_result.stdout.strip()}[/dim]")
                 console.print(f"[cyan]Endpoint:[/cyan] {MEM0_ENDPOINT}")
 
@@ -603,6 +616,11 @@ async def handle_memory_command(user_input: str, console: Console) -> None:
             console.print("  [cyan]/memory stop[/cyan]   - Stop mem0 server")
             console.print("  [cyan]/memory status[/cyan] - Check if running")
             console.print("  [cyan]/memory url[/cyan]    - Show endpoint and setup")
+            console.print()
+            console.print("[bold]Deployment Modes:[/bold]")
+            console.print("  [cyan]Self-hosted:[/cyan] Set MEM0_HOST=http://localhost:8000")
+            console.print("  [cyan]Cloud:[/cyan]       Set MEM0_API_KEY + MEM0_ORG_ID")
+            console.print("  [dim]Get cloud credentials from https://app.mem0.ai[/dim]")
             console.print()
 
     except subprocess.TimeoutExpired:

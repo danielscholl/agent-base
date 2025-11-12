@@ -148,8 +148,8 @@ class AgentConfig:
         config.agent_session_dir = config.agent_data_dir / "sessions"
 
         # Memory configuration
-        # Note: Memory is currently redundant with thread persistence
-        # Default to false until semantic memory (mem0) is implemented
+        # Note: Memory is enabled by default for conversation context
+        # Supports both in-memory (keyword search) and mem0 (semantic search)
         config.memory_enabled = os.getenv("MEMORY_ENABLED", "true").lower() == "true"
         config.memory_type = os.getenv("MEMORY_TYPE", "in_memory")
         config.memory_history_limit = int(os.getenv("MEMORY_HISTORY_LIMIT", "20"))

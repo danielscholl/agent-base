@@ -192,7 +192,7 @@ class TestMem0Store:
 
         mem0_store.client.search.assert_called_once_with(
             query="login errors",
-            user_id="test-user:test-project",
+            filters={"user_id": "test-user:test-project"},
             limit=5
         )
 
