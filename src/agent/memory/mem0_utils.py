@@ -12,6 +12,33 @@ from agent.config import AgentConfig
 
 logger = logging.getLogger(__name__)
 
+# Providers that mem0 supports
+SUPPORTED_PROVIDERS = ["openai", "anthropic", "azure", "gemini"]
+
+
+def is_provider_compatible(config: AgentConfig) -> tuple[bool, str]:
+    """Check if LLM provider is compatible with mem0.
+
+    Args:
+        config: Agent configuration with LLM settings
+
+    Returns:
+        Tuple of (is_compatible, reason_if_not)
+
+    Example:
+        >>> config = AgentConfig(llm_provider="local")
+        >>> is_compatible, reason = is_provider_compatible(config)
+        >>> # (False, "local provider not supported by mem0")
+    """
+    if config.llm_provider in SUPPORTED_PROVIDERS:
+        return True, ""
+    elif config.llm_provider == "local":
+        return False, "local provider not supported by mem0 (requires cloud LLM API)"
+    elif config.llm_provider == "foundry":
+        return False, "foundry provider not yet tested with mem0"
+    else:
+        return False, f"unknown provider '{config.llm_provider}'"
+
 
 def extract_llm_config(config: AgentConfig) -> dict[str, Any]:
     """Extract LLM configuration from AgentConfig for mem0.
@@ -37,6 +64,7 @@ def extract_llm_config(config: AgentConfig) -> dict[str, Any]:
             "config": {
                 "model": config.openai_model,
                 "api_key": config.openai_api_key,
+                "openai_base_url": "https://api.openai.com/v1",  # Force direct OpenAI API
             },
         }
 
@@ -69,45 +97,13 @@ def extract_llm_config(config: AgentConfig) -> dict[str, Any]:
             },
         }
 
-    elif config.llm_provider == "local":
-        # Local provider uses OpenAI-compatible API but mem0 doesn't support base_url
-        # Fall back to OpenAI API with a standard model
-        if config.openai_api_key:
-            logger.info(
-                "Local LLM provider detected. mem0 will use OpenAI API (gpt-4o-mini) "
-                "for memory extraction since local models aren't directly supported."
-            )
-            return {
-                "provider": "openai",
-                "config": {
-                    "model": "gpt-4o-mini",  # Use standard OpenAI model
-                    "api_key": config.openai_api_key,
-                },
-            }
-        else:
-            logger.warning(
-                "Local LLM provider without OpenAI API key. "
-                "mem0 requires an LLM API for memory extraction. "
-                "Set OPENAI_API_KEY or use MEMORY_TYPE=in_memory."
-            )
-            raise ValueError(
-                "Cannot use mem0 with local provider without OPENAI_API_KEY. "
-                "Either set OPENAI_API_KEY or use MEMORY_TYPE=in_memory."
-            )
-
     else:
-        # Default to OpenAI for foundry/unknown providers
-        logger.warning(
-            f"Provider '{config.llm_provider}' not explicitly supported by mem0, "
-            "defaulting to OpenAI configuration"
+        # Unsupported provider (local, foundry, unknown)
+        raise ValueError(
+            f"mem0 does not support '{config.llm_provider}' provider. "
+            f"Supported providers: {', '.join(SUPPORTED_PROVIDERS)}. "
+            "Use MEMORY_TYPE=in_memory for provider-independent memory."
         )
-        return {
-            "provider": "openai",
-            "config": {
-                "model": config.openai_model,
-                "api_key": config.openai_api_key or "not-needed",
-            },
-        }
 
 
 def get_storage_path(config: AgentConfig) -> Path:
@@ -139,13 +135,13 @@ def get_storage_path(config: AgentConfig) -> Path:
 
 
 def create_memory_instance(config: AgentConfig) -> Any:
-    """Create mem0 Memory instance with proper configuration.
+    """Create mem0 Memory or MemoryClient instance with proper configuration.
 
     Args:
         config: Agent configuration with mem0 and LLM settings
 
     Returns:
-        Configured mem0.Memory instance
+        Configured mem0.Memory (local) or mem0.MemoryClient (cloud) instance
 
     Raises:
         ImportError: If mem0ai or chromadb packages not installed
@@ -155,32 +151,36 @@ def create_memory_instance(config: AgentConfig) -> Any:
         >>> config = AgentConfig.from_env()
         >>> memory = create_memory_instance(config)
     """
-    try:
-        from mem0 import Memory  # type: ignore[import-untyped]
-    except ImportError:
-        raise ImportError(
-            "mem0ai package not installed. "
-            "Install with: uv pip install -e '.[mem0]' (or pip install -e '.[mem0]')"
-        )
-
     # Determine if using cloud or local mode
     is_cloud_mode = bool(config.mem0_api_key and config.mem0_org_id)
 
     if is_cloud_mode:
-        # Cloud mode - use mem0.ai service
-        logger.info("Initializing mem0 in cloud mode (mem0.ai)")
-        mem0_config = {
-            "llm": extract_llm_config(config),
-            "vector_store": {
-                "provider": "mem0",  # Uses mem0.ai cloud vector store
-                "config": {
-                    "api_key": config.mem0_api_key,
-                    "org_id": config.mem0_org_id,
-                },
-            },
-        }
+        # Cloud mode - use MemoryClient for mem0.ai platform
+        try:
+            from mem0 import MemoryClient  # type: ignore[import-untyped]
+        except ImportError:
+            raise ImportError(
+                "mem0ai package not installed. "
+                "Install with: uv pip install -e '.[mem0]' (or pip install -e '.[mem0]')"
+            )
+
+        logger.info("Initializing mem0 in cloud mode (mem0.ai platform)")
+        try:
+            client = MemoryClient(api_key=config.mem0_api_key)
+            logger.debug("mem0 MemoryClient created successfully for cloud mode")
+            return client
+        except Exception as e:
+            raise ValueError(f"Failed to initialize mem0 MemoryClient: {e}")
     else:
-        # Local mode - use Chroma file-based storage
+        # Local mode - use Memory with Chroma file-based storage
+        try:
+            from mem0 import Memory  # type: ignore[import-untyped]
+        except ImportError:
+            raise ImportError(
+                "mem0ai package not installed. "
+                "Install with: uv pip install -e '.[mem0]' (or pip install -e '.[mem0]')"
+            )
+
         storage_path = get_storage_path(config)
         logger.info(f"Initializing mem0 in local mode: {storage_path}")
 
@@ -198,11 +198,9 @@ def create_memory_instance(config: AgentConfig) -> Any:
             },
         }
 
-    try:
-        memory = Memory.from_config(mem0_config)
-        logger.debug(
-            f"mem0 Memory instance created successfully ({'cloud' if is_cloud_mode else 'local'} mode)"
-        )
-        return memory
-    except Exception as e:
-        raise ValueError(f"Failed to initialize mem0 Memory: {e}")
+        try:
+            memory = Memory.from_config(mem0_config)
+            logger.debug("mem0 Memory instance created successfully for local mode")
+            return memory
+        except Exception as e:
+            raise ValueError(f"Failed to initialize mem0 Memory: {e}")

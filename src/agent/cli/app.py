@@ -353,35 +353,56 @@ def run_health_check() -> None:
         # Memory Backend
         console.print("\n[bold]Memory:[/bold]")
         memory_type = config.memory_type
-        console.print(f"  [cyan]◉[/cyan] Backend: [cyan]{memory_type}[/cyan]")
 
         if memory_type == "mem0":
-            # Check if using cloud or local mode
-            from agent.memory.mem0_utils import get_storage_path
+            # Check if mem0 is actually available
+            mem0_available = False
+            unavailable_reason = ""
 
-            is_cloud = bool(config.mem0_api_key and config.mem0_org_id)
+            try:
+                from agent.memory.mem0_utils import get_storage_path, is_provider_compatible
 
-            if is_cloud:
+                is_compatible, reason = is_provider_compatible(config)
+                mem0_available = is_compatible
+                unavailable_reason = reason
+            except ImportError:
+                unavailable_reason = "mem0ai package not installed"
+
+            if not mem0_available:
+                # Show actual backend (in_memory) with note about mem0
+                console.print(f"  [cyan]◉[/cyan] Backend: [cyan]in_memory[/cyan]")
                 console.print(
-                    "  [green]◉[/green] Mode: [green]Cloud (mem0.ai)[/green]",
-                    highlight=False,
+                    f"  [yellow]⚠[/yellow]  mem0 not available: [yellow]{unavailable_reason}[/yellow]"
                 )
-                console.print(f"  [cyan]◉[/cyan] Organization: [dim]{config.mem0_org_id}[/dim]")
             else:
-                storage_path = get_storage_path(config)
-                console.print(
-                    "  [green]◉[/green] Mode: [green]Local (Chroma)[/green]",
-                    highlight=False,
-                )
-                console.print(f"  [cyan]◉[/cyan] Storage: [dim]{storage_path}[/dim]")
+                # Show mem0 as backend with configuration
+                console.print(f"  [cyan]◉[/cyan] Backend: [cyan]mem0[/cyan]")
 
-            # Show namespace
-            namespace = config.mem0_user_id or "default-user"
-            if config.mem0_project_id:
-                namespace = f"{namespace}:{config.mem0_project_id}"
-            console.print(f"  [cyan]◉[/cyan] Namespace: [dim]{namespace}[/dim]")
+                from agent.memory.mem0_utils import get_storage_path
+                is_cloud = bool(config.mem0_api_key and config.mem0_org_id)
+
+                if is_cloud:
+                    console.print(
+                        "  [green]◉[/green] Mode: [green]Cloud (mem0.ai)[/green]",
+                        highlight=False,
+                    )
+                    console.print(f"  [cyan]◉[/cyan] Organization: [dim]{config.mem0_org_id}[/dim]")
+                else:
+                    storage_path = get_storage_path(config)
+                    console.print(
+                        "  [green]◉[/green] Mode: [green]Local (Chroma)[/green]",
+                        highlight=False,
+                    )
+                    console.print(f"  [cyan]◉[/cyan] Storage: [dim]{storage_path}[/dim]")
+
+                # Show namespace
+                namespace = config.mem0_user_id or "default-user"
+                if config.mem0_project_id:
+                    namespace = f"{namespace}:{config.mem0_project_id}"
+                console.print(f"  [cyan]◉[/cyan] Namespace: [dim]{namespace}[/dim]")
         else:
-            console.print("  [dim]In-memory storage (ephemeral, keyword search)[/dim]")
+            # in_memory backend
+            console.print(f"  [cyan]◉[/cyan] Backend: [cyan]{memory_type}[/cyan]")
 
         # Docker
         console.print("\n[bold]Docker:[/bold]")
