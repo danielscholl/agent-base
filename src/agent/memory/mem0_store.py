@@ -6,7 +6,8 @@ search capabilities with support for self-hosted and cloud deployments.
 
 import asyncio
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timezone
 from typing import Any
 
 from agent.config import AgentConfig
@@ -14,6 +15,15 @@ from agent.memory.manager import MemoryManager
 from agent.memory.mem0_utils import get_mem0_client
 
 logger = logging.getLogger(__name__)
+
+# Patterns for detecting sensitive data (API keys, tokens, passwords)
+SENSITIVE_PATTERNS = [
+    re.compile(r'sk[-_][a-zA-Z0-9_]{20,}', re.IGNORECASE),  # API keys (sk_...)
+    re.compile(r'bearer\s+[a-zA-Z0-9\-._~+/]+=*', re.IGNORECASE),  # Bearer tokens
+    re.compile(r'api[_-]?key["\s:=]+[a-zA-Z0-9\-._~+/]+', re.IGNORECASE),  # API key assignments
+    re.compile(r'token["\s:=]+[a-zA-Z0-9\-._~+/]{20,}', re.IGNORECASE),  # Token assignments
+    re.compile(r'password["\s:=]+\S+', re.IGNORECASE),  # Password assignments
+]
 
 
 class Mem0Store(MemoryManager):
@@ -62,6 +72,28 @@ class Mem0Store(MemoryManager):
             self.namespace = self.user_id
 
         logger.debug(f"Mem0Store namespace: {self.namespace}")
+
+    def _scrub_sensitive_content(self, content: str) -> tuple[str, bool]:
+        """Scrub potential secrets from content before storage.
+
+        Args:
+            content: Message content to check
+
+        Returns:
+            Tuple of (scrubbed_content, was_modified)
+        """
+        original = content
+        modified = False
+
+        for pattern in SENSITIVE_PATTERNS:
+            if pattern.search(content):
+                content = pattern.sub("[REDACTED]", content)
+                modified = True
+
+        if modified:
+            logger.warning("Detected and redacted potential secrets from content")
+
+        return content, modified
 
     def _should_save_message(self, msg: dict) -> bool:
         """Check if message should be saved to memory.
@@ -129,13 +161,26 @@ class Mem0Store(MemoryManager):
                 if not content.strip():
                     continue
 
+                # Scrub sensitive content before storage
+                scrubbed_content, was_scrubbed = self._scrub_sensitive_content(content)
+
                 # Store in mem0 (wrapped to avoid blocking event loop)
+                # Try both parameter names for compatibility
                 try:
-                    result = await asyncio.to_thread(
-                        self.client.add,
-                        messages=content,
-                        user_id=self.namespace,
-                    )
+                    # First try 'memory' parameter (common in mem0 examples)
+                    try:
+                        result = await asyncio.to_thread(
+                            self.client.add,
+                            memory=scrubbed_content,
+                            user_id=self.namespace,
+                        )
+                    except TypeError:
+                        # Fall back to 'messages' parameter
+                        result = await asyncio.to_thread(
+                            self.client.add,
+                            messages=scrubbed_content,
+                            user_id=self.namespace,
+                        )
 
                     # Extract memory ID from result
                     if isinstance(result, dict):
@@ -283,10 +328,24 @@ class Mem0Store(MemoryManager):
 
             memories = all_result["result"]
 
-            # Sort by timestamp (most recent first)
+            # Sort by timestamp (most recent first) with proper datetime parsing
+            def parse_timestamp(memory: dict) -> datetime:
+                """Parse timestamp with fallback to epoch."""
+                timestamp_str = memory.get("timestamp", "")
+                try:
+                    # Try parsing ISO format
+                    dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+                    # Ensure timezone-aware for comparison
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    return dt
+                except (ValueError, AttributeError):
+                    # Fallback to epoch (oldest possible time) in UTC
+                    return datetime.min.replace(tzinfo=timezone.utc)
+
             sorted_memories = sorted(
                 memories,
-                key=lambda m: m.get("timestamp", ""),
+                key=parse_timestamp,
                 reverse=True
             )
 

@@ -84,7 +84,7 @@ def get_mem0_client(config: AgentConfig) -> Any:
     except ImportError:
         raise ImportError(
             "mem0ai package not installed. "
-            "Install with: uv add mem0ai (or pip install mem0ai)"
+            "Install with: uv pip install -e '.[mem0]' (or pip install -e '.[mem0]')"
         )
 
     # Validate configuration

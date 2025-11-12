@@ -144,8 +144,9 @@ class TestMem0Store:
         await mem0_store.add(messages)
 
         # Verify namespace is used in add call
+        # Note: Implementation tries 'memory=' first, falls back to 'messages='
         mem0_store.client.add.assert_called_with(
-            messages="Test",
+            memory="Test",
             user_id="test-user:test-project"
         )
 
@@ -169,6 +170,45 @@ class TestMem0Store:
         assert result["success"] is True
         assert len(result["result"]) == 0
         assert "Added 0 messages" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_add_scrubs_api_keys(self, mem0_store):
+        """Test that API keys are scrubbed before storage."""
+        mem0_store.client.add.return_value = {"id": "mem-123"}
+
+        messages = [{"role": "user", "content": "My API key is sk_test_1234567890abcdefghij"}]
+        await mem0_store.add(messages)
+
+        # Verify the content was scrubbed
+        call_args = mem0_store.client.add.call_args
+        assert "[REDACTED]" in call_args.kwargs["memory"]
+        assert "sk_test_" not in call_args.kwargs["memory"]
+
+    @pytest.mark.asyncio
+    async def test_add_scrubs_bearer_tokens(self, mem0_store):
+        """Test that Bearer tokens are scrubbed before storage."""
+        mem0_store.client.add.return_value = {"id": "mem-123"}
+
+        messages = [{"role": "user", "content": "Use Bearer abc123xyz789 for auth"}]
+        await mem0_store.add(messages)
+
+        # Verify the token was scrubbed
+        call_args = mem0_store.client.add.call_args
+        assert "[REDACTED]" in call_args.kwargs["memory"]
+        assert "abc123xyz789" not in call_args.kwargs["memory"]
+
+    @pytest.mark.asyncio
+    async def test_add_scrubs_passwords(self, mem0_store):
+        """Test that password assignments are scrubbed."""
+        mem0_store.client.add.return_value = {"id": "mem-123"}
+
+        messages = [{"role": "user", "content": "password=super_secret_123"}]
+        await mem0_store.add(messages)
+
+        # Verify the password was scrubbed
+        call_args = mem0_store.client.add.call_args
+        assert "[REDACTED]" in call_args.kwargs["memory"]
+        assert "super_secret_123" not in call_args.kwargs["memory"]
 
     @pytest.mark.asyncio
     async def test_search_by_semantic_query(self, mem0_store):
@@ -244,6 +284,40 @@ class TestMem0Store:
         # Should be sorted by timestamp, most recent first
         assert result["result"][0]["content"] == "Newest"
         assert result["result"][1]["content"] == "Middle"
+
+    @pytest.mark.asyncio
+    async def test_get_recent_parses_iso_timestamps(self, mem0_store):
+        """Test get_recent correctly parses ISO timestamps with proper datetime sorting."""
+        mem0_store.client.get_all.return_value = [
+            {"id": "mem-1", "memory": "Morning", "created_at": "2025-01-10T09:00:00Z", "metadata": {}},
+            {"id": "mem-2", "memory": "Afternoon", "created_at": "2025-01-10T15:30:00+00:00", "metadata": {}},
+            {"id": "mem-3", "memory": "Evening", "created_at": "2025-01-10T20:45:00Z", "metadata": {}}
+        ]
+
+        result = await mem0_store.get_recent(limit=3)
+
+        assert result["success"] is True
+        assert len(result["result"]) == 3
+        # Should be sorted by actual datetime, not string comparison
+        assert result["result"][0]["content"] == "Evening"  # 20:45
+        assert result["result"][1]["content"] == "Afternoon"  # 15:30
+        assert result["result"][2]["content"] == "Morning"  # 09:00
+
+    @pytest.mark.asyncio
+    async def test_get_recent_handles_invalid_timestamps(self, mem0_store):
+        """Test get_recent handles invalid timestamps gracefully."""
+        mem0_store.client.get_all.return_value = [
+            {"id": "mem-1", "memory": "Valid", "created_at": "2025-01-10T15:00:00Z", "metadata": {}},
+            {"id": "mem-2", "memory": "Invalid", "created_at": "not-a-date", "metadata": {}},
+            {"id": "mem-3", "memory": "Missing", "created_at": "", "metadata": {}}
+        ]
+
+        result = await mem0_store.get_recent(limit=3)
+
+        assert result["success"] is True
+        # Should not crash - invalid timestamps sorted to end (datetime.min)
+        assert len(result["result"]) == 3
+        assert result["result"][0]["content"] == "Valid"
 
     @pytest.mark.asyncio
     async def test_clear_removes_all_memories(self, mem0_store):

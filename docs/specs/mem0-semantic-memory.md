@@ -132,12 +132,13 @@ Introduce a `Mem0Store` implementation that provides semantic memory capabilitie
   - User/session namespacing for multi-user scenarios
 
 - **src/agent/memory/mem0_utils.py**
-  - `check_mem0_endpoint()`: Fast health check (<30ms timeout) for mem0 availability
+  - `check_mem0_endpoint()`: Fast health check (20ms timeout) for mem0 availability
   - `get_mem0_client()`: Factory for mem0 client instances (self-hosted vs cloud)
-  - `CircuitBreaker`: Simple circuit breaker for mem0 calls (fail-fast after N failures)
+  - Validates configuration and provides clear error messages
+
+  **Future enhancements** (not in current implementation):
+  - Circuit breaker for mem0 calls (fail-fast after N failures)
   - Connection pooling and retry logic with exponential backoff
-  - Namespace management utilities (`build_namespace()`, `parse_namespace()`)
-  - Message filtering utilities (`should_save_message()`, `filter_system_messages()`)
 
 - **tests/unit/memory/test_mem0_store.py**
   - Unit tests for `Mem0Store` class
@@ -152,13 +153,13 @@ Introduce a `Mem0Store` implementation that provides semantic memory capabilitie
   - Client factory tests
   - Mock connection scenarios
 
-- **tests/integration/test_mem0_integration.py**
+- **tests/integration/test_mem0_integration.py** *(Future enhancement)*
   - Integration tests with real mem0 instance (requires Docker)
   - End-to-end semantic search workflows
   - Cross-session memory persistence
   - Container lifecycle management tests
 
-- **docker/mem0/docker-compose.yml** (PRIMARY deployment method)
+- **docker/mem0/docker-compose.yml** ✅ (PRIMARY deployment method)
   - Docker Compose configuration for mem0 server
   - Postgres database for vector storage (required for mem0)
   - Environment variable configuration
@@ -167,7 +168,7 @@ Introduce a `Mem0Store` implementation that provides semantic memory capabilitie
 
 ## Implementation Plan
 
-### Phase 0: Quick Win - Semantic Retrieval for Context
+### Phase 0: Quick Win - Semantic Retrieval for Context ✅ **(Implemented)**
 
 **Objective**: Update `MemoryContextProvider` to use semantic/keyword search for context injection instead of chronological slicing. This provides immediate value EVEN with `InMemoryStore` and sets the foundation for Mem0Store.
 
@@ -217,7 +218,7 @@ Introduce a `Mem0Store` implementation that provides semantic memory capabilitie
    - Test limit enforcement
    - Verify backward compatibility
 
-### Phase 1: Configuration, Health Checks & CLI Infrastructure
+### Phase 1: Configuration, Health Checks & CLI Infrastructure ✅ **(Implemented)**
 
 **Objective**: Establish mem0 configuration, health checks, and Docker container management before implementing Mem0Store.
 
@@ -269,7 +270,7 @@ Introduce a `Mem0Store` implementation that provides semantic memory capabilitie
    - Unit tests for `check_mem0_endpoint()` (mocked)
    - Integration tests for Docker Compose lifecycle
 
-### Phase 2: Mem0Store Implementation
+### Phase 2: Mem0Store Implementation ✅ **(Implemented)**
 
 **Objective**: Implement `Mem0Store` class with semantic memory capabilities, async operations, namespacing, and safety gates.
 
@@ -308,11 +309,12 @@ Introduce a `Mem0Store` implementation that provides semantic memory capabilitie
      ```
 
 4. **Connection Management**:
-   - Factory function `get_mem0_client()` routes self-hosted vs cloud
-   - Connection pooling via httpx.AsyncClient
-   - Retry logic with exponential backoff
-   - Clear error messages for misconfiguration
-   - Graceful degradation with logging
+   - ✅ Factory function `get_mem0_client()` routes self-hosted vs cloud
+   - ✅ Non-blocking I/O via `asyncio.to_thread()` wrapping sync client
+   - ✅ Clear error messages for misconfiguration
+   - ✅ Graceful degradation with logging
+   - ⏳ Connection pooling via httpx.AsyncClient (future enhancement)
+   - ⏳ Retry logic with exponential backoff (future enhancement)
 
 5. **Error Handling**:
    - Catch mem0 connection errors, network timeouts
@@ -347,9 +349,16 @@ Introduce a `Mem0Store` implementation that provides semantic memory capabilitie
 
 **Objective**: Add observability, context bloat prevention, guardrails, and finalize for production.
 
+**Implementation Status**:
+- ✅ Memory Filter Guardrails (secret scrubbing)
+- ⏳ Observability Integration (future)
+- ⏳ Context Bloat Prevention (partially complete)
+- ⏳ Performance Benchmarks (future)
+- ⏳ Documentation (in progress)
+
 **Changes**:
 
-1. **Observability Integration**:
+1. **Observability Integration** *(Future enhancement)*:
    - Add OpenTelemetry spans around memory operations:
      - `memory.add` span with count attribute
      - `memory.search` span with query + result count
@@ -357,20 +366,21 @@ Introduce a `Mem0Store` implementation that provides semantic memory capabilitie
    - Track latency metrics (target: <100ms add, <200ms search)
    - Log slow operations (> 500ms) as warnings
 
-2. **Context Bloat Prevention**:
-   - Cap `retrieve_for_context()` to k=5-10 results max
-   - Deduplicate by semantic similarity (avoid near-duplicates)
-   - Prefer concise snippets over full messages when possible
-   - Add `max_context_tokens` configuration (future: token-aware limiting)
+2. **Context Bloat Prevention** *(Partially complete)*:
+   - ✅ Cap `retrieve_for_context()` to configurable limit (default: 10)
+   - ⏳ Deduplicate by semantic similarity (avoid near-duplicates)
+   - ⏳ Prefer concise snippets over full messages when possible
+   - ⏳ Add `max_context_tokens` configuration (future: token-aware limiting)
 
-3. **Memory Filter Guardrails**:
-   - Pattern-based filters for common secrets:
-     - API keys (sk-, pk-, etc.)
-     - Tokens (ghp_, gho_, etc.)
+3. **Memory Filter Guardrails** ✅ **(Implemented)**:
+   - ✅ Pattern-based filters for common secrets:
+     - API keys (sk_*, pk_*, api_key=)
+     - Bearer tokens
      - Passwords in plaintext
-   - Configurable via `MEMORY_FILTER_PATTERNS` env var
-   - Log filtered content (redacted) for debugging
-   - Allow override with `metadata: {force_save: true}` (use cautiously)
+   - ✅ Auto-redaction with `[REDACTED]` before storage
+   - ✅ Logged warnings when secrets detected
+   - ✅ Override with `metadata: {force_save: true}` (use cautiously)
+   - ⏳ Configurable via `MEMORY_FILTER_PATTERNS` env var (future)
 
 4. **Performance Benchmarks**:
    - Create `tests/performance/test_memory_performance.py`

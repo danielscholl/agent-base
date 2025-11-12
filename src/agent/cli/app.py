@@ -374,6 +374,17 @@ def run_health_check() -> None:
                     f"  [yellow]◉[/yellow] Endpoint: [dim cyan]{mem0_host}[/dim cyan] [yellow]⚠ not reachable[/yellow]",
                     highlight=False,
                 )
+                # Add actionable hints
+                if mem0_host == "http://localhost:8000":
+                    console.print(
+                        f"  [dim]→ Try: [cyan]agent --memory start[/cyan] to start self-hosted mem0[/dim]",
+                        highlight=False,
+                    )
+                else:
+                    console.print(
+                        f"  [dim]→ Check MEM0_HOST configuration or network connectivity[/dim]",
+                        highlight=False,
+                    )
 
             # Show namespace
             namespace = config.mem0_user_id or "default-user"

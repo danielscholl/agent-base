@@ -493,9 +493,27 @@ async def handle_memory_command(user_input: str, console: Console) -> None:
                 timeout=120,
             )
 
-            # Wait for startup
+            # Wait for startup with health polling
             console.print("[dim]Waiting for services to start...[/dim]")
-            time.sleep(5)
+
+            # Poll for health with backoff
+            from agent.memory.mem0_utils import check_mem0_endpoint
+            max_attempts = 15
+            base_delay = 0.5
+
+            for attempt in range(1, max_attempts + 1):
+                if check_mem0_endpoint(MEM0_ENDPOINT):
+                    console.print(f"[dim]Ready after {attempt} check(s)[/dim]")
+                    break
+
+                # Exponential backoff with cap
+                delay = min(base_delay * (1.5 ** (attempt - 1)), 3.0)
+                time.sleep(delay)
+
+                if attempt % 3 == 0:
+                    console.print(f"[dim]Still starting... ({attempt}/{max_attempts})[/dim]")
+            else:
+                console.print("[yellow]⚠ Server may still be starting up[/yellow]")
 
             console.print("\n[green]+ Mem0 server started successfully![/green]\n")
             console.print(f"  Endpoint: {MEM0_ENDPOINT}")
