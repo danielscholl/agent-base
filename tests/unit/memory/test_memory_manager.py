@@ -1,5 +1,7 @@
 """Unit tests for agent.memory.manager module."""
 
+from unittest.mock import Mock, patch
+
 import pytest
 
 from agent.config import AgentConfig
@@ -137,3 +139,51 @@ class TestCreateMemoryManager:
         # Clear
         clear_result = await manager.clear()
         assert clear_result["success"] is True
+
+    def test_create_memory_manager_mem0_type(self):
+        """Test factory routes to Mem0Store when memory_type is mem0."""
+        from agent.memory.mem0_store import Mem0Store
+
+        config = AgentConfig(
+            llm_provider="openai",
+            openai_api_key="test",
+            memory_type="mem0",
+            mem0_host="http://localhost:8000",
+        )
+
+        with patch("agent.memory.mem0_store.get_mem0_client") as mock_get_client:
+            mock_get_client.return_value = Mock()
+
+            manager = create_memory_manager(config)
+
+            assert isinstance(manager, Mem0Store)
+
+    def test_create_memory_manager_mem0_fallback_on_error(self):
+        """Test factory falls back to InMemoryStore when Mem0Store fails."""
+        config = AgentConfig(
+            llm_provider="openai",
+            openai_api_key="test",
+            memory_type="mem0",
+            mem0_host="http://localhost:8000",
+        )
+
+        with patch("agent.memory.mem0_store.get_mem0_client") as mock_get_client:
+            mock_get_client.side_effect = Exception("Connection failed")
+
+            manager = create_memory_manager(config)
+
+            # Should fall back to InMemoryStore
+            assert isinstance(manager, InMemoryStore)
+
+    def test_create_memory_manager_default_to_in_memory(self):
+        """Test factory defaults to InMemoryStore for unknown types."""
+        config = AgentConfig(
+            llm_provider="openai",
+            openai_api_key="test",
+            memory_type="unknown_type",
+        )
+
+        manager = create_memory_manager(config)
+
+        assert isinstance(manager, InMemoryStore)
+
