@@ -95,6 +95,15 @@ async def auto_save_session(
         session_name: Optional session name (if not provided, generates timestamp)
         agent: Optional Agent instance for memory saving
     """
+    import time
+
+    save_start = time.perf_counter()
+
+    # Skip save for empty sessions (optimization: no conversation = nothing to persist)
+    if message_count == 0:
+        logger.debug("[PERF] Skipping session save - no messages exchanged")
+        return
+
     if message_count > 0:
         try:
             # Use provided session name or generate one with timestamp
@@ -112,7 +121,11 @@ async def auto_save_session(
             # Save memory state if agent has memory enabled and using in-memory backend
             # For semantic backends (mem0), memory is already persisted externally and
             # fetching all entries can introduce noticeable exit latency.
-            if agent and agent.memory_manager and getattr(agent.config, "memory_type", "in_memory") == "in_memory":
+            if (
+                agent
+                and agent.memory_manager
+                and getattr(agent.config, "memory_type", "in_memory") == "in_memory"
+            ):
                 try:
                     memory_result = await agent.memory_manager.get_all()
                     if memory_result.get("success") and memory_result["result"]:
@@ -127,9 +140,15 @@ async def auto_save_session(
             # Save as last session for --continue
             _save_last_session(session_name)
 
+            save_duration = (time.perf_counter() - save_start) * 1000
+            logger.info(f"[PERF] Session save completed: {save_duration:.1f}ms")
+
             if not quiet and console:
                 console.print(f"[dim]Session auto-saved as '{session_name}'[/dim]")
         except Exception as e:
+            logger.warning(
+                f"[PERF] Session save failed after {(time.perf_counter() - save_start)*1000:.1f}ms: {e}"
+            )
             if not quiet and console:
                 console.print(f"\n[yellow]Failed to auto-save session: {e}[/yellow]")
 

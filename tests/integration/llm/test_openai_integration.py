@@ -15,6 +15,8 @@ How to run:
     pytest -m llm
 """
 
+import asyncio
+
 import pytest
 
 
@@ -128,9 +130,14 @@ class TestOpenAIErrorHandling:
         3. Not crash
 
         Cost: ~$0.0005
+        Note: Has 30s timeout to prevent infinite retry loops on tool errors
         """
-        response = await openai_agent.run(
-            "Use greet_user to greet someone in German (language code 'de')"
+        # Add timeout to prevent infinite retry loops when tool returns error
+        response = await asyncio.wait_for(
+            openai_agent.run(
+                "Use greet_user to greet someone in German (language code 'de')"
+            ),
+            timeout=30.0,
         )
 
         # LLM should communicate the error

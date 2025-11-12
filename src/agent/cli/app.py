@@ -52,6 +52,43 @@ _BRANCH_CACHE_CWD: Path | None = None
 _BRANCH_CACHE_VALUE: str = ""
 
 
+def _hide_connection_string_if_otel_disabled(config: AgentConfig) -> str | None:
+    """Conditionally hide Azure Application Insights connection string.
+
+    The agent_framework auto-enables OpenTelemetry when it sees
+    APPLICATIONINSIGHTS_CONNECTION_STRING in the environment, which causes
+    1-3s exit lag from daemon threads flushing metrics.
+
+    This helper hides the connection string ONLY when telemetry is disabled,
+    allowing users who explicitly enable OTEL to still use it.
+
+    Args:
+        config: Loaded AgentConfig (must be loaded first to check enable_otel)
+
+    Returns:
+        The connection string if it was hidden, None otherwise
+
+    Example:
+        >>> config = AgentConfig.from_env()
+        >>> saved = _hide_connection_string_if_otel_disabled(config)
+        >>> # ... create agent ...
+        >>> if saved:
+        ...     os.environ["APPLICATIONINSIGHTS_CONNECTION_STRING"] = saved
+    """
+    should_enable_otel = config.enable_otel and config.enable_otel_explicit
+
+    if not should_enable_otel and config.applicationinsights_connection_string:
+        saved = os.environ.pop("APPLICATIONINSIGHTS_CONNECTION_STRING", None)
+        if saved:
+            logger.debug(
+                "[PERF] Hiding Azure connection string to prevent OpenTelemetry "
+                "auto-init (set ENABLE_OTEL=true to enable telemetry)"
+            )
+        return saved
+
+    return None
+
+
 def _render_startup_banner(config: AgentConfig) -> None:
     """Render startup banner with branding.
 
@@ -382,15 +419,16 @@ def run_health_check() -> None:
 
             if not mem0_available:
                 # Show actual backend (in_memory) with note about mem0
-                console.print(f"  [cyan]◉[/cyan] Backend: [cyan]in_memory[/cyan]")
+                console.print("  [cyan]◉[/cyan] Backend: [cyan]in_memory[/cyan]")
                 console.print(
                     f"  [yellow]⚠[/yellow]  mem0 not available: [yellow]{unavailable_reason}[/yellow]"
                 )
             else:
                 # Show mem0 as backend with configuration
-                console.print(f"  [cyan]◉[/cyan] Backend: [cyan]mem0[/cyan]")
+                console.print("  [cyan]◉[/cyan] Backend: [cyan]mem0[/cyan]")
 
                 from agent.memory.mem0_utils import get_storage_path
+
                 is_cloud = bool(config.mem0_api_key and config.mem0_org_id)
 
                 if is_cloud:
@@ -677,25 +715,19 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
         quiet: Minimal output mode
     """
     try:
+        import time
+
+        perf_start = time.perf_counter()
+
         config = AgentConfig.from_env()
         config.validate()
+        logger.info(f"[PERF] Config loaded: {(time.perf_counter() - perf_start)*1000:.1f}ms")
 
-        # Setup observability with auto-detection
-        # Rules:
-        # 1. If ENABLE_OTEL explicitly set (true/false), always respect it
-        # 2. If ENABLE_OTEL not set, auto-detect endpoint availability
-        # 3. If endpoint reachable, enable telemetry automatically
-        should_enable_otel = config.enable_otel
+        # Hide Azure connection string if telemetry disabled (prevents 1-3s exit lag)
+        saved_connection_string = _hide_connection_string_if_otel_disabled(config)
 
-        if not config.enable_otel_explicit:
-            # User didn't set ENABLE_OTEL, check if endpoint is available
-            from agent.observability import check_telemetry_endpoint
-
-            if check_telemetry_endpoint(config.otlp_endpoint):
-                should_enable_otel = True
-                logger.info(
-                    f"Telemetry endpoint detected at {config.otlp_endpoint}, enabling observability"
-                )
+        # Skip observability auto-detection in single-prompt mode for speed
+        should_enable_otel = config.enable_otel and config.enable_otel_explicit
 
         if should_enable_otel:
             from agent_framework.observability import setup_observability
@@ -711,8 +743,11 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
 
         session_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         setup_session_logging(session_name, config)
+        logger.info(f"[PERF] Logging setup: {(time.perf_counter() - perf_start)*1000:.1f}ms")
 
+        agent_start = time.perf_counter()
         agent = Agent(config=config)
+        logger.info(f"[PERF] Agent created: {(time.perf_counter() - agent_start)*1000:.1f}ms")
 
         # Setup execution context for visualization
         ctx = create_execution_context(verbose, quiet, is_interactive=False)
@@ -770,6 +805,10 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
         if response:
             console.print(response)
 
+        logger.info(
+            f"[PERF] Total single-prompt execution: {(time.perf_counter() - perf_start)*1000:.1f}ms"
+        )
+
     except ValueError as e:
         console.print(f"\n[red]Configuration error:[/red] {e}")
         console.print("[yellow]Run 'agent --check' to diagnose issues[/yellow]")
@@ -780,6 +819,37 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
     except Exception as e:
         console.print(f"\n[red]Error:[/red] {e}")
         raise typer.Exit(ExitCodes.GENERAL_ERROR)
+    finally:
+        # Restore connection string if we hid it
+        if "saved_connection_string" in locals() and saved_connection_string:
+            os.environ["APPLICATIONINSIGHTS_CONNECTION_STRING"] = saved_connection_string
+
+
+def _ensure_history_size_limit(history_file: Path, max_lines: int = 10000) -> None:
+    """Rotate history file if too large to prevent slow startup.
+
+    Note: Reads entire file into memory for simplicity. For 10K lines (~500KB)
+    this is negligible (~20ms). Could be optimized with tail/seek for huge files
+    but current approach is simple and sufficient.
+
+    Args:
+        history_file: Path to history file
+        max_lines: Maximum lines to keep (default: 10000)
+    """
+    if not history_file.exists():
+        return
+
+    try:
+        with open(history_file) as f:
+            lines = f.readlines()
+
+        if len(lines) > max_lines:
+            # Keep last max_lines entries
+            logger.info(f"Rotating history file: {len(lines)} lines -> {max_lines} lines")
+            with open(history_file, "w") as f:
+                f.writelines(lines[-max_lines:])
+    except Exception as e:
+        logger.warning(f"Failed to rotate history file: {e}")
 
 
 async def run_chat_mode(
@@ -795,35 +865,22 @@ async def run_chat_mode(
         resume_session: Session name to resume (from --continue flag)
     """
     try:
+        import time
+
+        perf_start = time.perf_counter()
+
         # Load configuration
         config = AgentConfig.from_env()
         config.validate()
+        logger.info(
+            f"[PERF] Interactive mode - config loaded: {(time.perf_counter() - perf_start)*1000:.1f}ms"
+        )
 
-        # Setup observability with auto-detection
-        # Rules:
-        # 1. If ENABLE_OTEL explicitly set (true/false), always respect it
-        # 2. If ENABLE_OTEL not set, auto-detect endpoint availability
-        # 3. If endpoint reachable, enable telemetry automatically
-        should_enable_otel = config.enable_otel
+        # Hide Azure connection string if telemetry disabled (prevents 1-3s exit lag)
+        saved_connection_string = _hide_connection_string_if_otel_disabled(config)
 
-        if not config.enable_otel_explicit:
-            # User didn't set ENABLE_OTEL, check if endpoint is available
-            from agent.observability import check_telemetry_endpoint
-
-            if check_telemetry_endpoint(config.otlp_endpoint):
-                should_enable_otel = True
-                logger.info(
-                    f"Telemetry endpoint detected at {config.otlp_endpoint}, enabling observability"
-                )
-
-        if should_enable_otel:
-            from agent_framework.observability import setup_observability
-
-            setup_observability(
-                enable_sensitive_data=config.enable_sensitive_data,
-                otlp_endpoint=config.otlp_endpoint,
-                applicationinsights_connection_string=config.applicationinsights_connection_string,
-            )
+        # Disable observability auto-detection in interactive mode by default
+        should_enable_otel = config.enable_otel and config.enable_otel_explicit
 
         # Generate session name for this session (used for both logging and saving)
         from datetime import datetime
@@ -841,22 +898,31 @@ async def run_chat_mode(
         if not quiet:
             _render_startup_banner(config)
 
-        # Create agent
-        agent = Agent(config=config)
-
         # Initialize persistence manager with config directories
         persistence = ThreadPersistence(
             storage_dir=config.agent_session_dir, memory_dir=config.memory_dir
         )
+        logger.info(
+            f"[PERF] Persistence initialized: {(time.perf_counter() - perf_start)*1000:.1f}ms"
+        )
 
-        # Create or resume conversation thread
+        # Lazy agent initialization: only create when needed
+        # This makes prompt appear instantly without waiting for SDK imports
+        agent = None
         thread = None
         message_count = 0
         conversation_messages: list[dict] = (
             []
         )  # Track messages for providers without thread support
 
+        # If resuming session, we need agent immediately to restore context
         if resume_session:
+            agent_start = time.perf_counter()
+            agent = Agent(config=config)
+            logger.info(
+                f"[PERF] Agent created for resume: {(time.perf_counter() - agent_start)*1000:.1f}ms"
+            )
+
             # When resuming, use the resumed session name for logging
             setup_session_logging(resume_session, config)
             session_name = resume_session
@@ -864,22 +930,23 @@ async def run_chat_mode(
                 agent, persistence, resume_session, console, quiet
             )
 
-        if thread is None:
-            thread = agent.get_new_thread()
-
         # Setup keybinding manager
         keybinding_manager = KeybindingManager()
         keybinding_manager.register_handler(ClearPromptHandler())
         key_bindings = keybinding_manager.create_keybindings()
 
-        # Setup prompt session with history
+        # Setup prompt session with history (rotate if needed)
         data_dir = config.agent_data_dir or Path.home() / ".agent"
         history_file = data_dir / ".agent_history"
 
+        hist_start = time.perf_counter()
+        _ensure_history_size_limit(history_file, max_lines=10000)
         session: PromptSession = PromptSession(
             history=FileHistory(str(history_file)),
             key_bindings=key_bindings,
         )
+        logger.info(f"[PERF] History loaded: {(time.perf_counter() - hist_start)*1000:.1f}ms")
+        logger.info(f"[PERF] Ready for input: {(time.perf_counter() - perf_start)*1000:.1f}ms")
 
         # Interactive loop
         status_bar_enabled = os.getenv("AGENT_STATUS_BAR", "1").lower() not in ("0", "false", "off")
@@ -912,6 +979,7 @@ async def run_chat_mode(
 
                 # Check for exit first (needs special handling to break loop)
                 if cmd in Commands.EXIT:
+                    exit_start = time.perf_counter()
                     # Auto-save session before exit
                     await auto_save_session(
                         persistence,
@@ -924,12 +992,34 @@ async def run_chat_mode(
                         agent,
                     )
                     console.print("\n[dim]Goodbye![/dim]")
-                    # Attempt to close chat client cleanly to avoid exit lag
+
+                    # Cleanup to eliminate exit lag
+                    client_close_start = time.perf_counter()
                     try:
-                        if hasattr(agent, "chat_client") and hasattr(agent.chat_client, "close"):
-                            await agent.chat_client.close()
-                    except Exception:
-                        pass
+                        if agent and hasattr(agent, "chat_client"):
+                            # Close chat client (closes httpx connections)
+                            if hasattr(agent.chat_client, "close"):
+                                logger.debug("[PERF] Closing chat client...")
+                                await agent.chat_client.close()
+                                logger.debug(
+                                    f"[PERF] Chat client closed: {(time.perf_counter() - client_close_start)*1000:.1f}ms"
+                                )
+
+                            # Force httpx client cleanup if available (best-effort)
+                            # Note: Accesses _client private attribute - may not exist for all providers
+                            if hasattr(agent.chat_client, "_client"):
+                                try:
+                                    if hasattr(agent.chat_client._client, "close"):
+                                        agent.chat_client._client.close()
+                                        logger.debug("[PERF] httpx client closed")
+                                except Exception as e:
+                                    logger.debug(f"[PERF] httpx cleanup: {e}")
+                    except Exception as e:
+                        logger.warning(f"[PERF] Chat client close failed: {e}")
+
+                    logger.info(
+                        f"[PERF] Exit cleanup completed: {(time.perf_counter() - exit_start)*1000:.1f}ms"
+                    )
                     break
 
                 # Dispatch other commands - cleaner than if/elif chain
@@ -937,9 +1027,23 @@ async def run_chat_mode(
                     show_help(console)
                     continue
                 elif cmd in Commands.CLEAR:
+                    # Create agent if needed (lazy init)
+                    if agent is None:
+                        init_start = time.perf_counter()
+                        agent = Agent(config=config)
+                        logger.info(
+                            f"[PERF] Agent lazy init for /clear: {(time.perf_counter() - init_start)*1000:.1f}ms"
+                        )
                     thread, message_count = await handle_clear_command(agent, console)
                     continue
                 elif cmd in Commands.CONTINUE:
+                    # Create agent if needed (lazy init)
+                    if agent is None:
+                        init_start = time.perf_counter()
+                        agent = Agent(config=config)
+                        logger.info(
+                            f"[PERF] Agent lazy init for /continue: {(time.perf_counter() - init_start)*1000:.1f}ms"
+                        )
                     result_thread, result_count = await handle_continue_command(
                         agent, persistence, session, console
                     )
@@ -960,6 +1064,25 @@ async def run_chat_mode(
                 # Move past the old status bar with a newline
                 console.print()
 
+                # Lazy agent initialization: create on first actual query
+                if agent is None:
+                    init_start = time.perf_counter()
+                    if not quiet:
+                        with console.status("[bold blue]Initializing...", spinner="dots"):
+                            agent = Agent(config=config)
+                    else:
+                        agent = Agent(config=config)
+                    logger.info(
+                        f"[PERF] Agent lazy init: {(time.perf_counter() - init_start)*1000:.1f}ms"
+                    )
+                    logger.info(
+                        f"[PERF] Total time to first query: {(time.perf_counter() - perf_start)*1000:.1f}ms"
+                    )
+
+                # Initialize thread if needed
+                if thread is None:
+                    thread = agent.get_new_thread()
+
                 # Execute agent query
                 response = await _execute_agent_query(
                     agent, user_input, thread, quiet, verbose, console
@@ -977,6 +1100,7 @@ async def run_chat_mode(
                 continue
             except EOFError:
                 # Ctrl+D - exit gracefully
+                exit_start = time.perf_counter()
                 await auto_save_session(
                     persistence,
                     thread,
@@ -988,12 +1112,34 @@ async def run_chat_mode(
                     agent,
                 )
                 console.print("\n[dim]Goodbye![/dim]")
-                # Attempt to close chat client cleanly to avoid exit lag
+
+                # Cleanup to eliminate exit lag
+                client_close_start = time.perf_counter()
                 try:
-                    if hasattr(agent, "chat_client") and hasattr(agent.chat_client, "close"):
-                        await agent.chat_client.close()
-                except Exception:
-                    pass
+                    if agent and hasattr(agent, "chat_client"):
+                        # Close chat client (closes httpx connections)
+                        if hasattr(agent.chat_client, "close"):
+                            logger.debug("[PERF] Closing chat client...")
+                            await agent.chat_client.close()
+                            logger.debug(
+                                f"[PERF] Chat client closed: {(time.perf_counter() - client_close_start)*1000:.1f}ms"
+                            )
+
+                        # Force httpx client cleanup if available (best-effort)
+                        # Note: Accesses _client private attribute - may not exist for all providers
+                        if hasattr(agent.chat_client, "_client"):
+                            try:
+                                if hasattr(agent.chat_client._client, "close"):
+                                    agent.chat_client._client.close()
+                                    logger.debug("[PERF] httpx client closed")
+                            except Exception as e:
+                                logger.debug(f"[PERF] httpx cleanup: {e}")
+                except Exception as e:
+                    logger.warning(f"[PERF] Chat client close failed: {e}")
+
+                logger.info(
+                    f"[PERF] Exit cleanup completed: {(time.perf_counter() - exit_start)*1000:.1f}ms"
+                )
                 break
 
     except ValueError as e:
@@ -1003,6 +1149,14 @@ async def run_chat_mode(
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(ExitCodes.GENERAL_ERROR)
+    finally:
+        # Restore connection string if we hid it
+        if "saved_connection_string" in locals() and saved_connection_string:
+            os.environ["APPLICATIONINSIGHTS_CONNECTION_STRING"] = saved_connection_string
+        # Log when function actually exits
+        logger.info(
+            f"[PERF] run_chat_mode() exiting after {(time.perf_counter() - perf_start)*1000:.1f}ms total"
+        )
 
 
 async def _execute_agent_query(
