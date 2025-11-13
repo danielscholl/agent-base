@@ -263,16 +263,6 @@ def config_init() -> None:
         settings.providers.gemini.model = model
         settings.providers.gemini.enabled = True
 
-    elif provider == "azure":
-        endpoint = Prompt.ask("\nEnter your Azure OpenAI endpoint")
-        deployment = Prompt.ask("Enter your deployment name")
-        api_key = Prompt.ask("Enter your API key (or press Enter to use Azure CLI)", password=True)
-        settings.providers.azure.endpoint = endpoint
-        settings.providers.azure.deployment = deployment
-        if api_key:
-            settings.providers.azure.api_key = api_key
-        settings.providers.azure.enabled = True
-
     elif provider == "foundry":
         endpoint = Prompt.ask("\nEnter your Azure AI Foundry project endpoint")
         deployment = Prompt.ask("Enter your model deployment name")

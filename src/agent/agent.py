@@ -24,7 +24,7 @@ class Agent:
     - Azure OpenAI: Azure-hosted OpenAI models
     - Azure AI Foundry: Microsoft's managed AI platform
     - Google Gemini: Google's Gemini models (custom integration)
-    - GitHub Models: GitHub's AI models via Azure AI Inference SDK
+    - GitHub Models: GitHub's AI models via OpenAI-compatible API
     - Local (Docker Models): Local models via Docker Desktop
 
     Example:
@@ -201,6 +201,7 @@ class Agent:
 
             return GitHubChatClient(
                 model_id=self.config.github_model,
+                token=self.config.github_token,
             )
         elif self.config.llm_provider == "local":
             from agent_framework.openai import OpenAIChatClient

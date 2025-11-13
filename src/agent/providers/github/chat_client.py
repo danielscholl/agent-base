@@ -1,8 +1,8 @@
 """
-GitHub Models chat client implementation using Azure AI Inference SDK.
+GitHub Models chat client implementation using OpenAI-compatible API.
 
 This module provides GitHubChatClient that integrates GitHub Models
-with the Microsoft Agent Framework. GitHub Models uses Azure's OpenAI-compatible
+with the Microsoft Agent Framework. GitHub Models uses an OpenAI-compatible
 API at https://models.inference.ai.azure.com.
 """
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class GitHubChatClient(OpenAIChatClient):
-    """Chat client for GitHub Models using Azure AI Inference SDK.
+    """Chat client for GitHub Models using OpenAI-compatible API.
 
     This client extends OpenAIChatClient since GitHub Models uses an
     OpenAI-compatible API with model parameter in request body (not deployment path).
