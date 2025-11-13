@@ -1,6 +1,7 @@
 """Interactive CLI commands for managing agent configuration."""
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -727,8 +728,6 @@ def config_memory() -> None:
                     console.print(f"  [dim]• {label}: {path}[/dim]")
 
                 if Confirm.ask("\nDelete mem0 database?", default=False):
-                    import shutil
-
                     for label, path in cleanup_paths:
                         try:
                             if path.is_dir():

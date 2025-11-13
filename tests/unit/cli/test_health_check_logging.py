@@ -1,6 +1,5 @@
 """Unit tests for health check logging suppression and provider connectivity optimization."""
 
-import asyncio
 import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -252,6 +251,8 @@ class TestProviderConnectivityOptimization:
     @pytest.mark.asyncio
     async def test_parallel_execution_with_gather(self):
         """Test that providers are tested in parallel using asyncio.gather."""
+        import asyncio
+
         config = AgentConfig(
             llm_provider="local",
             enabled_providers=["local", "openai", "anthropic"],

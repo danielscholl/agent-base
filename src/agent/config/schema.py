@@ -1,5 +1,6 @@
 """Pydantic models for agent configuration schema."""
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -196,8 +197,6 @@ class AgentSettings(BaseModel):
             >>> json_str = settings.model_dump_json_minimal()
             # Only shows openai config, not disabled providers
         """
-        import json
-
         # Get full data excluding None values
         data = self.model_dump(exclude_none=True)
 
