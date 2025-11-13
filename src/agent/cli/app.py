@@ -1313,14 +1313,14 @@ app.add_typer(config_app, name="config")
 
 
 @config_app.callback(invoke_without_command=True)
-def config_callback(ctx: typer.Context):
+def config_callback(ctx: typer.Context) -> None:
     """Config command callback - shows help if no subcommand given."""
     if ctx.invoked_subcommand is None:
         console.print(ctx.get_help())
 
 
 @config_app.command("init")
-def config_init_command():
+def config_init_command() -> None:
     """Initialize configuration with interactive prompts."""
     from agent.cli.config_commands import config_init
 
@@ -1328,7 +1328,7 @@ def config_init_command():
 
 
 @config_app.command("show")
-def config_show_command():
+def config_show_command() -> None:
     """Display current configuration."""
     from agent.cli.config_commands import config_show
 
@@ -1336,7 +1336,7 @@ def config_show_command():
 
 
 @config_app.command("edit")
-def config_edit_command():
+def config_edit_command() -> None:
     """Open configuration file in text editor."""
     from agent.cli.config_commands import config_edit
 
@@ -1349,7 +1349,7 @@ def config_provider_command(
     provider: str = typer.Argument(
         None, help="Provider to manage (local, openai, anthropic, azure, foundry, gemini)"
     ),
-):
+) -> None:
     """Manage a provider (enable/disable/configure/set-default)."""
     if provider is None:
         console.print(ctx.get_help())
@@ -1361,7 +1361,7 @@ def config_provider_command(
 
 
 @config_app.command("validate")
-def config_validate_command():
+def config_validate_command() -> None:
     """Validate configuration file."""
     from agent.cli.config_commands import config_validate
 

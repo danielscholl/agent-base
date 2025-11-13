@@ -76,7 +76,7 @@ class TestCLIHelpOutput:
         # Check for documented options
         assert "--prompt" in clean_output
         assert "--check" in clean_output
-        assert "--config" in clean_output
+        assert "config" in clean_output  # config is now a subcommand, not an option
         assert "--version" in clean_output
 
     def test_help_contains_examples_section(self):
@@ -91,7 +91,7 @@ class TestCLIHelpOutput:
             "examples:" in output
             or "agent --check" in output
             or "agent -p" in output
-            or "agent --config" in output
+            or "agent config" in output  # config is now a subcommand
         )
         assert has_examples, "Help output should contain examples from docstring"
 
@@ -230,7 +230,7 @@ class TestCLIDocumentation:
         # Check that important options are documented
         assert "--prompt" in help_text or "-p" in help_text
         assert "--check" in help_text
-        assert "--config" in help_text
+        assert "config" in help_text  # config is now a subcommand, not an option
         assert "--verbose" in help_text
         assert "--continue" in help_text or "continue" in help_text
 

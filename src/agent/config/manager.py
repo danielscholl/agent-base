@@ -87,10 +87,16 @@ def save_config(settings: AgentSettings, config_path: Path | None = None) -> Non
     config_path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Write with pretty formatting
-        json_str = settings.model_dump_json_pretty()
-        with open(config_path, "w") as f:
-            f.write(json_str)
+        # Set restrictive permissions before writing (POSIX only)
+        old_umask = os.umask(0o077) if os.name != "nt" else None
+        try:
+            # Write with pretty formatting
+            json_str = settings.model_dump_json_pretty()
+            with open(config_path, "w") as f:
+                f.write(json_str)
+        finally:
+            if old_umask is not None:
+                os.umask(old_umask)
 
         # Set restrictive permissions on POSIX systems (user read/write only)
         if os.name != "nt":  # Not Windows
@@ -230,9 +236,13 @@ def merge_with_env(settings: AgentSettings) -> dict[str, Any]:
     if os.getenv("MEMORY_TYPE"):
         env_overrides.setdefault("memory", {})["type"] = os.getenv("MEMORY_TYPE")
     if os.getenv("MEMORY_HISTORY_LIMIT"):
-        env_overrides.setdefault("memory", {})["history_limit"] = int(
-            os.getenv("MEMORY_HISTORY_LIMIT", "20")
-        )
+        try:
+            env_overrides.setdefault("memory", {})["history_limit"] = int(
+                os.getenv("MEMORY_HISTORY_LIMIT", "20")
+            )
+        except ValueError:
+            # Invalid value, fallback to default
+            env_overrides.setdefault("memory", {})["history_limit"] = 20
 
     # Mem0 overrides
     if os.getenv("MEM0_STORAGE_PATH"):

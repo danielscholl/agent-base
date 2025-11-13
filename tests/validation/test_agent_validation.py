@@ -347,18 +347,20 @@ class TestAgentValidation:
     def test_config_command(self, validator):
         """Test config command."""
         # Longer timeout needed when running in parallel (connectivity tests to multiple providers)
-        result = validator.run_command("uv run agent --config", timeout=60)
+        result = validator.run_command("uv run agent config show", timeout=60)
         # Strip ANSI codes to focus on content not formatting
         clean_output = strip_ansi(result["stdout"])
-        # Should be identical to --check (unified view)
+        # Should show configuration information
         # Accept either successful output or configuration error
-        has_sections = (
-            "System:" in clean_output
-            and "Agent:" in clean_output
-            and "LLM Providers:" in clean_output
+        has_config_info = (
+            "Configuration" in clean_output
+            or "Provider" in clean_output
+            or "Enabled" in clean_output
         )
-        has_config_error = "Configuration error" in clean_output
-        assert has_sections or has_config_error, "Should show config or config error"
+        has_config_error = (
+            "Configuration error" in clean_output or "No configuration" in clean_output
+        )
+        assert has_config_info or has_config_error, "Should show config or config error"
 
     def test_validation_config_exists(self):
         """Test that validation configuration file exists."""

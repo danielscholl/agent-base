@@ -74,7 +74,10 @@ def open_in_editor(file_path: Path, wait: bool = True) -> bool:
 
     # Ensure file exists
     if not file_path.exists():
-        raise EditorError(f"File not found: {file_path}")
+        raise EditorError(
+            f"File not found: {file_path}\n"
+            "To create a new configuration file, run: agent config init"
+        )
 
     try:
         # Special handling for VSCode
