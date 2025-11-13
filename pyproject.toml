@@ -32,6 +32,7 @@ dependencies = [
     "anthropic>=0.40.0",
     "azure-identity>=1.25.1",
     "azure-monitor-opentelemetry-exporter>=1.0.0b44",
+    "azure-ai-inference>=1.0.0b8",  # For GitHub Models provider
     "google-genai>=0.8.0",
 ]
 
@@ -109,6 +110,7 @@ markers = [
     "requires_anthropic: Tests requiring Anthropic API key",
     "requires_azure: Tests requiring Azure credentials",
     "requires_gemini: Tests requiring Gemini API key",
+    "requires_github: Tests requiring GitHub token",
     # Provider grouping marker for unit tests
     "providers: Provider unit tests",
 ]

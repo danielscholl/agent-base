@@ -60,6 +60,12 @@ def get_default_config() -> AgentSettings:
                 "project_id": None,
                 "location": None,
             },
+            "github": {
+                "enabled": False,
+                "token": None,
+                "model": "gpt-5-nano",
+                "endpoint": "https://models.inference.ai.azure.com",
+            },
         },
         agent={  # type: ignore[arg-type]
             "data_dir": "~/.agent",
@@ -99,6 +105,7 @@ DEFAULT_OPENAI_MODEL = "gpt-5-mini"
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_AZURE_API_VERSION = "2025-03-01-preview"
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash-exp"
+DEFAULT_GITHUB_MODEL = "gpt-5-nano"
 
 # Default telemetry settings
 DEFAULT_OTLP_ENDPOINT = "http://localhost:4317"

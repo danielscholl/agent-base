@@ -9,6 +9,7 @@ from agent.config.schema import (
     AzureOpenAIProviderConfig,
     FoundryProviderConfig,
     GeminiProviderConfig,
+    GitHubProviderConfig,
     LocalProviderConfig,
     MemoryConfig,
     OpenAIProviderConfig,
@@ -68,6 +69,14 @@ class TestProviderConfigs:
         assert config.use_vertexai is False
         assert config.project_id is None
         assert config.location is None
+
+    def test_github_provider_defaults(self):
+        """Test GitHub provider has correct defaults."""
+        config = GitHubProviderConfig()
+        assert config.enabled is False
+        assert config.token is None
+        assert config.model == "gpt-5-nano"
+        assert config.endpoint == "https://models.inference.ai.azure.com"
 
 
 class TestProviderConfig:
@@ -291,6 +300,39 @@ class TestAgentSettings:
         )
         errors = settings.validate_enabled_providers()
         assert len(errors) == 0
+
+    def test_validate_github_provider_missing_token(self):
+        """Test GitHub provider validation passes even without token.
+
+        GitHub authentication is handled at runtime via get_github_token()
+        which checks GITHUB_TOKEN env var or gh CLI, so token is optional in config.
+        """
+        settings = AgentSettings(
+            providers=ProviderConfig(
+                enabled=["github"],
+            )
+        )
+        errors = settings.validate_enabled_providers()
+        # No validation errors expected - token fetched at runtime
+        assert len(errors) == 0
+
+    def test_validate_github_provider_with_token(self):
+        """Test GitHub provider validation passes with token."""
+        settings = AgentSettings(
+            providers=ProviderConfig(
+                enabled=["github"],
+            )
+        )
+        settings.providers.github.token = "ghp_test123"
+        errors = settings.validate_enabled_providers()
+        assert len(errors) == 0
+
+    def test_github_provider_in_sync_enabled_flags(self):
+        """Test GitHub provider enabled flag syncs with enabled list."""
+        config = ProviderConfig(enabled=["github", "openai"])
+        assert config.github.enabled is True
+        assert config.openai.enabled is True
+        assert config.local.enabled is False
 
 
 class TestDataDirExpansion:

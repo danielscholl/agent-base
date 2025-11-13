@@ -237,7 +237,7 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
     """Test connectivity to a specific LLM provider asynchronously.
 
     Args:
-        provider: Provider name (openai, anthropic, azure, foundry, gemini, local)
+        provider: Provider name (local, github, openai, anthropic, gemini, azure, foundry)
         config: Agent configuration with credentials
 
     Returns:
@@ -277,6 +277,9 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
             gemini_project_id=config.gemini_project_id,
             gemini_location=config.gemini_location,
             gemini_use_vertexai=config.gemini_use_vertexai,
+            github_token=config.github_token,
+            github_model=config.github_model,
+            github_endpoint=config.github_endpoint,
             local_base_url=config.local_base_url,
             local_model=config.local_model,
             agent_data_dir=config.agent_data_dir,
@@ -361,6 +364,7 @@ async def _test_all_providers(config: AgentConfig) -> list[tuple[str, str, bool,
         ("openai", "OpenAI", config.openai_model),
         ("anthropic", "Anthropic", config.anthropic_model),
         ("gemini", "Google Gemini", config.gemini_model),
+        ("github", "GitHub Models", config.github_model),
         ("azure", "Azure OpenAI", config.azure_openai_deployment or "N/A"),
         ("foundry", "Azure AI Foundry", config.azure_model_deployment or "N/A"),
     ]
@@ -586,12 +590,12 @@ def run_health_check() -> None:
                 creds = f"****{config.anthropic_api_key[-6:]}"
             elif provider_id == "azure" and config.azure_openai_endpoint:
                 creds = (
-                    "Azure CLI auth"
+                    "az auth"
                     if not config.azure_openai_api_key
                     else f"****{config.azure_openai_api_key[-6:]}"
                 )
             elif provider_id == "foundry" and config.azure_project_endpoint:
-                creds = "Azure CLI auth"
+                creds = "az auth"
             elif provider_id == "gemini":
                 if config.gemini_use_vertexai:
                     creds = "Vertex AI auth"
@@ -599,6 +603,11 @@ def run_health_check() -> None:
                     creds = f"****{config.gemini_api_key[-6:]}"
                 else:
                     creds = None
+            elif provider_id == "github":
+                if config.github_token:
+                    creds = f"****{config.github_token[-4:]}"
+                else:
+                    creds = "gh auth"
             elif provider_id == "local" and config.local_base_url:
                 creds = config.local_base_url
             else:
@@ -658,9 +667,7 @@ def run_health_check() -> None:
                     from agent.cli.config_commands import config_init
 
                     config_init()
-                    console.print(
-                        "\n[green]✓[/green] Configuration created! You can now run your command again."
-                    )
+                    # Config init already shows checkmarks, no need for extra message
                     return
                 else:
                     console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
@@ -895,9 +902,7 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
                     from agent.cli.config_commands import config_init
 
                     config_init()
-                    console.print(
-                        "\n[green]✓[/green] Configuration created! Please run your command again."
-                    )
+                    # Config init already shows checkmarks, no need for extra message
                     return
                 else:
                     console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
@@ -1252,9 +1257,7 @@ async def run_chat_mode(
                     from agent.cli.config_commands import config_init
 
                     config_init()
-                    console.print(
-                        "\n[green]✓[/green] Configuration created! Please run 'agent' again to start."
-                    )
+                    # Config init already shows checkmarks, no need for extra message
                     return
                 else:
                     console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
@@ -1408,17 +1411,25 @@ def config_edit_command() -> None:
 def config_provider_command(
     ctx: typer.Context,
     provider: str = typer.Argument(
-        None, help="Provider to manage (local, openai, anthropic, azure, foundry, gemini)"
+        None, help="Provider to manage (local, github, openai, anthropic, gemini, azure, foundry)"
     ),
+    action: str = typer.Argument(None, help="Action to perform (default, disable, configure)"),
 ) -> None:
-    """Manage a provider (enable/disable/configure/set-default)."""
+    """Manage a provider (enable/disable/configure/default).
+
+    Examples:
+        agent config provider github           # Interactive menu
+        agent config provider github default   # Set as default
+        agent config provider github disable   # Disable provider
+        agent config provider github configure # Reconfigure credentials
+    """
     if provider is None:
         console.print(ctx.get_help())
         return
 
     from agent.cli.config_commands import config_provider
 
-    config_provider(provider)
+    config_provider(provider, action)
 
 
 @config_app.command("validate")

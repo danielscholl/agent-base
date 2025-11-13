@@ -18,12 +18,13 @@ logger = logging.getLogger(__name__)
 class Agent:
     """Agent with multi-provider LLM support and extensible tools.
 
-    Supports six LLM providers through Microsoft Agent Framework:
+    Supports seven LLM providers through Microsoft Agent Framework:
     - OpenAI: Direct OpenAI API
     - Anthropic: Direct Anthropic API
     - Azure OpenAI: Azure-hosted OpenAI models
     - Azure AI Foundry: Microsoft's managed AI platform
     - Google Gemini: Google's Gemini models (custom integration)
+    - GitHub Models: GitHub's AI models via Azure AI Inference SDK
     - Local (Docker Models): Local models via Docker Desktop
 
     Example:
@@ -114,6 +115,7 @@ class Agent:
         - azure: Azure OpenAI (gpt-5-codex, gpt-4o, etc.)
         - foundry: Azure AI Foundry with managed models
         - gemini: Google Gemini (gemini-2.0-flash-exp, gemini-2.5-pro, etc.)
+        - github: GitHub Models (phi-4, llama-3.3-70b-instruct, etc.)
         - local: Local models via Docker Desktop (phi4, etc.)
 
         Returns:
@@ -194,6 +196,12 @@ class Agent:
                 location=self.config.gemini_location,
                 use_vertexai=self.config.gemini_use_vertexai,
             )
+        elif self.config.llm_provider == "github":
+            from agent.providers.github import GitHubChatClient
+
+            return GitHubChatClient(
+                model_id=self.config.github_model,
+            )
         elif self.config.llm_provider == "local":
             from agent_framework.openai import OpenAIChatClient
 
@@ -205,7 +213,7 @@ class Agent:
         else:
             raise ValueError(
                 f"Unknown provider: {self.config.llm_provider}. "
-                f"Supported: openai, anthropic, azure, foundry, gemini, local"
+                f"Supported: openai, anthropic, azure, foundry, gemini, github, local"
             )
 
     def _load_system_prompt(self) -> str:

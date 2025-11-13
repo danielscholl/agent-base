@@ -128,7 +128,7 @@ def config_init() -> None:
 
     Creates ~/.agent/settings.json with guided setup.
     """
-    console.print("\n[bold cyan]Agent Configuration Setup[/bold cyan]\n")
+    console.print("\n[bold cyan]Agent Configuration Setup[/bold cyan]")
 
     config_path = get_config_path()
 
@@ -144,25 +144,35 @@ def config_init() -> None:
 
     # Ask about provider
     console.print("\n[bold]Select LLM Provider:[/bold]")
-    console.print("1. local  - Docker Desktop Model Runner (free, no API key)")
-    console.print("2. openai - OpenAI API (requires API key)")
-    console.print("3. anthropic - Anthropic Claude API (requires API key)")
-    console.print("4. azure - Azure OpenAI (requires endpoint and deployment)")
-    console.print("5. gemini - Google Gemini API (requires API key)")
+    console.print("1. local   - Docker Desktop Model Runner (free, no API key)")
+    console.print("2. github  - GitHub Models (gh auth login)")
+    console.print("3. openai  - OpenAI API (requires API key)")
+    console.print("4. anthropic - Anthropic Claude API (requires API key)")
+    console.print("5. gemini  - Google Gemini API (requires API key)")
+    console.print("6. azure   - Azure OpenAI (requires endpoint and deployment)")
+    console.print("7. foundry - Azure AI Foundry (requires endpoint and deployment)")
 
     provider_choice = Prompt.ask(
         "\nWhich provider do you want to use?",
-        choices=["1", "2", "3", "4", "5"],
         default="1",
     )
 
     provider_map = {
         "1": "local",
-        "2": "openai",
-        "3": "anthropic",
-        "4": "azure",
+        "2": "github",
+        "3": "openai",
+        "4": "anthropic",
         "5": "gemini",
+        "6": "azure",
+        "7": "foundry",
     }
+
+    # Validate choice
+    if provider_choice not in provider_map:
+        console.print(f"[red]Invalid choice: {provider_choice}[/red]")
+        console.print("[dim]Please run 'agent config init' again and select 1-7[/dim]")
+        return
+
     provider = provider_map[provider_choice]
 
     # Update enabled providers
@@ -171,16 +181,60 @@ def config_init() -> None:
     # Get provider-specific configuration
     if provider == "local":
         _setup_local_provider()
+        # Ask for model (with recommended default)
+        model = Prompt.ask("\nModel", default="ai/phi4", show_default=True)
+        settings.providers.local.model = model
         settings.providers.local.enabled = True
+
+    elif provider == "github":
+        # GitHub uses gh CLI for auth - just verify it's available
+        gh_available = shutil.which("gh") is not None
+        env_token = os.getenv("GITHUB_TOKEN")
+
+        if env_token:
+            console.print("\n[green]✓[/green] Found GITHUB_TOKEN in environment")
+            settings.providers.github.token = env_token
+        elif gh_available:
+            try:
+                result = subprocess.run(
+                    ["gh", "auth", "token"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=5,
+                )
+                if result.stdout.strip():
+                    console.print("\n[green]✓[/green] GitHub authentication ready (gh CLI)")
+                else:
+                    console.print("\n[yellow]⚠[/yellow] gh CLI not authenticated")
+                    console.print("  [dim]Run 'gh auth login' to authenticate[/dim]")
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                console.print("\n[yellow]⚠[/yellow] Could not verify gh authentication")
+                console.print("  [dim]Run 'gh auth login' to authenticate[/dim]")
+        else:
+            console.print("\n[yellow]⚠[/yellow] gh CLI not found")
+            console.print("  [dim]Install: brew install gh && gh auth login[/dim]")
+            console.print("  [dim]Or set GITHUB_TOKEN environment variable[/dim]")
+
+        # Ask for model (with recommended default)
+        model = Prompt.ask("\nModel", default="gpt-5-nano", show_default=True)
+        settings.providers.github.model = model
+        settings.providers.github.enabled = True
 
     elif provider == "openai":
         api_key = Prompt.ask("\nEnter your OpenAI API key", password=True)
+        # Ask for model (with recommended default)
+        model = Prompt.ask("\nModel", default="gpt-5-mini", show_default=True)
         settings.providers.openai.api_key = api_key
+        settings.providers.openai.model = model
         settings.providers.openai.enabled = True
 
     elif provider == "anthropic":
         api_key = Prompt.ask("\nEnter your Anthropic API key", password=True)
+        # Ask for model (with recommended default)
+        model = Prompt.ask("\nModel", default="claude-haiku-4-5-20251001", show_default=True)
         settings.providers.anthropic.api_key = api_key
+        settings.providers.anthropic.model = model
         settings.providers.anthropic.enabled = True
 
     elif provider == "azure":
@@ -204,16 +258,29 @@ def config_init() -> None:
         else:
             api_key = Prompt.ask("Enter your Gemini API key", password=True)
             settings.providers.gemini.api_key = api_key
+        # Ask for model (with recommended default)
+        model = Prompt.ask("\nModel", default="gemini-2.0-flash-exp", show_default=True)
+        settings.providers.gemini.model = model
         settings.providers.gemini.enabled = True
 
-    # Ask about telemetry
-    if Confirm.ask("\n[bold]Enable OpenTelemetry observability?[/bold]", default=False):
-        settings.telemetry.enabled = True
-        endpoint = Prompt.ask(
-            "OTLP endpoint",
-            default="http://localhost:4317",
-        )
-        settings.telemetry.otlp_endpoint = endpoint
+    elif provider == "azure":
+        endpoint = Prompt.ask("\nEnter your Azure OpenAI endpoint")
+        deployment = Prompt.ask("Enter your deployment name")
+        api_key = Prompt.ask("Enter your API key (or press Enter to use Azure CLI)", password=True)
+        settings.providers.azure.endpoint = endpoint
+        settings.providers.azure.deployment = deployment
+        if api_key:
+            settings.providers.azure.api_key = api_key
+        settings.providers.azure.enabled = True
+
+    elif provider == "foundry":
+        endpoint = Prompt.ask("\nEnter your Azure AI Foundry project endpoint")
+        deployment = Prompt.ask("Enter your model deployment name")
+        settings.providers.foundry.project_endpoint = endpoint
+        settings.providers.foundry.model_deployment = deployment
+        settings.providers.foundry.enabled = True
+
+    # Telemetry is auto-configured via --telemetry flag, no need to ask during init
 
     # Save configuration
     try:
@@ -228,8 +295,6 @@ def config_init() -> None:
                 console.print(f"  [yellow]•[/yellow] {error}")
         else:
             console.print("[green]✓[/green] Configuration is valid")
-
-        console.print("\n[dim]You can edit this file anytime with: agent config edit[/dim]")
 
     except ConfigurationError as e:
         console.print(f"\n[red]✗[/red] Failed to save configuration: {e}")
@@ -387,13 +452,14 @@ def config_edit() -> None:
         console.print(f"[red]✗[/red] {e}")
 
 
-def config_provider(provider: str) -> None:
+def config_provider(provider: str, action: str | None = None) -> None:
     """Manage a specific provider (enable/disable/configure/set-default).
 
     Args:
         provider: Provider name to manage
+        action: Optional action (default, disable, configure) - if None, shows interactive menu
     """
-    valid_providers = ["local", "openai", "anthropic", "azure", "foundry", "gemini"]
+    valid_providers = ["local", "openai", "anthropic", "azure", "foundry", "gemini", "github"]
     if provider not in valid_providers:
         console.print(
             f"[red]✗[/red] Unknown provider: {provider}\n"
@@ -410,6 +476,45 @@ def config_provider(provider: str) -> None:
         console.print("[yellow]No configuration file found. Creating new one...[/yellow]")
         settings = get_default_config()
 
+    # Handle direct action commands
+    if action in ["default", "set-default"]:
+        # Set as default provider
+        if provider not in settings.providers.enabled:
+            console.print(f"[yellow]Provider '{provider}' is not enabled.[/yellow]")
+            console.print(f"[dim]Run 'agent config provider {provider}' to enable it first.[/dim]")
+            return
+
+        settings.providers.enabled.remove(provider)
+        settings.providers.enabled.insert(0, provider)
+        save_config(settings, config_path)
+        console.print(f"[green]✓[/green] '{provider}' set as default provider")
+        return
+
+    elif action == "disable":
+        # Disable provider
+        if provider not in settings.providers.enabled:
+            console.print(f"[yellow]Provider '{provider}' is already disabled.[/yellow]")
+            return
+
+        settings.providers.enabled.remove(provider)
+        provider_obj = getattr(settings.providers, provider)
+        provider_obj.enabled = False
+        save_config(settings, config_path)
+        console.print(f"[green]✓[/green] Provider '{provider}' disabled")
+        return
+
+    elif action == "configure":
+        # Force reconfiguration
+        if provider not in settings.providers.enabled:
+            settings.providers.enabled.append(provider)
+        # Continue to configuration below
+
+    elif action is not None:
+        console.print(f"[red]Unknown action: {action}[/red]")
+        console.print("[dim]Valid actions: default, disable, configure[/dim]")
+        return
+
+    # Interactive menu (when no action specified)
     # Check if already enabled
     if provider in settings.providers.enabled:
         # Provider already enabled - show options
@@ -587,15 +692,59 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
                 api_key = Prompt.ask("Enter your Gemini API key", password=True)
                 provider_obj.api_key = api_key
 
+    elif provider == "github":
+        # GitHub uses gh CLI for authentication - no manual token entry needed
+        # Just verify gh is available and show status
+        env_token = os.getenv("GITHUB_TOKEN")
+        gh_available = shutil.which("gh") is not None
+
+        if env_token:
+            console.print("[green]✓[/green] Found GITHUB_TOKEN in environment")
+            console.print("  [dim]Using: [from environment][/dim]")
+            provider_obj.token = env_token
+        elif gh_available:
+            # Verify gh is authenticated
+            try:
+                result = subprocess.run(
+                    ["gh", "auth", "token"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=5,
+                )
+                if result.stdout.strip():
+                    console.print("[green]✓[/green] GitHub authentication ready")
+                    console.print("  [dim]Using: gh CLI[/dim]")
+                    # Token will be fetched at runtime
+                    provider_obj.token = None
+                else:
+                    console.print("[yellow]⚠[/yellow] gh CLI not authenticated")
+                    console.print("  [dim]Run 'gh auth login' to authenticate[/dim]")
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                console.print("[yellow]⚠[/yellow] gh CLI authentication failed")
+                console.print("  [dim]Run 'gh auth login' to authenticate[/dim]")
+        else:
+            console.print("[yellow]⚠[/yellow] No GitHub authentication found")
+            console.print("[dim]Install gh CLI: brew install gh && gh auth login[/dim]")
+            console.print("[dim]Or set GITHUB_TOKEN: export GITHUB_TOKEN=ghp_...[/dim]")
+
+        # Model selection
+        model = Prompt.ask(
+            "Model",
+            default="gpt-5-nano",
+            show_default=True,
+        )
+        provider_obj.model = model
+
 
 # Legacy functions for backward compatibility
 def config_enable(provider: str) -> None:
     """Enable a provider and configure it.
 
     Args:
-        provider: Provider name (openai, anthropic, azure, gemini, local)
+        provider: Provider name (openai, anthropic, azure, gemini, github, local)
     """
-    valid_providers = ["local", "openai", "anthropic", "azure", "foundry", "gemini"]
+    valid_providers = ["local", "openai", "anthropic", "azure", "foundry", "gemini", "github"]
     if provider not in valid_providers:
         console.print(
             f"[red]✗[/red] Unknown provider: {provider}\n"

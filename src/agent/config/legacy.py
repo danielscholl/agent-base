@@ -14,18 +14,19 @@ DEFAULT_GEMINI_MODEL = "gemini-2.0-flash-exp"
 class AgentConfig:
     """Configuration for Agent.
 
-    Supports six LLM providers:
+    Supports seven LLM providers:
     - openai: OpenAI API (gpt-5-mini, gpt-4o, etc.)
     - anthropic: Anthropic API (claude-haiku-4-5, claude-sonnet-4-5, claude-opus-4, etc.)
     - azure: Azure OpenAI (requires deployment name)
     - foundry: Azure AI Foundry with managed models
     - gemini: Google Gemini API (gemini-2.0-flash-exp, gemini-2.5-pro, etc.)
+    - github: GitHub Models (phi-4, llama-3.3-70b-instruct, etc.)
     - local: Local models via Docker Desktop (qwen3, phi4, etc.)
 
     Model selection:
     - AGENT_MODEL: Override default model for any provider
     - Defaults: gpt-5-mini (OpenAI), claude-haiku-4-5-20251001 (Anthropic),
-      gemini-2.0-flash-exp (Gemini), ai/phi4 (Local)
+      gemini-2.0-flash-exp (Gemini), gpt-5-nano (GitHub), ai/phi4 (Local)
     - Azure providers: Use deployment names (AZURE_OPENAI_DEPLOYMENT_NAME, AZURE_MODEL_DEPLOYMENT)
     - Local: Recommended ai/qwen3 for best tool calling, ai/phi4 for general use
     """
@@ -60,6 +61,12 @@ class AgentConfig:
     gemini_location: str | None = None
     gemini_use_vertexai: bool = False
     # Supports both API key (Gemini Developer API) and Vertex AI (GCP credentials)
+
+    # GitHub Models (when llm_provider == "github")
+    github_token: str | None = None
+    github_model: str = "gpt-5-nano"
+    github_endpoint: str = "https://models.inference.ai.azure.com"
+    # Uses GITHUB_TOKEN env var or gh CLI authentication
 
     # Local Provider (when llm_provider == "local")
     local_base_url: str | None = None
@@ -140,6 +147,10 @@ class AgentConfig:
             gemini_project_id=os.getenv("GEMINI_PROJECT_ID"),
             gemini_location=os.getenv("GEMINI_LOCATION"),
             gemini_use_vertexai=os.getenv("GEMINI_USE_VERTEXAI", "false").lower() == "true",
+            # GitHub Models
+            github_token=os.getenv("GITHUB_TOKEN"),
+            github_model=agent_model or "gpt-5-nano",
+            github_endpoint=os.getenv("GITHUB_ENDPOINT", "https://models.inference.ai.azure.com"),
             # Local Provider
             local_base_url=os.getenv(
                 "LOCAL_BASE_URL", "http://localhost:12434/engines/llama.cpp/v1"
@@ -254,6 +265,10 @@ class AgentConfig:
                     raise ValueError(
                         "Gemini provider requires API key. Set GEMINI_API_KEY environment variable."
                     )
+        elif self.llm_provider == "github":
+            # GitHub authentication is handled by get_github_token() which checks
+            # GITHUB_TOKEN env var or gh CLI at runtime. No validation needed here.
+            pass
         elif self.llm_provider == "local":
             if not self.local_base_url:
                 raise ValueError(
@@ -266,7 +281,7 @@ class AgentConfig:
         else:
             raise ValueError(
                 f"Unknown LLM provider: {self.llm_provider}. "
-                "Supported providers: openai, anthropic, azure, foundry, gemini, local"
+                "Supported providers: openai, anthropic, azure, foundry, gemini, github, local"
             )
 
         # Mem0 validation: No validation needed!
@@ -303,6 +318,8 @@ class AgentConfig:
             return f"Azure AI Foundry/{self.azure_model_deployment}"
         elif self.llm_provider == "gemini":
             return f"Gemini/{self.gemini_model}"
+        elif self.llm_provider == "github":
+            return f"GitHub/{self.github_model}"
         elif self.llm_provider == "local":
             return f"Local/{self.local_model}"
         return "Unknown"
@@ -360,6 +377,10 @@ class AgentConfig:
             gemini_project_id=settings.providers.gemini.project_id,
             gemini_location=settings.providers.gemini.location,
             gemini_use_vertexai=settings.providers.gemini.use_vertexai,
+            # GitHub Models
+            github_token=settings.providers.github.token,
+            github_model=settings.providers.github.model,
+            github_endpoint=settings.providers.github.endpoint,
             # Local Provider
             local_base_url=settings.providers.local.base_url,
             local_model=settings.providers.local.model,
@@ -462,9 +483,7 @@ class AgentConfig:
         elif not config_file_exists:
             # No config file and no LLM_PROVIDER env var
             # Show helpful message and offer to run init
-            raise ValueError(
-                "No configuration found.\n\n" "Run 'agent config init' for interactive setup"
-            )
+            raise ValueError("No configuration found.")
         else:
             raise ValueError(
                 "No providers enabled in configuration.\n"
@@ -494,6 +513,10 @@ class AgentConfig:
             gemini_project_id=settings.providers.gemini.project_id,
             gemini_location=settings.providers.gemini.location,
             gemini_use_vertexai=settings.providers.gemini.use_vertexai,
+            # GitHub Models
+            github_token=settings.providers.github.token,
+            github_model=settings.providers.github.model,
+            github_endpoint=settings.providers.github.endpoint,
             # Local Provider
             local_base_url=settings.providers.local.base_url,
             local_model=settings.providers.local.model,

@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Module-level constants for validation
-VALID_PROVIDERS = {"local", "openai", "anthropic", "azure", "foundry", "gemini"}
+VALID_PROVIDERS = {"local", "openai", "anthropic", "azure", "foundry", "gemini", "github"}
 VALID_MEMORY_TYPES = {"in_memory", "mem0"}
 
 
@@ -65,6 +65,15 @@ class GeminiProviderConfig(BaseModel):
     location: str | None = None
 
 
+class GitHubProviderConfig(BaseModel):
+    """GitHub Models provider configuration."""
+
+    enabled: bool = False
+    token: str | None = None
+    model: str = "gpt-5-nano"
+    endpoint: str = "https://models.inference.ai.azure.com"
+
+
 class ProviderConfig(BaseModel):
     """Provider configurations."""
 
@@ -75,6 +84,7 @@ class ProviderConfig(BaseModel):
     azure: AzureOpenAIProviderConfig = Field(default_factory=AzureOpenAIProviderConfig)
     foundry: FoundryProviderConfig = Field(default_factory=FoundryProviderConfig)
     gemini: GeminiProviderConfig = Field(default_factory=GeminiProviderConfig)
+    github: GitHubProviderConfig = Field(default_factory=GitHubProviderConfig)
 
     @field_validator("enabled")
     @classmethod
@@ -98,6 +108,7 @@ class ProviderConfig(BaseModel):
         self.azure.enabled = "azure" in self.enabled
         self.foundry.enabled = "foundry" in self.enabled
         self.gemini.enabled = "gemini" in self.enabled
+        self.github.enabled = "github" in self.enabled
         return self
 
 
@@ -300,6 +311,12 @@ class AgentSettings(BaseModel):
 
             elif provider_name == "local":
                 # Local provider doesn't require API keys
+                pass
+
+            elif provider_name == "github":
+                # GitHub authentication is handled at runtime via get_github_token()
+                # which checks GITHUB_TOKEN env var or gh CLI
+                # Token is optional in config - validation happens at runtime
                 pass
 
         return errors
