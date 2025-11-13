@@ -1,5 +1,79 @@
 # Changelog
 
+## [0.2.1](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.0...agent-template-v0.2.1) (2025-11-13)
+
+
+### Features
+
+* add GitHub Models provider integration ([f0b8e64](https://github.com/danielscholl/agent-base/commit/f0b8e64fd467e7b1319e90daebbfdcd0344d978d))
+* **cli:** add telemetry guards, perf timing, and history rotation ([f935c0c](https://github.com/danielscholl/agent-base/commit/f935c0c30dfb650a02c8d7c7d87a0a7ef28a0404))
+* **config:** add auto-setup for local docker model runner ([399d453](https://github.com/danielscholl/agent-base/commit/399d453291e37407d4ef6dd0033dd023de386c01))
+* **config:** add progressive minimal config JSON and loading ([f1ed62f](https://github.com/danielscholl/agent-base/commit/f1ed62f283dd105f89028816e7ecc449d1ccf213))
+* **config:** comprehensive configuration system improvements ([ed8a5f6](https://github.com/danielscholl/agent-base/commit/ed8a5f66956ebe0ce6c6cbbe9c68340153fcf7a3))
+* **config:** enable local provider by default ([086836d](https://github.com/danielscholl/agent-base/commit/086836de492b46821cdf95b7f08632aef3c67168))
+* **config:** enable local provider by default and add validation ([32b4704](https://github.com/danielscholl/agent-base/commit/32b4704a690708c1adfdfe1fea751291e15b830b))
+* **config:** file-based configuration system ([4bcea4c](https://github.com/danielscholl/agent-base/commit/4bcea4c77c83547eaee9b525dd9d7a1224782d67))
+* **config:** implement model_dump_json_minimal and minimal saves ([f1ed62f](https://github.com/danielscholl/agent-base/commit/f1ed62f283dd105f89028816e7ecc449d1ccf213))
+* **config:** introduce file-based configuration with CLI and schema ([e90a72a](https://github.com/danielscholl/agent-base/commit/e90a72a50222a88397ed1e6c3b0e51210c4042fd))
+* **config:** introduce timeout constants and api key masking ([14df3eb](https://github.com/danielscholl/agent-base/commit/14df3eb34ff4bc80915c9f3af3c7a7c9a011399f))
+* **docker/mem0:** switch mem0 deployment to qdrant ([0e7ee62](https://github.com/danielscholl/agent-base/commit/0e7ee6246055e87cf1abfeac7c08c774c575442b))
+* enhance mem0 integration with sensitive data scrubbing and health checks ([b52ba0f](https://github.com/danielscholl/agent-base/commit/b52ba0f9444f916499e82ddb0b586ca5c630925e))
+* **github:** add GitHub Models provider ([45453fa](https://github.com/danielscholl/agent-base/commit/45453fab37312188c130f9f3d9c68cc61a629657))
+* **github:** adopt OpenAI-compatible API for GitHub provider ([ca8293a](https://github.com/danielscholl/agent-base/commit/ca8293afca2635134f541b4e47831185ee9a2e0a))
+* **github:** adopt OpenAI-compatible API for GitHub provider ([42f0cdb](https://github.com/danielscholl/agent-base/commit/42f0cdb656eebe771c6ca6640bedfbc842dc7838))
+* **mem0:** add mem0 endpoint check and client factory ([96b460c](https://github.com/danielscholl/agent-base/commit/96b460cf7a81c856b09cb53dc1e51a916415417b))
+* **mem0:** add mem0 health checks and deployment hints in CLI ([4edd082](https://github.com/danielscholl/agent-base/commit/4edd082b6bbd31249cd1275a5e99ff1299f44fb1))
+* **mem0:** add mem0 semantic memory management ([1228d79](https://github.com/danielscholl/agent-base/commit/1228d790c64d98bddb8c44cec3d9f10ea75a914c))
+* **mem0:** implement HTTP health check for mem0 endpoint ([73dbbb4](https://github.com/danielscholl/agent-base/commit/73dbbb4cacaad7fa0ffa74a8ce4c9e37131ceb21))
+* **mem0:** integrate mem0 memory backend for cloud/local modes ([69e9079](https://github.com/danielscholl/agent-base/commit/69e907939d5adeef7eed9e97b219a01128ac916f))
+* **mem0:** integrate mem0 semantic memory with non-blocking IO ([4edd082](https://github.com/danielscholl/agent-base/commit/4edd082b6bbd31249cd1275a5e99ff1299f44fb1))
+* **mem0:** switch to ephemeral storage in docker-compose ([0ce295f](https://github.com/danielscholl/agent-base/commit/0ce295fa1dc84db031a707898d688fb90741a648))
+* **mem0:** unify mem0 memory backend creation via Memory.from_config ([cd9c7d0](https://github.com/danielscholl/agent-base/commit/cd9c7d0e00db5f979bf7c4197355d73ffde0eaac))
+* **memory:** add Mem0Store semantic memory backend ([5897f9b](https://github.com/danielscholl/agent-base/commit/5897f9b0a544dfe5654db9521cf5e9a9ffe4d487))
+* **memory:** enhance mem0 implementation with security and robustness improvements ([3616fa3](https://github.com/danielscholl/agent-base/commit/3616fa35f3ab34d6e66b34fce05218b96935e3ae))
+* **memory:** integrate Mem0-based in-process memory store ([dd59093](https://github.com/danielscholl/agent-base/commit/dd59093a7ae01f2db74dd01bdf5e91f836609f2d))
+* **memory:** introduce mem0 semantic memory scaffolding and config ([8f46280](https://github.com/danielscholl/agent-base/commit/8f46280a0c12b4a307d0eee4e0739fac9d35db34))
+
+
+### Bug Fixes
+
+* **mem0:** require OPENAI_API_KEY for local LLM and use gpt-4o-mini ([3c1b841](https://github.com/danielscholl/agent-base/commit/3c1b8410004408e6649479f6ce7fc4e927fc635f))
+
+
+### Code Refactoring
+
+* **config:** disable default providers by default and tidy output ([981d10f](https://github.com/danielscholl/agent-base/commit/981d10f70c79fc10aa6b6e756c7ef529810e3dd0))
+* **config:** standardize env key messaging and precedence docs ([f2aada9](https://github.com/danielscholl/agent-base/commit/f2aada939fd2a7e4324b40662b87ca31c899e68f))
+* **config:** tidy imports and improve messaging in config flow ([fd254c7](https://github.com/danielscholl/agent-base/commit/fd254c7a7aabcfa433155d141c6400904778ed6f))
+* **mem0:** relax mem0 validation to allow api key only ([89b7559](https://github.com/danielscholl/agent-base/commit/89b7559de8caf57590734a25b0d80552242e965a))
+* **mem0:** standardize utc usage and clean up messages ([c18f997](https://github.com/danielscholl/agent-base/commit/c18f9970822fb984c97579427e36009ccd32574f))
+* **memory:** conditionally export Mem0Store when available ([7298e0e](https://github.com/danielscholl/agent-base/commit/7298e0e38ba2245ea84eb87e60bcd3c1fd31b0e8))
+
+
+### Tests
+
+* **cli:** clear git branch cache in toolbar tests for determinism ([41cbd3a](https://github.com/danielscholl/agent-base/commit/41cbd3a23a854d79329e6f4172b5f3ac0b6cba79))
+* **config:** add tests for minimal config and provider connectivity optimization ([f1ed62f](https://github.com/danielscholl/agent-base/commit/f1ed62f283dd105f89028816e7ecc449d1ccf213))
+* **config:** prevent dotenv loading in tests to avoid env file ([41cbd3a](https://github.com/danielscholl/agent-base/commit/41cbd3a23a854d79329e6f4172b5f3ac0b6cba79))
+* **config:** update integration test to expect default local provider enabled ([8464e09](https://github.com/danielscholl/agent-base/commit/8464e09f9859cf65a108ceac349ddbfcc64f8c46))
+* **mem0:** update mem0 store tests to expect filters usage ([4edd082](https://github.com/danielscholl/agent-base/commit/4edd082b6bbd31249cd1275a5e99ff1299f44fb1))
+* **tests:** stabilize tests with env and cache resets ([41cbd3a](https://github.com/danielscholl/agent-base/commit/41cbd3a23a854d79329e6f4172b5f3ac0b6cba79))
+
+
+### Continuous Integration
+
+* enable CodeQL and CI on release-please branches ([00adccc](https://github.com/danielscholl/agent-base/commit/00adccca783f366c168fdac1f755f441b7657712))
+* **workflows:** extend trigger branches for release-please patterns ([bb06dbb](https://github.com/danielscholl/agent-base/commit/bb06dbb29c05f295317b478c2df91ccb8c4defe8))
+
+
+### Miscellaneous
+
+* **config:** set default providers.enabled to [] ([3f32145](https://github.com/danielscholl/agent-base/commit/3f3214546bd640689b7003221e384b63b34b4bd9))
+* **contributing:** remove legacy .env.example and update docs ([6d90810](https://github.com/danielscholl/agent-base/commit/6d90810471ee162ec9be3eba25fb39d09a293723))
+* **deps:** update uv.lock for azure-ai-inference dependency ([47c3ce6](https://github.com/danielscholl/agent-base/commit/47c3ce67a722ec8ce03bfe8a79566a9b3c62586d))
+* **memory:** note Mem0Store is optional if mem0ai is unavailable ([76d6c7d](https://github.com/danielscholl/agent-base/commit/76d6c7dd4ede67a11774a7d2cd16741445d75203))
+* **pyproject:** extend omit list to exclude config_commands.py and editor.py ([45a50ef](https://github.com/danielscholl/agent-base/commit/45a50ef2ad890468b4583b37810e65068791a2c3))
+
 ## [0.2.0](https://github.com/danielscholl/agent-base/compare/agent-template-v0.1.0...agent-template-v0.2.0) (2025-11-11)
 
 
