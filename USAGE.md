@@ -102,8 +102,6 @@ $ agent -p "say hello to Alice"
 Hello, Alice!
 ```
 
-
-
 ## Session Management
 
 Sessions save automatically when you exit:

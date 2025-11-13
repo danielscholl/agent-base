@@ -494,7 +494,7 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
         # Check environment first (smart enable)
         env_key = os.getenv("OPENAI_API_KEY")
         if env_key:
-            console.print(f"[green]✓[/green] Found OPENAI_API_KEY in environment")
+            console.print("[green]✓[/green] Found OPENAI_API_KEY in environment")
             console.print(f"  [dim]Using: {env_key[:20]}...[/dim]")
             provider_obj.api_key = env_key
         else:
@@ -505,7 +505,7 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
         # Check environment first (smart enable)
         env_key = os.getenv("ANTHROPIC_API_KEY")
         if env_key:
-            console.print(f"[green]✓[/green] Found ANTHROPIC_API_KEY in environment")
+            console.print("[green]✓[/green] Found ANTHROPIC_API_KEY in environment")
             console.print(f"  [dim]Using: {env_key[:20]}...[/dim]")
             provider_obj.api_key = env_key
         else:
@@ -519,7 +519,7 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
         env_key = os.getenv("AZURE_OPENAI_API_KEY")
 
         if env_endpoint and env_deployment:
-            console.print(f"[green]✓[/green] Found Azure OpenAI config in environment")
+            console.print("[green]✓[/green] Found Azure OpenAI config in environment")
             console.print(f"  [dim]Endpoint: {env_endpoint}[/dim]")
             console.print(f"  [dim]Deployment: {env_deployment}[/dim]")
             provider_obj.endpoint = env_endpoint
@@ -530,7 +530,9 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
         else:
             endpoint = Prompt.ask("Enter your Azure OpenAI endpoint")
             deployment = Prompt.ask("Enter your deployment name")
-            api_key = Prompt.ask("Enter your API key (or press Enter to use Azure CLI)", password=True)
+            api_key = Prompt.ask(
+                "Enter your API key (or press Enter to use Azure CLI)", password=True
+            )
             provider_obj.endpoint = endpoint
             provider_obj.deployment = deployment
             if api_key:
@@ -542,7 +544,7 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
         env_deployment = os.getenv("AZURE_MODEL_DEPLOYMENT")
 
         if env_endpoint and env_deployment:
-            console.print(f"[green]✓[/green] Found Azure AI Foundry config in environment")
+            console.print("[green]✓[/green] Found Azure AI Foundry config in environment")
             console.print(f"  [dim]Endpoint: {env_endpoint}[/dim]")
             console.print(f"  [dim]Deployment: {env_deployment}[/dim]")
             provider_obj.project_endpoint = env_endpoint
@@ -561,14 +563,14 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
         env_location = os.getenv("GEMINI_LOCATION")
 
         if env_use_vertex and env_project:
-            console.print(f"[green]✓[/green] Found Gemini Vertex AI config in environment")
+            console.print("[green]✓[/green] Found Gemini Vertex AI config in environment")
             console.print(f"  [dim]Project: {env_project}[/dim]")
             console.print(f"  [dim]Location: {env_location or 'us-central1'}[/dim]")
             provider_obj.use_vertexai = True
             provider_obj.project_id = env_project
             provider_obj.location = env_location or "us-central1"
         elif env_key:
-            console.print(f"[green]✓[/green] Found GEMINI_API_KEY in environment")
+            console.print("[green]✓[/green] Found GEMINI_API_KEY in environment")
             console.print(f"  [dim]Using: {env_key[:20]}...[/dim]")
             provider_obj.api_key = env_key
         else:
@@ -669,19 +671,17 @@ def config_memory() -> None:
         settings = get_default_config()
 
     # Show current memory config
-    console.print(f"\n[bold]Current Memory Configuration:[/bold]")
+    console.print("\n[bold]Current Memory Configuration:[/bold]")
     console.print(f"  Type: [cyan]{settings.memory.type}[/cyan]")
     console.print(f"  History Limit: [cyan]{settings.memory.history_limit}[/cyan]")
 
     if settings.memory.type == "mem0":
         if settings.memory.mem0.api_key:
-            console.print(f"  Mode: [cyan]Cloud (mem0.ai)[/cyan]")
+            console.print("  Mode: [cyan]Cloud (mem0.ai)[/cyan]")
             console.print(f"  Organization: [dim]{settings.memory.mem0.org_id or 'Not set'}[/dim]")
         else:
-            console.print(f"  Mode: [cyan]Local (Chroma)[/cyan]")
-            console.print(
-                f"  Storage: [dim]{settings.memory.mem0.storage_path or 'Default'}[/dim]"
-            )
+            console.print("  Mode: [cyan]Local (Chroma)[/cyan]")
+            console.print(f"  Storage: [dim]{settings.memory.mem0.storage_path or 'Default'}[/dim]")
 
     # Ask what to do
     console.print("\n[bold]What would you like to do?[/bold]")
@@ -711,9 +711,7 @@ def config_memory() -> None:
 
         # If switching from mem0, offer to clean up the database
         if was_using_mem0:
-            console.print(
-                "\n[yellow]⚠[/yellow] You're switching from mem0 to in_memory."
-            )
+            console.print("\n[yellow]⚠[/yellow] You're switching from mem0 to in_memory.")
 
             # Determine what to clean up
             cleanup_paths = []
@@ -741,9 +739,7 @@ def config_memory() -> None:
                                 path.unlink()
                                 console.print(f"[green]✓[/green] Deleted {label}: {path}")
                         except Exception as e:
-                            console.print(
-                                f"[yellow]⚠[/yellow] Failed to delete {label}: {e}"
-                            )
+                            console.print(f"[yellow]⚠[/yellow] Failed to delete {label}: {e}")
 
                     # Clear mem0 config from settings
                     settings.memory.mem0.storage_path = None
@@ -766,22 +762,18 @@ def config_memory() -> None:
 
         # Check provider compatibility first
         try:
-            from agent.memory.mem0_utils import is_provider_compatible
             from agent.config import AgentConfig
+            from agent.memory.mem0_utils import is_provider_compatible
 
             # Load current provider from settings
             current_config = AgentConfig.from_combined()
             is_compatible, reason = is_provider_compatible(current_config)
 
             if not is_compatible:
-                console.print(
-                    f"\n[yellow]⚠[/yellow] Warning: mem0 requires a cloud LLM provider"
-                )
+                console.print("\n[yellow]⚠[/yellow] Warning: mem0 requires a cloud LLM provider")
                 console.print(f"  [dim]Current provider: {current_config.llm_provider}[/dim]")
                 console.print(f"  [dim]Issue: {reason}[/dim]")
-                console.print(
-                    f"  [dim]Supported providers: openai, anthropic, azure, gemini[/dim]"
-                )
+                console.print("  [dim]Supported providers: openai, anthropic, azure, gemini[/dim]")
                 console.print(
                     "\n[dim]mem0 will fall back to in_memory until you switch to a compatible provider.[/dim]"
                 )
@@ -800,8 +792,8 @@ def config_memory() -> None:
 
         # Determine mode: cloud or local
         if env_api_key and env_org_id:
-            console.print(f"[green]✓[/green] Found MEM0_API_KEY and MEM0_ORG_ID in environment")
-            console.print(f"  [dim]Using cloud mode (mem0.ai)[/dim]")
+            console.print("[green]✓[/green] Found MEM0_API_KEY and MEM0_ORG_ID in environment")
+            console.print("  [dim]Using cloud mode (mem0.ai)[/dim]")
             console.print(f"  [dim]Organization: {env_org_id}[/dim]")
             settings.memory.mem0.api_key = env_api_key
             settings.memory.mem0.org_id = env_org_id
@@ -811,8 +803,8 @@ def config_memory() -> None:
             if os.getenv("MEM0_PROJECT_ID"):
                 settings.memory.mem0.project_id = os.getenv("MEM0_PROJECT_ID")
         elif env_storage_path:
-            console.print(f"[green]✓[/green] Found MEM0_STORAGE_PATH in environment")
-            console.print(f"  [dim]Using local mode with custom storage[/dim]")
+            console.print("[green]✓[/green] Found MEM0_STORAGE_PATH in environment")
+            console.print("  [dim]Using local mode with custom storage[/dim]")
             settings.memory.mem0.storage_path = env_storage_path
         else:
             # Prompt for configuration (local is the expected/default path)
@@ -821,8 +813,8 @@ def config_memory() -> None:
             if use_local:
                 # Local mode
                 if Confirm.ask("Set custom storage path?", default=False):
-                    storage_path = Prompt.ask("Enter storage path", default="~/.agent/mem0")
-                    settings.memory.mem0.storage_path = storage_path
+                    storage_path_str = Prompt.ask("Enter storage path", default="~/.agent/mem0")
+                    settings.memory.mem0.storage_path = storage_path_str
             else:
                 # Cloud mode (mem0.ai)
                 api_key = Prompt.ask("Enter your mem0.ai API key", password=True)

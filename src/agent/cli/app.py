@@ -388,7 +388,9 @@ async def _test_all_providers(config: AgentConfig) -> list[tuple[str, str, bool,
     # Combine provider info with test results
     results = [
         (provider_id, f"{provider_name} ({model})", success, status)
-        for (provider_id, provider_name, model), (success, status) in zip(providers, test_results)
+        for (provider_id, provider_name, model), (success, status) in zip(
+            providers, test_results, strict=True
+        )
     ]
 
     return results

@@ -239,7 +239,7 @@ class TestProviderConnectivityOptimization:
         with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
             mock_test.return_value = (True, "Connected")
 
-            results = await _test_all_providers(config)
+            await _test_all_providers(config)
 
             # Should only test local, not openai/anthropic/gemini
             assert mock_test.call_count == 1
@@ -281,9 +281,7 @@ class TestProviderConnectivityOptimization:
                 start_times = [t for _, t in call_times]
                 time_spread = max(start_times) - min(start_times)
                 # If parallel, all should start within 0.005s of each other
-                assert (
-                    time_spread < 0.005
-                ), f"Tests not parallel, time spread: {time_spread}s"
+                assert time_spread < 0.005, f"Tests not parallel, time spread: {time_spread}s"
 
     @pytest.mark.asyncio
     async def test_multiple_enabled_providers(self):
@@ -298,7 +296,7 @@ class TestProviderConnectivityOptimization:
         with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
             mock_test.return_value = (True, "Connected")
 
-            results = await _test_all_providers(config)
+            await _test_all_providers(config)
 
             # Should test all 3 enabled providers
             assert mock_test.call_count == 3
@@ -319,7 +317,7 @@ class TestProviderConnectivityOptimization:
         with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
             mock_test.return_value = (True, "Connected")
 
-            results = await _test_all_providers(config)
+            await _test_all_providers(config)
 
             # Should test only active provider (openai)
             assert mock_test.call_count == 1

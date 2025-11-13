@@ -135,16 +135,53 @@ class TestMinimalConfigSerialization:
                 "version": "1.0",
                 "providers": {
                     "enabled": ["openai"],
-                    "local": {"enabled": False, "base_url": "http://localhost:12434", "model": "ai/phi4"},
+                    "local": {
+                        "enabled": False,
+                        "base_url": "http://localhost:12434",
+                        "model": "ai/phi4",
+                    },
                     "openai": {"enabled": True, "api_key": "sk-legacy", "model": "gpt-5-mini"},
                     "anthropic": {"enabled": False, "api_key": None, "model": "claude-haiku"},
-                    "azure": {"enabled": False, "endpoint": None, "deployment": None, "api_version": "2025", "api_key": None},
-                    "foundry": {"enabled": False, "project_endpoint": None, "model_deployment": None},
-                    "gemini": {"enabled": False, "api_key": None, "model": "gemini-2.0", "use_vertexai": False, "project_id": None, "location": None}
+                    "azure": {
+                        "enabled": False,
+                        "endpoint": None,
+                        "deployment": None,
+                        "api_version": "2025",
+                        "api_key": None,
+                    },
+                    "foundry": {
+                        "enabled": False,
+                        "project_endpoint": None,
+                        "model_deployment": None,
+                    },
+                    "gemini": {
+                        "enabled": False,
+                        "api_key": None,
+                        "model": "gemini-2.0",
+                        "use_vertexai": False,
+                        "project_id": None,
+                        "location": None,
+                    },
                 },
                 "agent": {"data_dir": "~/.agent", "log_level": "info"},
-                "telemetry": {"enabled": False, "enable_sensitive_data": False, "otlp_endpoint": "http://localhost:4317", "applicationinsights_connection_string": None},
-                "memory": {"enabled": True, "type": "in_memory", "history_limit": 20, "mem0": {"storage_path": None, "api_key": None, "org_id": None, "user_id": None, "project_id": None}}
+                "telemetry": {
+                    "enabled": False,
+                    "enable_sensitive_data": False,
+                    "otlp_endpoint": "http://localhost:4317",
+                    "applicationinsights_connection_string": None,
+                },
+                "memory": {
+                    "enabled": True,
+                    "type": "in_memory",
+                    "history_limit": 20,
+                    "mem0": {
+                        "storage_path": None,
+                        "api_key": None,
+                        "org_id": None,
+                        "user_id": None,
+                        "project_id": None,
+                    },
+                },
             }
 
             # Write legacy format

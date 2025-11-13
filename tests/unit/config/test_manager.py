@@ -38,7 +38,9 @@ class TestLoadConfig:
 
         assert isinstance(settings, AgentSettings)
         assert settings.version == "1.0"
-        assert settings.providers.enabled == ["local"]  # Local provider enabled by default
+        assert (
+            settings.providers.enabled == []
+        )  # No providers by default (explicit config required)
 
     def test_load_valid_json_succeeds(self, tmp_path):
         """Test loading valid JSON file succeeds."""

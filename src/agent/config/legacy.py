@@ -462,9 +462,7 @@ class AgentConfig:
         elif not config_file_exists:
             # No config file and no LLM_PROVIDER env var
             # Show helpful message and offer to run init
-            raise ValueError(
-                "No configuration found."
-            )
+            raise ValueError("No configuration found.")
         else:
             raise ValueError(
                 "No providers enabled in configuration.\n"
