@@ -10,7 +10,7 @@ def get_default_config() -> AgentSettings:
 
     Returns:
         AgentSettings with sensible defaults:
-        - No providers enabled (user must configure explicitly)
+        - Local provider enabled by default (free, no API keys required)
         - Telemetry disabled
         - In-memory storage for conversation history
         - Data directory at ~/.agent
@@ -18,7 +18,7 @@ def get_default_config() -> AgentSettings:
     Example:
         >>> config = get_default_config()
         >>> config.providers.enabled
-        []
+        ['local']
         >>> config.telemetry.enabled
         False
     """

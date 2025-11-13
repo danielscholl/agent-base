@@ -168,6 +168,7 @@ def config_init() -> None:
     # Get provider-specific configuration
     if provider == "local":
         _setup_local_provider()
+        settings.providers.local.enabled = True
 
     elif provider == "openai":
         api_key = Prompt.ask("\nEnter your OpenAI API key", password=True)

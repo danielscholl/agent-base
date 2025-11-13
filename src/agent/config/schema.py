@@ -5,13 +5,16 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+# Module-level constants for validation
+VALID_PROVIDERS = {"local", "openai", "anthropic", "azure", "foundry", "gemini"}
+VALID_MEMORY_TYPES = {"in_memory", "mem0"}
+
 
 class LocalProviderConfig(BaseModel):
     """Local provider configuration (Docker Desktop Model Runner)."""
 
-    enabled: bool = (
-        False  # Consistent with other providers; controlled by ProviderConfig.enabled list
-    )
+    enabled: bool = False  # NOTE: Overwritten by sync_enabled_flags() validator.
+    # Actual enabled state is determined by ProviderConfig.enabled list.
     base_url: str = "http://localhost:12434/engines/llama.cpp/v1"
     model: str = "ai/phi4"
 
@@ -76,12 +79,11 @@ class ProviderConfig(BaseModel):
     @classmethod
     def validate_enabled_providers(cls, v: list[str]) -> list[str]:
         """Validate that enabled providers list contains valid provider names."""
-        valid_providers = {"local", "openai", "anthropic", "azure", "foundry", "gemini"}
-        invalid = set(v) - valid_providers
+        invalid = set(v) - VALID_PROVIDERS
         if invalid:
             raise ValueError(
                 f"Invalid provider names in enabled list: {invalid}. "
-                f"Valid providers: {valid_providers}"
+                f"Valid providers: {VALID_PROVIDERS}"
             )
         return v
 
@@ -150,9 +152,8 @@ class MemoryConfig(BaseModel):
     @classmethod
     def validate_memory_type(cls, v: str) -> str:
         """Validate memory type."""
-        valid_types = {"in_memory", "mem0"}
-        if v not in valid_types:
-            raise ValueError(f"Invalid memory type: {v}. Valid types: {valid_types}")
+        if v not in VALID_MEMORY_TYPES:
+            raise ValueError(f"Invalid memory type: {v}. Valid types: {VALID_MEMORY_TYPES}")
         return v
 
 

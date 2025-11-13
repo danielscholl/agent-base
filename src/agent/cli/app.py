@@ -6,6 +6,7 @@ import logging
 import os
 import platform
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -613,18 +614,26 @@ def run_health_check() -> None:
 
         # If it's a "No configuration found" error, offer to run init
         if "No configuration found" in error_msg:
-            from rich.prompt import Confirm
+            # Only offer interactive setup if running in a TTY
+            if sys.stdin.isatty():
+                from rich.prompt import Confirm
 
-            if Confirm.ask("Would you like to set up configuration now?", default=True):
-                from agent.cli.config_commands import config_init
+                if Confirm.ask("Would you like to set up configuration now?", default=True):
+                    from agent.cli.config_commands import config_init
 
-                config_init()
-                console.print(
-                    "\n[green]✓[/green] Configuration created! You can now run your command again."
-                )
-                return
+                    config_init()
+                    console.print(
+                        "\n[green]✓[/green] Configuration created! You can now run your command again."
+                    )
+                    return
+                else:
+                    console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
             else:
-                console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
+                console.print(
+                    "\n[yellow]Configuration not found.[/yellow] "
+                    "Run 'agent config init' for interactive setup, "
+                    "or set LLM_PROVIDER environment variable for non-interactive configuration."
+                )
         raise typer.Exit(ExitCodes.GENERAL_ERROR)
     except Exception as e:
         console.print(f"[red]✗[/red] Unexpected error: {e}")
@@ -842,18 +851,26 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
 
         # If it's a "No configuration found" error, offer to run init
         if "No configuration found" in error_msg:
-            from rich.prompt import Confirm
+            # Only offer interactive setup if running in a TTY
+            if sys.stdin.isatty():
+                from rich.prompt import Confirm
 
-            if Confirm.ask("Would you like to set up configuration now?", default=True):
-                from agent.cli.config_commands import config_init
+                if Confirm.ask("Would you like to set up configuration now?", default=True):
+                    from agent.cli.config_commands import config_init
 
-                config_init()
-                console.print(
-                    "\n[green]✓[/green] Configuration created! Please run your command again."
-                )
-                return
+                    config_init()
+                    console.print(
+                        "\n[green]✓[/green] Configuration created! Please run your command again."
+                    )
+                    return
+                else:
+                    console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
             else:
-                console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
+                console.print(
+                    "\n[yellow]Configuration not found.[/yellow] "
+                    "Run 'agent config init' for interactive setup, "
+                    "or set LLM_PROVIDER environment variable for non-interactive configuration."
+                )
 
         raise typer.Exit(ExitCodes.GENERAL_ERROR)
     except KeyboardInterrupt:
@@ -1191,18 +1208,26 @@ async def run_chat_mode(
 
         # If it's a "No configuration found" error, offer to run init
         if "No configuration found" in error_msg:
-            from rich.prompt import Confirm
+            # Only offer interactive setup if running in a TTY
+            if sys.stdin.isatty():
+                from rich.prompt import Confirm
 
-            if Confirm.ask("Would you like to set up configuration now?", default=True):
-                from agent.cli.config_commands import config_init
+                if Confirm.ask("Would you like to set up configuration now?", default=True):
+                    from agent.cli.config_commands import config_init
 
-                config_init()
-                console.print(
-                    "\n[green]✓[/green] Configuration created! Please run 'agent' again to start."
-                )
-                return
+                    config_init()
+                    console.print(
+                        "\n[green]✓[/green] Configuration created! Please run 'agent' again to start."
+                    )
+                    return
+                else:
+                    console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
             else:
-                console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
+                console.print(
+                    "\n[yellow]Configuration not found.[/yellow] "
+                    "Run 'agent config init' for interactive setup, "
+                    "or set LLM_PROVIDER environment variable for non-interactive configuration."
+                )
 
         raise typer.Exit(ExitCodes.GENERAL_ERROR)
     except Exception as e:
