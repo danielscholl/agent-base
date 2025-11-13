@@ -76,6 +76,8 @@ def test_status_bar_handles_no_git(mock_run):
     # (current implementation falls back gracefully)
 
 
+@patch("agent.cli.app._BRANCH_CACHE_CWD", None)
+@patch("agent.cli.app._BRANCH_CACHE_VALUE", "")
 @patch("agent.cli.app.subprocess.run")
 def test_status_bar_handles_git_exception(mock_run):
     """Test that status bar handles git command exceptions."""

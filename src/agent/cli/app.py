@@ -6,6 +6,7 @@ import logging
 import os
 import platform
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -69,7 +70,7 @@ def _hide_connection_string_if_otel_disabled(config: AgentConfig) -> str | None:
         The connection string if it was hidden, None otherwise
 
     Example:
-        >>> config = AgentConfig.from_env()
+        >>> config = AgentConfig.from_combined()
         >>> saved = _hide_connection_string_if_otel_disabled(config)
         >>> # ... create agent ...
         >>> if saved:
@@ -150,13 +151,11 @@ def _get_status_bar_text() -> str:
     return f"{' ' * padding}{status}"
 
 
-@app.command()
+@app.callback(invoke_without_command=True)
 def main(
+    ctx: typer.Context,
     prompt: str = typer.Option(None, "-p", "--prompt", help="Execute a single prompt and exit"),
     check: bool = typer.Option(False, "--check", help="Show configuration and connectivity status"),
-    config_flag: bool = typer.Option(
-        False, "--config", help="Show configuration and connectivity status"
-    ),
     version_flag: bool = typer.Option(False, "--version", help="Show version"),
     telemetry: str = typer.Option(
         None, "--telemetry", help="Manage telemetry dashboard (start|stop|status|url)"
@@ -187,7 +186,12 @@ def main(
         agent --provider local --model ai/qwen3     # Use local provider with qwen3
         agent --continue                            # Resume last session
         agent --telemetry start                     # Start observability dashboard
+        agent config init                           # Configure agent interactively
     """
+    # If a subcommand was invoked (e.g., 'agent config'), skip main logic
+    if ctx.invoked_subcommand is not None:
+        return
+
     # Apply CLI overrides to environment variables (temporary for this process)
     if provider:
         os.environ["LLM_PROVIDER"] = provider
@@ -198,7 +202,7 @@ def main(
         console.print(f"Agent version {__version__}")
         return
 
-    if check or config_flag:
+    if check:
         run_health_check()
         return
 
@@ -239,7 +243,7 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
     Returns:
         Tuple of (success, status_message)
     """
-    # Temporarily suppress ERROR logs during connectivity test
+    # Temporarily suppress ERROR and WARNING logs during connectivity test
     # This includes Azure identity, agent-framework auth, and middleware loggers
     loggers_to_suppress = [
         logging.getLogger("agent.middleware"),
@@ -247,6 +251,7 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
         logging.getLogger("azure.identity._internal.decorators"),
         logging.getLogger("azure.identity._credentials.chained"),
         logging.getLogger("agent_framework.azure._entra_id_authentication"),
+        logging.getLogger("agent_framework._clients"),  # Suppress conversation_id warnings
     ]
     original_levels = [(logger, logger.level) for logger in loggers_to_suppress]
 
@@ -367,7 +372,7 @@ def run_health_check() -> None:
 
     try:
         # Configuration validation
-        config = AgentConfig.from_env()
+        config = AgentConfig.from_combined()
         config.validate()
 
         # System Information
@@ -525,6 +530,14 @@ def run_health_check() -> None:
 
         # Display results with configuration details
         for provider_id, provider_display, success, status in results:
+            # Skip disabled providers entirely if using new config system
+            # But always show the active provider even if not in enabled list
+            if (
+                config.enabled_providers
+                and provider_id not in config.enabled_providers
+                and provider_id != config.llm_provider
+            ):
+                continue
             is_active = provider_id == config.llm_provider
 
             if is_active and success:
@@ -596,8 +609,31 @@ def run_health_check() -> None:
         # Re-raise typer.Exit without wrapping in another exception
         raise
     except ValueError as e:
-        console.print(f"[red]✗[/red] Configuration error: {e}")
-        console.print("\n[yellow]See .env.example for configuration template[/yellow]")
+        error_msg = str(e)
+        console.print(f"[red]✗[/red] Configuration error: {error_msg}\n")
+
+        # If it's a "No configuration found" error, offer to run init
+        if "No configuration found" in error_msg:
+            # Only offer interactive setup if running in a TTY
+            if sys.stdin.isatty():
+                from rich.prompt import Confirm
+
+                if Confirm.ask("Would you like to set up configuration now?", default=True):
+                    from agent.cli.config_commands import config_init
+
+                    config_init()
+                    console.print(
+                        "\n[green]✓[/green] Configuration created! You can now run your command again."
+                    )
+                    return
+                else:
+                    console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
+            else:
+                console.print(
+                    "\n[yellow]Configuration not found.[/yellow] "
+                    "Run 'agent config init' for interactive setup, "
+                    "or set LLM_PROVIDER environment variable for non-interactive configuration."
+                )
         raise typer.Exit(ExitCodes.GENERAL_ERROR)
     except Exception as e:
         console.print(f"[red]✗[/red] Unexpected error: {e}")
@@ -627,7 +663,7 @@ def show_configuration() -> None:
     console.print()
 
     try:
-        config = AgentConfig.from_env()
+        config = AgentConfig.from_combined()
 
         # System Information
         console.print("[bold]System:[/bold]")
@@ -719,7 +755,7 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
 
         perf_start = time.perf_counter()
 
-        config = AgentConfig.from_env()
+        config = AgentConfig.from_combined()
         config.validate()
         logger.info(f"[PERF] Config loaded: {(time.perf_counter() - perf_start)*1000:.1f}ms")
 
@@ -810,8 +846,32 @@ async def run_single_prompt(prompt: str, verbose: bool = False, quiet: bool = Fa
         )
 
     except ValueError as e:
-        console.print(f"\n[red]Configuration error:[/red] {e}")
-        console.print("[yellow]Run 'agent --check' to diagnose issues[/yellow]")
+        error_msg = str(e)
+        console.print(f"\n[red]Configuration error:[/red] {error_msg}\n")
+
+        # If it's a "No configuration found" error, offer to run init
+        if "No configuration found" in error_msg:
+            # Only offer interactive setup if running in a TTY
+            if sys.stdin.isatty():
+                from rich.prompt import Confirm
+
+                if Confirm.ask("Would you like to set up configuration now?", default=True):
+                    from agent.cli.config_commands import config_init
+
+                    config_init()
+                    console.print(
+                        "\n[green]✓[/green] Configuration created! Please run your command again."
+                    )
+                    return
+                else:
+                    console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
+            else:
+                console.print(
+                    "\n[yellow]Configuration not found.[/yellow] "
+                    "Run 'agent config init' for interactive setup, "
+                    "or set LLM_PROVIDER environment variable for non-interactive configuration."
+                )
+
         raise typer.Exit(ExitCodes.GENERAL_ERROR)
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Interrupted by user[/yellow]")
@@ -870,7 +930,7 @@ async def run_chat_mode(
         perf_start = time.perf_counter()
 
         # Load configuration
-        config = AgentConfig.from_env()
+        config = AgentConfig.from_combined()
         config.validate()
         logger.info(
             f"[PERF] Interactive mode - config loaded: {(time.perf_counter() - perf_start)*1000:.1f}ms"
@@ -1143,8 +1203,32 @@ async def run_chat_mode(
                 break
 
     except ValueError as e:
-        console.print(f"[red]Configuration error:[/red] {e}")
-        console.print("[yellow]Run 'agent --check' to diagnose issues[/yellow]")
+        error_msg = str(e)
+        console.print(f"[red]Configuration error:[/red] {error_msg}\n")
+
+        # If it's a "No configuration found" error, offer to run init
+        if "No configuration found" in error_msg:
+            # Only offer interactive setup if running in a TTY
+            if sys.stdin.isatty():
+                from rich.prompt import Confirm
+
+                if Confirm.ask("Would you like to set up configuration now?", default=True):
+                    from agent.cli.config_commands import config_init
+
+                    config_init()
+                    console.print(
+                        "\n[green]✓[/green] Configuration created! Please run 'agent' again to start."
+                    )
+                    return
+                else:
+                    console.print("\n[dim]Run 'agent config init' when ready to configure.[/dim]")
+            else:
+                console.print(
+                    "\n[yellow]Configuration not found.[/yellow] "
+                    "Run 'agent config init' for interactive setup, "
+                    "or set LLM_PROVIDER environment variable for non-interactive configuration."
+                )
+
         raise typer.Exit(ExitCodes.GENERAL_ERROR)
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
@@ -1244,6 +1328,69 @@ async def _execute_agent_query(
             except KeyboardInterrupt:
                 console.print("\n[yellow]Operation cancelled[/yellow]\n")
                 raise
+
+
+# Config command group - add with rich_help_panel to keep main command at root level
+# Note: Typer doesn't support default commands with subcommands elegantly
+# The pattern used here: main() is the primary command, config is a command group
+config_app = typer.Typer(help="Manage agent configuration")
+app.add_typer(config_app, name="config")
+
+
+@config_app.callback(invoke_without_command=True)
+def config_callback(ctx: typer.Context) -> None:
+    """Config command callback - shows help if no subcommand given."""
+    if ctx.invoked_subcommand is None:
+        console.print(ctx.get_help())
+
+
+@config_app.command("init")
+def config_init_command() -> None:
+    """Initialize configuration with interactive prompts."""
+    from agent.cli.config_commands import config_init
+
+    config_init()
+
+
+@config_app.command("show")
+def config_show_command() -> None:
+    """Display current configuration."""
+    from agent.cli.config_commands import config_show
+
+    config_show()
+
+
+@config_app.command("edit")
+def config_edit_command() -> None:
+    """Open configuration file in text editor."""
+    from agent.cli.config_commands import config_edit
+
+    config_edit()
+
+
+@config_app.command("provider")
+def config_provider_command(
+    ctx: typer.Context,
+    provider: str = typer.Argument(
+        None, help="Provider to manage (local, openai, anthropic, azure, foundry, gemini)"
+    ),
+) -> None:
+    """Manage a provider (enable/disable/configure/set-default)."""
+    if provider is None:
+        console.print(ctx.get_help())
+        return
+
+    from agent.cli.config_commands import config_provider
+
+    config_provider(provider)
+
+
+@config_app.command("validate")
+def config_validate_command() -> None:
+    """Validate configuration file."""
+    from agent.cli.config_commands import config_validate
+
+    config_validate()
 
 
 if __name__ == "__main__":

@@ -162,8 +162,10 @@ omit = [
     "src/agent/utils/errors.py",       # Exception definitions
     "src/agent/cli/app.py",            # CLI orchestration (hard to test)
     "src/agent/cli/commands.py",       # CLI commands (hard to test)
+    "src/agent/cli/config_commands.py", # CLI config commands (hard to test)
     "src/agent/cli/session.py",        # CLI session management (hard to test)
     "src/agent/cli/display.py",        # CLI display (hard to test)
+    "src/agent/config/editor.py",      # Editor integration (hard to test)
     "src/agent/display/*",             # Display logic (hard to test)
     "src/agent/utils/keybindings/*",   # Keyboard handling (hard to test)
     "src/agent/utils/terminal.py",     # Terminal utilities (hard to test)

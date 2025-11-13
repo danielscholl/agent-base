@@ -44,7 +44,7 @@ class AgentConfig:
     # Azure OpenAI (when llm_provider == "azure")
     azure_openai_endpoint: str | None = None
     azure_openai_deployment: str | None = None
-    azure_openai_api_version: str = "2024-08-01-preview"
+    azure_openai_api_version: str = "2025-03-01-preview"
     azure_openai_api_key: str | None = None
     # Uses AzureCliCredential for auth if API key not provided
 
@@ -94,6 +94,10 @@ class AgentConfig:
     enable_sensitive_data: bool = False
     applicationinsights_connection_string: str | None = None
     otlp_endpoint: str | None = None
+
+    # Configuration source tracking (for new config system)
+    enabled_providers: list[str] | None = None  # List of enabled providers from settings.json
+    config_source: str = "env"  # Source of configuration: "env", "file", or "combined"
 
     @classmethod
     def from_env(cls) -> "AgentConfig":
@@ -184,6 +188,11 @@ class AgentConfig:
             "APPLICATIONINSIGHTS_CONNECTION_STRING"
         )
         config.otlp_endpoint = os.getenv("OTLP_ENDPOINT", "http://localhost:4317")
+
+        # Note: from_env() doesn't set enabled_providers (old behavior)
+        # This allows health check to test all configured providers
+        config.enabled_providers = None
+        config.config_source = "env"
 
         return config
 
@@ -297,3 +306,236 @@ class AgentConfig:
         elif self.llm_provider == "local":
             return f"Local/{self.local_model}"
         return "Unknown"
+
+    @classmethod
+    def from_file(cls, config_path: Path | None = None) -> "AgentConfig":
+        """Load configuration from JSON settings file.
+
+        Args:
+            config_path: Optional path to settings.json file. Defaults to ~/.agent/settings.json
+
+        Returns:
+            AgentConfig instance with values from JSON file
+
+        Example:
+            >>> config = AgentConfig.from_file()
+            >>> config.llm_provider
+            'local'
+            >>> config.config_source
+            'file'
+        """
+        from .manager import load_config
+
+        # Load settings from file
+        settings = load_config(config_path)
+
+        # Determine primary provider - if nothing enabled, user must configure
+        if not settings.providers.enabled:
+            raise ValueError(
+                "No providers enabled in configuration. "
+                "Run 'agent config enable <provider>' to enable a provider."
+            )
+        llm_provider = settings.providers.enabled[0]
+
+        # Build AgentConfig from settings
+        config = cls(
+            llm_provider=llm_provider,
+            # OpenAI
+            openai_api_key=settings.providers.openai.api_key,
+            openai_model=settings.providers.openai.model,
+            # Anthropic
+            anthropic_api_key=settings.providers.anthropic.api_key,
+            anthropic_model=settings.providers.anthropic.model,
+            # Azure OpenAI
+            azure_openai_endpoint=settings.providers.azure.endpoint,
+            azure_openai_deployment=settings.providers.azure.deployment,
+            azure_openai_api_version=settings.providers.azure.api_version,
+            azure_openai_api_key=settings.providers.azure.api_key,
+            # Azure AI Foundry
+            azure_project_endpoint=settings.providers.foundry.project_endpoint,
+            azure_model_deployment=settings.providers.foundry.model_deployment,
+            # Google Gemini
+            gemini_api_key=settings.providers.gemini.api_key,
+            gemini_model=settings.providers.gemini.model,
+            gemini_project_id=settings.providers.gemini.project_id,
+            gemini_location=settings.providers.gemini.location,
+            gemini_use_vertexai=settings.providers.gemini.use_vertexai,
+            # Local Provider
+            local_base_url=settings.providers.local.base_url,
+            local_model=settings.providers.local.model,
+        )
+
+        # Set data directories
+        config.agent_data_dir = Path(settings.agent.data_dir).expanduser()
+        config.agent_session_dir = config.agent_data_dir / "sessions"
+
+        # Memory configuration
+        config.memory_enabled = settings.memory.enabled
+        config.memory_type = settings.memory.type
+        config.memory_history_limit = settings.memory.history_limit
+        config.memory_dir = config.agent_data_dir / "memory"
+
+        # Mem0 configuration
+        if settings.memory.mem0.storage_path:
+            config.mem0_storage_path = Path(settings.memory.mem0.storage_path).expanduser()
+        config.mem0_api_key = settings.memory.mem0.api_key
+        config.mem0_org_id = settings.memory.mem0.org_id
+        config.mem0_user_id = settings.memory.mem0.user_id or os.getenv("USER") or "default-user"
+        config.mem0_project_id = settings.memory.mem0.project_id
+
+        # Observability configuration
+        config.enable_otel = settings.telemetry.enabled
+        config.enable_otel_explicit = settings.telemetry.enabled
+        config.enable_sensitive_data = settings.telemetry.enable_sensitive_data
+        config.applicationinsights_connection_string = (
+            settings.telemetry.applicationinsights_connection_string
+        )
+        config.otlp_endpoint = settings.telemetry.otlp_endpoint
+
+        # Set enabled providers and source
+        config.enabled_providers = settings.providers.enabled
+        config.config_source = "file"
+
+        return config
+
+    @classmethod
+    def from_combined(cls, config_path: Path | None = None) -> "AgentConfig":
+        """Load configuration from both file and environment variables.
+
+        Environment variables override file settings. This is the recommended
+        method for loading configuration as it provides maximum flexibility.
+
+        Precedence (highest to lowest):
+        1. Environment variables
+        2. Settings file (~/.agent/settings.json)
+        3. Default values
+
+        Args:
+            config_path: Optional path to settings.json file
+
+        Returns:
+            AgentConfig instance with merged configuration
+
+        Example:
+            >>> config = AgentConfig.from_combined()
+            >>> config.config_source
+            'combined'
+        """
+        from .manager import deep_merge, load_config, merge_with_env
+
+        # Load from file first
+        settings = load_config(config_path)
+
+        # Get environment overrides
+        env_overrides = merge_with_env(settings)
+
+        # Apply environment overrides to settings
+        if env_overrides:
+            settings_dict = settings.model_dump()
+            merged_dict = deep_merge(settings_dict, env_overrides)
+            from .schema import AgentSettings
+
+            settings = AgentSettings(**merged_dict)
+
+        # Determine primary provider (env var takes precedence)
+        llm_provider_env = os.getenv("LLM_PROVIDER")
+
+        # Check if config file actually exists
+        from .manager import get_config_path
+
+        config_file_exists = config_path.exists() if config_path else get_config_path().exists()
+
+        if llm_provider_env:
+            llm_provider = llm_provider_env
+        elif settings.providers.enabled:
+            llm_provider = settings.providers.enabled[0]
+        elif not config_file_exists:
+            # No config file and no LLM_PROVIDER env var
+            # Show helpful message and offer to run init
+            raise ValueError(
+                "No configuration found.\n\n"
+                "Run 'agent config init' for interactive setup, or set LLM_PROVIDER environment variable."
+            )
+        else:
+            raise ValueError(
+                "No providers enabled in configuration. "
+                "Run 'agent config enable <provider>' to enable a provider, "
+                "or set LLM_PROVIDER environment variable."
+            )
+
+        # Build AgentConfig from merged settings
+        config = cls(
+            llm_provider=llm_provider,
+            # OpenAI
+            openai_api_key=settings.providers.openai.api_key,
+            openai_model=settings.providers.openai.model,
+            # Anthropic
+            anthropic_api_key=settings.providers.anthropic.api_key,
+            anthropic_model=settings.providers.anthropic.model,
+            # Azure OpenAI
+            azure_openai_endpoint=settings.providers.azure.endpoint,
+            azure_openai_deployment=settings.providers.azure.deployment,
+            azure_openai_api_version=settings.providers.azure.api_version,
+            azure_openai_api_key=settings.providers.azure.api_key,
+            # Azure AI Foundry
+            azure_project_endpoint=settings.providers.foundry.project_endpoint,
+            azure_model_deployment=settings.providers.foundry.model_deployment,
+            # Google Gemini
+            gemini_api_key=settings.providers.gemini.api_key,
+            gemini_model=settings.providers.gemini.model,
+            gemini_project_id=settings.providers.gemini.project_id,
+            gemini_location=settings.providers.gemini.location,
+            gemini_use_vertexai=settings.providers.gemini.use_vertexai,
+            # Local Provider
+            local_base_url=settings.providers.local.base_url,
+            local_model=settings.providers.local.model,
+        )
+
+        # Set data directories
+        config.agent_data_dir = Path(settings.agent.data_dir).expanduser()
+        config.agent_session_dir = config.agent_data_dir / "sessions"
+
+        # Memory configuration
+        config.memory_enabled = settings.memory.enabled
+        config.memory_type = settings.memory.type
+        config.memory_history_limit = settings.memory.history_limit
+        config.memory_dir = config.agent_data_dir / "memory"
+
+        # Mem0 configuration
+        if settings.memory.mem0.storage_path:
+            config.mem0_storage_path = Path(settings.memory.mem0.storage_path).expanduser()
+        config.mem0_api_key = settings.memory.mem0.api_key
+        config.mem0_org_id = settings.memory.mem0.org_id
+        config.mem0_user_id = settings.memory.mem0.user_id or os.getenv("USER") or "default-user"
+        config.mem0_project_id = settings.memory.mem0.project_id
+
+        # Observability configuration
+        config.enable_otel = settings.telemetry.enabled
+        enable_otel_env = os.getenv("ENABLE_OTEL")
+        config.enable_otel_explicit = enable_otel_env is not None
+        config.enable_sensitive_data = settings.telemetry.enable_sensitive_data
+        config.applicationinsights_connection_string = (
+            settings.telemetry.applicationinsights_connection_string
+        )
+        config.otlp_endpoint = settings.telemetry.otlp_endpoint
+
+        # Set enabled providers and source
+        config.enabled_providers = settings.providers.enabled
+        config.config_source = "combined"
+
+        return config
+
+    def get_config_source(self) -> str:
+        """Get the source of this configuration.
+
+        Returns:
+            "env" if loaded from environment variables only,
+            "file" if loaded from settings.json only,
+            "combined" if loaded from both (env vars override file)
+
+        Example:
+            >>> config = AgentConfig.from_combined()
+            >>> config.get_config_source()
+            'combined'
+        """
+        return self.config_source
