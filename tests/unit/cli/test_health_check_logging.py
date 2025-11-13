@@ -1,11 +1,11 @@
-"""Unit tests for health check logging suppression."""
+"""Unit tests for health check logging suppression and provider connectivity optimization."""
 
 import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent.cli.app import _test_provider_connectivity_async
+from agent.cli.app import _test_all_providers, _test_provider_connectivity_async
 from agent.config import AgentConfig
 
 
@@ -173,3 +173,176 @@ class TestHealthCheckLogging:
 
             assert success is False
             assert "az login" in status.lower()
+
+
+@pytest.mark.unit
+@pytest.mark.cli
+class TestProviderConnectivityOptimization:
+    """Tests for optimized provider connectivity testing."""
+
+    @pytest.mark.asyncio
+    async def test_only_enabled_providers_tested(self):
+        """Test that only enabled providers are tested."""
+        config = AgentConfig(
+            llm_provider="local",
+            local_model="ai/phi4",
+            enabled_providers=["local"],  # Only local enabled
+            openai_api_key="test-key",
+            openai_model="gpt-5-mini",
+        )
+
+        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+            mock_test.return_value = (True, "Connected")
+
+            results = await _test_all_providers(config)
+
+            # Should only test local provider
+            assert mock_test.call_count == 1
+            assert mock_test.call_args_list[0][0][0] == "local"
+            assert len(results) == 1
+            assert results[0][0] == "local"
+
+    @pytest.mark.asyncio
+    async def test_active_provider_always_tested(self):
+        """Test that active provider is always tested even if not in enabled list."""
+        config = AgentConfig(
+            llm_provider="openai",  # Active provider
+            enabled_providers=["local"],  # Only local enabled
+            openai_api_key="test-key",
+            openai_model="gpt-5-mini",
+        )
+
+        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+            mock_test.return_value = (True, "Connected")
+
+            results = await _test_all_providers(config)
+
+            # Should test both local (enabled) and openai (active)
+            assert mock_test.call_count == 2
+            tested_providers = [call[0][0] for call in mock_test.call_args_list]
+            assert "local" in tested_providers
+            assert "openai" in tested_providers
+            assert len(results) == 2
+
+    @pytest.mark.asyncio
+    async def test_disabled_providers_skipped(self):
+        """Test that disabled providers are completely skipped."""
+        config = AgentConfig(
+            llm_provider="local",
+            enabled_providers=["local"],  # Only local enabled
+            openai_api_key="test-key",
+            anthropic_api_key="test-key",
+            gemini_api_key="test-key",
+        )
+
+        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+            mock_test.return_value = (True, "Connected")
+
+            await _test_all_providers(config)
+
+            # Should only test local, not openai/anthropic/gemini
+            assert mock_test.call_count == 1
+            tested_providers = [call[0][0] for call in mock_test.call_args_list]
+            assert "local" in tested_providers
+            assert "openai" not in tested_providers
+            assert "anthropic" not in tested_providers
+            assert "gemini" not in tested_providers
+
+    @pytest.mark.asyncio
+    async def test_parallel_execution_with_gather(self):
+        """Test that providers are tested in parallel using asyncio.gather."""
+        import asyncio
+
+        config = AgentConfig(
+            llm_provider="local",
+            enabled_providers=["local", "openai", "anthropic"],
+            openai_api_key="test-key",
+            anthropic_api_key="test-key",
+        )
+
+        # Track execution order to verify parallelism
+        call_times = []
+
+        async def mock_connectivity_test(provider, cfg):
+            """Mock that simulates async execution."""
+            call_times.append((provider, asyncio.get_event_loop().time()))
+            await asyncio.sleep(0.01)  # Simulate async work
+            return True, "Connected"
+
+        with patch(
+            "agent.cli.app._test_provider_connectivity_async", side_effect=mock_connectivity_test
+        ):
+            results = await _test_all_providers(config)
+
+            # All 3 providers should be tested
+            assert len(results) == 3
+
+            # Verify calls happened in parallel (all start times should be close)
+            if len(call_times) > 1:
+                start_times = [t for _, t in call_times]
+                time_spread = max(start_times) - min(start_times)
+                # If parallel, all should start within 0.005s of each other
+                assert time_spread < 0.005, f"Tests not parallel, time spread: {time_spread}s"
+
+    @pytest.mark.asyncio
+    async def test_multiple_enabled_providers(self):
+        """Test with multiple enabled providers."""
+        config = AgentConfig(
+            llm_provider="openai",
+            enabled_providers=["local", "openai", "anthropic"],
+            openai_api_key="test-key",
+            anthropic_api_key="test-key",
+        )
+
+        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+            mock_test.return_value = (True, "Connected")
+
+            await _test_all_providers(config)
+
+            # Should test all 3 enabled providers
+            assert mock_test.call_count == 3
+            tested_providers = [call[0][0] for call in mock_test.call_args_list]
+            assert "local" in tested_providers
+            assert "openai" in tested_providers
+            assert "anthropic" in tested_providers
+
+    @pytest.mark.asyncio
+    async def test_empty_enabled_list_tests_active_only(self):
+        """Test that empty enabled list still tests the active provider."""
+        config = AgentConfig(
+            llm_provider="openai",
+            enabled_providers=[],  # Empty list
+            openai_api_key="test-key",
+        )
+
+        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+            mock_test.return_value = (True, "Connected")
+
+            await _test_all_providers(config)
+
+            # Should test only active provider (openai)
+            assert mock_test.call_count == 1
+            assert mock_test.call_args_list[0][0][0] == "openai"
+
+    @pytest.mark.asyncio
+    async def test_result_format_preserved(self):
+        """Test that result format matches expected tuple structure."""
+        config = AgentConfig(
+            llm_provider="local",
+            enabled_providers=["local"],
+            local_model="ai/phi4",
+        )
+
+        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+            mock_test.return_value = (True, "Connected")
+
+            results = await _test_all_providers(config)
+
+            # Verify result format: (provider_id, display_name, success, status)
+            assert len(results) == 1
+            provider_id, display_name, success, status = results[0]
+            assert provider_id == "local"
+            assert "Local" in display_name
+            assert "ai/phi4" in display_name
+            assert success is True
+            assert status == "Connected"

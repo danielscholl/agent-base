@@ -297,7 +297,7 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
             if CONTAINER_NAME in result.stdout:
                 console.print("\n[yellow]Telemetry dashboard is already running![/yellow]")
                 console.print(f"[cyan]Dashboard:[/cyan] {DASHBOARD_URL}")
-                console.print(f"[cyan]OTLP Endpoint:[/cyan] {OTLP_ENDPOINT}\n")
+                console.print(f"[cyan]OTLP Endpoint:[/cyan] {OTLP_ENDPOINT}")
                 return
 
             # Start telemetry dashboard
@@ -329,22 +329,18 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
             console.print("\n[green]+ Telemetry dashboard started successfully![/green]\n")
             console.print(f"  Dashboard: {DASHBOARD_URL}\n")
 
-            # Check if ENABLE_OTEL is explicitly set
-            enable_otel_env = os.getenv("ENABLE_OTEL")
-            if enable_otel_env:
-                # User has explicitly configured it
-                if enable_otel_env.lower() == "true":
-                    console.print("[green]+ Telemetry enabled[/green] (ENABLE_OTEL=true)")
-                else:
-                    console.print("[yellow]! Telemetry disabled[/yellow] (ENABLE_OTEL=false)\n")
-                    console.print("To enable: Set ENABLE_OTEL=true in .env file")
-            else:
-                # Auto-detection will happen
-                console.print(
-                    "[cyan][i] Auto-detection enabled[/cyan] - Telemetry will activate automatically"
-                )
-                console.print("  (To disable: Set ENABLE_OTEL=false in .env file)")
-            console.print()
+            # Auto-enable telemetry in config (silent)
+            try:
+                from agent.config import get_config_path, load_config, save_config
+
+                config_path = get_config_path()
+                if config_path.exists():
+                    settings = load_config(config_path)
+                    settings.telemetry.enabled = True
+                    save_config(settings, config_path)
+            except Exception:
+                # Silently fail - telemetry will still work via auto-detection
+                pass
 
         elif action == "stop":
             # Stop the container
@@ -356,7 +352,20 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
             )
 
             if result.returncode == 0:
-                console.print("\n[green]+ Telemetry dashboard stopped[/green]\n")
+                console.print("\n[green]+ Telemetry dashboard stopped[/green]")
+
+                # Auto-disable telemetry in config (silent)
+                try:
+                    from agent.config import get_config_path, load_config, save_config
+
+                    config_path = get_config_path()
+                    if config_path.exists():
+                        settings = load_config(config_path)
+                        settings.telemetry.enabled = False
+                        save_config(settings, config_path)
+                except Exception:
+                    # Silently fail - not critical
+                    pass
             else:
                 console.print("\n[yellow]Telemetry dashboard was not running[/yellow]\n")
 

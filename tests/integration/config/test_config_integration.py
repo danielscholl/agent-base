@@ -30,8 +30,8 @@ class TestConfigurationIntegration:
         assert agent_config.openai_api_key == "sk-test-123"
         assert agent_config.config_source == "file"
 
-    def test_env_override_integration(self, tmp_path):
-        """Test that environment variables override file settings."""
+    def test_file_overrides_env_integration(self, tmp_path):
+        """Test that file settings override environment variables (FILE > ENV)."""
         # Create a test config file with OpenAI
         config_path = tmp_path / "settings.json"
         settings = get_default_config()
@@ -41,11 +41,12 @@ class TestConfigurationIntegration:
 
         save_config(settings, config_path)
 
-        # Override with environment variable
+        # Set environment variable (should be overridden by file)
         with patch.dict(os.environ, {"OPENAI_API_KEY": "env-key-override"}, clear=False):
             agent_config = AgentConfig.from_combined(config_path)
 
-        assert agent_config.openai_api_key == "env-key-override"
+        # File wins over env
+        assert agent_config.openai_api_key == "file-key"
         assert agent_config.config_source == "combined"
 
     def test_multiple_providers_enabled(self, tmp_path):
@@ -69,11 +70,14 @@ class TestConfigurationIntegration:
         config_path = tmp_path / "settings.json"
         settings = get_default_config()
 
-        # Initially local provider enabled by default
-        assert settings.providers.enabled == ["local"]
-        assert settings.providers.local.enabled is True
+        # Initially no providers enabled (explicit config required)
+        assert settings.providers.enabled == []
 
-        # Enable OpenAI
+        # Enable local provider first
+        settings.providers.enabled.append("local")
+        settings.providers.local.enabled = True
+
+        # Then enable OpenAI
         settings.providers.enabled.append("openai")
         settings.providers.openai.api_key = "sk-test"
         settings.providers.openai.enabled = True
@@ -159,7 +163,7 @@ class TestConfigurationIntegration:
 
 @pytest.mark.integration
 class TestConfigPrecedence:
-    """Test configuration precedence: CLI > env > file > defaults."""
+    """Test configuration precedence: CLI > file > env > defaults."""
 
     def test_file_overrides_defaults(self, tmp_path):
         """Test that file settings override defaults."""
@@ -175,43 +179,44 @@ class TestConfigPrecedence:
         # File explicitly sets provider
         assert agent_config.llm_provider == "anthropic"
 
-    def test_env_overrides_file(self, tmp_path):
-        """Test that environment variables override file settings."""
+    def test_env_as_fallback(self, tmp_path):
+        """Test that environment variables serve as fallback when file doesn't have values."""
         config_path = tmp_path / "settings.json"
         settings = get_default_config()
         settings.providers.enabled = ["openai"]
-        settings.providers.openai.api_key = "file-key"
+        # File has openai enabled but no API key set
+        settings.providers.openai.api_key = None
 
         save_config(settings, config_path)
 
         with patch.dict(
             os.environ,
-            {"LLM_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "env-key"},
+            {"OPENAI_API_KEY": "env-fallback-key"},
             clear=False,
         ):
             agent_config = AgentConfig.from_combined(config_path)
 
-        # Env overrides file
-        assert agent_config.llm_provider == "anthropic"
-        assert agent_config.anthropic_api_key == "env-key"
+        # Env used as fallback when file has null value
+        assert agent_config.llm_provider == "openai"
+        assert agent_config.openai_api_key == "env-fallback-key"
 
-    def test_multiple_env_overrides(self, tmp_path):
-        """Test multiple environment variable overrides."""
+    def test_file_priority_over_env(self, tmp_path):
+        """Test that file values take priority over environment variables."""
         config_path = tmp_path / "settings.json"
         settings = get_default_config()
         settings.providers.enabled = ["local"]  # Enable local provider
-        settings.telemetry.enabled = False
-        settings.memory.history_limit = 10
+        settings.telemetry.enabled = False  # Explicitly disabled in file
+        settings.memory.history_limit = 10  # Explicitly set in file
 
         save_config(settings, config_path)
 
         env_vars = {
-            "ENABLE_OTEL": "true",
-            "MEMORY_HISTORY_LIMIT": "50",
+            "ENABLE_OTEL": "true",  # Env says enable
+            "MEMORY_HISTORY_LIMIT": "50",  # Env says 50
         }
         with patch.dict(os.environ, env_vars, clear=False):
             agent_config = AgentConfig.from_combined(config_path)
 
-        # Both overrides applied
-        assert agent_config.enable_otel is True
-        assert agent_config.memory_history_limit == 50
+        # File values win over env
+        assert agent_config.enable_otel is False  # File wins
+        assert agent_config.memory_history_limit == 10  # File wins

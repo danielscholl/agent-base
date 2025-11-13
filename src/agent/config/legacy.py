@@ -402,12 +402,13 @@ class AgentConfig:
     def from_combined(cls, config_path: Path | None = None) -> "AgentConfig":
         """Load configuration from both file and environment variables.
 
-        Environment variables override file settings. This is the recommended
-        method for loading configuration as it provides maximum flexibility.
+        File settings override environment variables. This approach treats env vars as
+        fallbacks/defaults, while explicit file configuration takes precedence. This
+        avoids confusion from global env vars meant for other tools.
 
         Precedence (highest to lowest):
-        1. Environment variables
-        2. Settings file (~/.agent/settings.json)
+        1. Settings file (~/.agent/settings.json)
+        2. Environment variables (fallback)
         3. Default values
 
         Args:
@@ -422,22 +423,30 @@ class AgentConfig:
             'combined'
         """
         from .manager import deep_merge, load_config, merge_with_env
+        from .schema import AgentSettings
 
-        # Load from file first
+        # Start with defaults
+        base_settings = AgentSettings()
+
+        # Get environment values as fallback layer
+        env_overrides = merge_with_env(base_settings)
+
+        # Load from file - this will override env values
         settings = load_config(config_path)
 
-        # Get environment overrides
-        env_overrides = merge_with_env(settings)
-
-        # Apply environment overrides to settings
+        # Merge: file ON TOP of env (file wins)
         if env_overrides:
-            settings_dict = settings.model_dump()
-            merged_dict = deep_merge(settings_dict, env_overrides)
-            from .schema import AgentSettings
+            # Apply env as base layer
+            env_dict = deep_merge(base_settings.model_dump(), env_overrides)
+            env_settings = AgentSettings(**env_dict)
 
+            # Then apply file settings on top (file overrides env)
+            file_dict = settings.model_dump(exclude_none=True)
+            merged_dict = deep_merge(env_settings.model_dump(), file_dict)
             settings = AgentSettings(**merged_dict)
+        # else: just use file settings as-is
 
-        # Determine primary provider (env var takes precedence)
+        # Determine primary provider (file takes precedence over env)
         llm_provider_env = os.getenv("LLM_PROVIDER")
 
         # Check if config file actually exists
@@ -445,22 +454,21 @@ class AgentConfig:
 
         config_file_exists = config_path.exists() if config_path else get_config_path().exists()
 
-        if llm_provider_env:
-            llm_provider = llm_provider_env
-        elif settings.providers.enabled:
+        # File provider takes precedence over env
+        if settings.providers.enabled:
             llm_provider = settings.providers.enabled[0]
+        elif llm_provider_env:
+            llm_provider = llm_provider_env
         elif not config_file_exists:
             # No config file and no LLM_PROVIDER env var
             # Show helpful message and offer to run init
             raise ValueError(
-                "No configuration found.\n\n"
-                "Run 'agent config init' for interactive setup, or set LLM_PROVIDER environment variable."
+                "No configuration found.\n\n" "Run 'agent config init' for interactive setup"
             )
         else:
             raise ValueError(
-                "No providers enabled in configuration. "
-                "Run 'agent config enable <provider>' to enable a provider, "
-                "or set LLM_PROVIDER environment variable."
+                "No providers enabled in configuration.\n"
+                "Run 'agent config init' to configure a provider"
             )
 
         # Build AgentConfig from merged settings
@@ -511,8 +519,10 @@ class AgentConfig:
 
         # Observability configuration
         config.enable_otel = settings.telemetry.enabled
+        # If telemetry is enabled in config file, treat it as explicit
+        # Otherwise check if ENABLE_OTEL env var was set
         enable_otel_env = os.getenv("ENABLE_OTEL")
-        config.enable_otel_explicit = enable_otel_env is not None
+        config.enable_otel_explicit = settings.telemetry.enabled or (enable_otel_env is not None)
         config.enable_sensitive_data = settings.telemetry.enable_sensitive_data
         config.applicationinsights_connection_string = (
             settings.telemetry.applicationinsights_connection_string
@@ -531,7 +541,7 @@ class AgentConfig:
         Returns:
             "env" if loaded from environment variables only,
             "file" if loaded from settings.json only,
-            "combined" if loaded from both (env vars override file)
+            "combined" if loaded from both (file overrides env)
 
         Example:
             >>> config = AgentConfig.from_combined()

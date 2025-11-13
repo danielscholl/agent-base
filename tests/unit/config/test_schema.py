@@ -74,10 +74,10 @@ class TestProviderConfig:
     """Test ProviderConfig model."""
 
     def test_default_enabled_providers(self):
-        """Test default enabled providers includes local provider."""
+        """Test default enabled providers is empty (explicit config required)."""
         config = ProviderConfig()
-        assert config.enabled == ["local"]
-        assert config.local.enabled is True
+        assert config.enabled == []
+        assert config.local.enabled is False
         assert config.openai.enabled is False
 
     def test_enable_multiple_providers(self):
@@ -165,7 +165,9 @@ class TestAgentSettings:
         """Test default agent settings."""
         settings = AgentSettings()
         assert settings.version == "1.0"
-        assert settings.providers.enabled == ["local"]  # Local provider enabled by default
+        assert (
+            settings.providers.enabled == []
+        )  # No providers by default (explicit config required)
         assert settings.agent.data_dir.endswith(".agent")
         assert settings.agent.log_level == "info"
         assert settings.telemetry.enabled is False

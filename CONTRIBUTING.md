@@ -11,12 +11,32 @@ cd agent-base
 uv sync --all-extras
 
 # 2. Configure
-cp .env.example .env
-# Edit .env with your LLM provider credentials
+uv run agent config init
 
 # 3. Verify
 uv run agent --check
 ```
+
+## Environment Variables (for CI/CD)
+
+For automated testing and CI/CD pipelines, you can configure via environment variables:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `LLM_PROVIDER` | Provider name | `local`, `openai`, `anthropic`, `azure`, `foundry`, `gemini` |
+| `OPENAI_API_KEY` | OpenAI API key | `sk-...` |
+| `ANTHROPIC_API_KEY` | Anthropic API key | `sk-ant-...` |
+| `GEMINI_API_KEY` | Google Gemini API key | `...` |
+| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint | `https://...openai.azure.com/` |
+| `AZURE_OPENAI_DEPLOYMENT_NAME` | Azure deployment name | `gpt-5-codex` |
+| `AZURE_OPENAI_API_KEY` | Azure API key (optional, uses Azure CLI if not set) | `...` |
+| `AZURE_PROJECT_ENDPOINT` | Azure AI Foundry endpoint | `https://...services.ai.azure.com/...` |
+| `AZURE_MODEL_DEPLOYMENT` | Azure AI Foundry deployment | `gpt-4o` |
+| `MEM0_STORAGE_PATH` | Local mem0 storage path | `~/.agent/mem0` |
+| `MEM0_API_KEY` | mem0.ai cloud API key | `...` |
+| `MEM0_ORG_ID` | mem0.ai organization ID | `...` |
+
+**Note:** Environment variables serve as fallbacks. Explicit configuration in `~/.agent/settings.json` takes precedence.
 
 ## Development Workflow
 

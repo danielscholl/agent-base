@@ -10,7 +10,7 @@ def get_default_config() -> AgentSettings:
 
     Returns:
         AgentSettings with sensible defaults:
-        - Local provider enabled by default (free, no API keys required)
+        - No providers enabled (explicit configuration required)
         - Telemetry disabled
         - In-memory storage for conversation history
         - Data directory at ~/.agent
@@ -18,14 +18,14 @@ def get_default_config() -> AgentSettings:
     Example:
         >>> config = get_default_config()
         >>> config.providers.enabled
-        ['local']
+        []
         >>> config.telemetry.enabled
         False
     """
     return AgentSettings(
         version="1.0",
         providers={  # type: ignore[arg-type]
-            "enabled": ["local"],  # Local Docker provider enabled by default (free, no API keys)
+            "enabled": [],  # No providers by default - explicit config required
             "local": {
                 "base_url": "http://localhost:12434/engines/llama.cpp/v1",
                 "model": "ai/phi4",

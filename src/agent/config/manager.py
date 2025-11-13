@@ -65,7 +65,10 @@ def load_config(config_path: Path | None = None) -> AgentSettings:
 
 
 def save_config(settings: AgentSettings, config_path: Path | None = None) -> None:
-    """Save configuration to JSON file with pretty formatting.
+    """Save configuration to JSON file with minimal formatting.
+
+    Uses progressive disclosure: only saves enabled providers and non-null values.
+    This creates cleaner, more user-friendly config files (~20 lines vs 100+ lines).
 
     Sets restrictive permissions (0o600) on POSIX systems to protect API keys.
 
@@ -78,7 +81,10 @@ def save_config(settings: AgentSettings, config_path: Path | None = None) -> Non
 
     Example:
         >>> settings = AgentSettings()
+        >>> settings.providers.enabled = ["openai"]
+        >>> settings.providers.openai.api_key = "sk-..."
         >>> save_config(settings)
+        # Creates minimal config with only openai (not all 6 providers)
     """
     if config_path is None:
         config_path = get_config_path()
@@ -90,8 +96,8 @@ def save_config(settings: AgentSettings, config_path: Path | None = None) -> Non
         # Set restrictive permissions before writing (POSIX only)
         old_umask = os.umask(0o077) if os.name != "nt" else None
         try:
-            # Write with pretty formatting
-            json_str = settings.model_dump_json_pretty()
+            # Write with minimal formatting (progressive disclosure)
+            json_str = settings.model_dump_json_minimal()
             with open(config_path, "w") as f:
                 f.write(json_str)
 

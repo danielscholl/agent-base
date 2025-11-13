@@ -102,8 +102,6 @@ $ agent -p "say hello to Alice"
 Hello, Alice!
 ```
 
-
-
 ## Session Management
 
 Sessions save automatically when you exit:
@@ -204,31 +202,19 @@ Run agent-base completely offline using Docker Desktop's model serving:
 # 1. Install Docker Desktop (includes Model Runner)
 # Download from https://www.docker.com/products/docker-desktop/
 
-# 2. Enable Model Runner with TCP support
-docker desktop enable model-runner --tcp=12434
+# 2. Enable local provider (auto-configures Docker Model Runner)
+agent config provider local
 
-# 3. Pull a model (Qwen3 recommended for best tool calling)
-docker model pull ai/qwen3
-# Alternative: docker model pull ai/phi4
-
-# 4. Verify model is available and note the model ID
-curl http://localhost:12434/engines/llama.cpp/v1/models
-# Returns: {"object":"list","data":[{"id":"ai/qwen3:latest",...}]}
-
-# 5. Configure agent-base (use full model ID from step 4)
-export LLM_PROVIDER=local
-export AGENT_MODEL=ai/qwen3
-
-# 6. Run agent
+# 3. Start agent
 agent
 ```
 
-### Persistent Configuration
+The `agent config provider local` command will:
+- Check if Docker is running
+- Enable Model Runner if needed (tcp=12434)
+- Detect available models
+- Configure agent to use Docker models
 
-Add to your `.env` file:
-
-```bash
-LLM_PROVIDER=local
-LOCAL_BASE_URL=http://localhost:12434/engines/llama.cpp/v1    # Default DMR endpoint
-AGENT_MODEL=ai/qwen3                                          # Recommended for tool calling
-```
+**Recommended models for best tool calling:**
+- `ai/qwen3` - Best performance with function calls
+- `ai/phi4` - Good balance of speed and capability

@@ -1,5 +1,6 @@
 """Pydantic models for agent configuration schema."""
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -67,7 +68,7 @@ class GeminiProviderConfig(BaseModel):
 class ProviderConfig(BaseModel):
     """Provider configurations."""
 
-    enabled: list[str] = Field(default_factory=lambda: ["local"])
+    enabled: list[str] = Field(default_factory=list)  # Empty by default - requires explicit config
     local: LocalProviderConfig = Field(default_factory=LocalProviderConfig)
     openai: OpenAIProviderConfig = Field(default_factory=OpenAIProviderConfig)
     anthropic: AnthropicProviderConfig = Field(default_factory=AnthropicProviderConfig)
@@ -169,6 +170,60 @@ class AgentSettings(BaseModel):
     def model_dump_json_pretty(self, **kwargs: Any) -> str:
         """Dump model to pretty-printed JSON string."""
         return self.model_dump_json(indent=2, exclude_none=False, **kwargs)
+
+    def model_dump_json_minimal(self) -> str:
+        """Dump model to minimal JSON string (progressive disclosure).
+
+        Only includes:
+        - Enabled providers (not disabled ones)
+        - Non-null values
+
+        This creates a cleaner, more user-friendly config file that shows
+        only what the user has explicitly configured.
+
+        Benefits:
+        - Reduced clutter (100+ lines → ~20 lines)
+        - Clear intent (only see what's configured)
+        - Git-friendly (smaller diffs)
+        - Industry standard (like package.json, docker-compose)
+
+        Returns:
+            JSON string with minimal configuration
+
+        Example:
+            >>> settings = AgentSettings()
+            >>> settings.providers.enabled = ["openai"]
+            >>> settings.providers.openai.api_key = "sk-..."
+            >>> json_str = settings.model_dump_json_minimal()
+            # Only shows openai config, not disabled providers
+        """
+        # Get full data excluding None values
+        data = self.model_dump(exclude_none=True)
+
+        # Filter providers: only include enabled ones
+        if "providers" in data:
+            enabled = data["providers"].get("enabled", [])
+            filtered_providers = {"enabled": enabled}
+
+            # Only include enabled provider configs
+            for provider in enabled:
+                if provider in data["providers"]:
+                    provider_data = data["providers"][provider]
+                    # Remove the redundant 'enabled' flag from individual providers
+                    # (it's already in the enabled list)
+                    if isinstance(provider_data, dict):
+                        provider_data.pop("enabled", None)
+                    filtered_providers[provider] = provider_data
+
+            data["providers"] = filtered_providers
+
+        # Clean up empty nested objects (like mem0 if all values are None)
+        if "memory" in data and "mem0" in data["memory"]:
+            if not data["memory"]["mem0"]:
+                # Remove empty mem0 config
+                del data["memory"]["mem0"]
+
+        return json.dumps(data, indent=2)
 
     @classmethod
     def get_json_schema(cls) -> dict[str, Any]:
