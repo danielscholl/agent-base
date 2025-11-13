@@ -176,7 +176,6 @@ class AgentSettings(BaseModel):
         Only includes:
         - Enabled providers (not disabled ones)
         - Non-null values
-        - Non-default values for common settings
 
         This creates a cleaner, more user-friendly config file that shows
         only what the user has explicitly configured.

@@ -296,11 +296,10 @@ async def _test_provider_connectivity_async(provider: str, config: AgentConfig) 
         try:
             agent = Agent(test_config)
 
-            # For most providers, successful client creation means:
-            # 1. Config is valid
-            # 2. Credentials are present
-            # 3. Base endpoint is reachable
-            # This is sufficient for a connectivity check without spending tokens/time on LLM call
+            # Note: This validates configuration and client instantiation,
+            # but does NOT guarantee endpoint reachability or credential validity.
+            # Actual API calls may still fail. This is a lightweight config check,
+            # not a true connectivity test.
 
             # Cleanup HTTP client before returning
             if hasattr(agent, "chat_client") and hasattr(agent.chat_client, "close"):

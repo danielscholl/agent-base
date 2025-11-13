@@ -1,4 +1,4 @@
-"""Unit tests for health check logging suppression and provider connectivity testing."""
+"""Unit tests for health check logging suppression and provider connectivity optimization."""
 
 import asyncio
 import logging

@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+from pathlib import Path
 from typing import Any
 
 from rich.console import Console
@@ -495,7 +496,7 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
         env_key = os.getenv("OPENAI_API_KEY")
         if env_key:
             console.print("[green]✓[/green] Found OPENAI_API_KEY in environment")
-            console.print(f"  [dim]Using: {env_key[:20]}...[/dim]")
+            console.print("  [dim]Using: [from environment][/dim]")
             provider_obj.api_key = env_key
         else:
             api_key = Prompt.ask("Enter your OpenAI API key", password=True)
@@ -506,7 +507,7 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
         env_key = os.getenv("ANTHROPIC_API_KEY")
         if env_key:
             console.print("[green]✓[/green] Found ANTHROPIC_API_KEY in environment")
-            console.print(f"  [dim]Using: {env_key[:20]}...[/dim]")
+            console.print("  [dim]Using: [from environment][/dim]")
             provider_obj.api_key = env_key
         else:
             api_key = Prompt.ask("Enter your Anthropic API key", password=True)
@@ -525,7 +526,7 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
             provider_obj.endpoint = env_endpoint
             provider_obj.deployment = env_deployment
             if env_key:
-                console.print(f"  [dim]API Key: {env_key[:20]}...[/dim]")
+                console.print("  [dim]API Key: [from environment][/dim]")
                 provider_obj.api_key = env_key
         else:
             endpoint = Prompt.ask("Enter your Azure OpenAI endpoint")
@@ -571,7 +572,7 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
             provider_obj.location = env_location or "us-central1"
         elif env_key:
             console.print("[green]✓[/green] Found GEMINI_API_KEY in environment")
-            console.print(f"  [dim]Using: {env_key[:20]}...[/dim]")
+            console.print("  [dim]Using: [from environment][/dim]")
             provider_obj.api_key = env_key
         else:
             use_vertex = Confirm.ask("Use Vertex AI instead of Gemini API?", default=False)
@@ -716,8 +717,6 @@ def config_memory() -> None:
             # Determine what to clean up
             cleanup_paths = []
             if settings.memory.mem0.storage_path:
-                from pathlib import Path
-
                 storage_path = Path(settings.memory.mem0.storage_path).expanduser()
                 if storage_path.exists():
                     cleanup_paths.append(("Local database", storage_path))

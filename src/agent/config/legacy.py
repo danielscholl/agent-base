@@ -539,7 +539,7 @@ class AgentConfig:
         Returns:
             "env" if loaded from environment variables only,
             "file" if loaded from settings.json only,
-            "combined" if loaded from both (env vars override file)
+            "combined" if loaded from both (file overrides env)
 
         Example:
             >>> config = AgentConfig.from_combined()
