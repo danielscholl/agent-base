@@ -1,14 +1,11 @@
 """Interactive CLI commands for managing agent configuration."""
 
 import os
-import platform
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any
 
-from rich.console import Console
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
@@ -36,7 +33,10 @@ MODEL_PULL_TIMEOUT = 1200  # seconds (20 minutes)
 
 # Use shared utility for Windows console encoding setup
 from agent.cli.utils import get_console
+
 console = get_console()
+
+
 def _setup_github_org(provider_obj: Any) -> None:
     """Helper to configure GitHub organization for enterprise rate limits.
 

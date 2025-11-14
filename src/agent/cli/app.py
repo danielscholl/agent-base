@@ -39,6 +39,7 @@ from agent.cli.session import (
     setup_session_logging,
     track_conversation,
 )
+from agent.cli.utils import get_console
 from agent.config import AgentConfig
 from agent.display import DisplayMode, set_execution_context
 from agent.persistence import ThreadPersistence
@@ -46,29 +47,8 @@ from agent.utils.keybindings import ClearPromptHandler, KeybindingManager
 
 app = typer.Typer(help="Agent - Conversational Assistant")
 
-# Configure console with proper encoding handling for Windows
-# When running in non-interactive mode (like through subprocess), Windows
-# defaults to CP1252 which can't handle Unicode. We force UTF-8 when possible.
-if platform.system() == "Windows" and not sys.stdout.isatty():
-    # Running in non-interactive mode (subprocess, pipe, etc)
-    # Try to use UTF-8 if available
-    try:
-        import locale
-
-        encoding = locale.getpreferredencoding() or ""
-        if "utf" not in encoding.lower():
-            # Force UTF-8 for better Unicode support
-            os.environ["PYTHONIOENCODING"] = "utf-8"
-            # Create console with legacy Windows mode disabled
-            console = Console(force_terminal=True, legacy_windows=False)
-        else:
-            console = Console()
-    except Exception:
-        # Fallback to safe ASCII mode if encoding detection fails
-        console = Console(legacy_windows=True, safe_box=True)
-else:
-    # Normal interactive mode or non-Windows
-    console = Console()
+# Use shared utility for Windows console encoding setup
+console = get_console()
 
 logger = logging.getLogger(__name__)
 
