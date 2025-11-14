@@ -51,6 +51,49 @@ else:
     console = Console()
 
 
+def _setup_github_org(provider_obj: Any) -> None:
+    """Helper to configure GitHub organization for enterprise rate limits.
+
+    Args:
+        provider_obj: GitHub provider config object with 'org' attribute
+    """
+    console.print("\n[bold]GitHub Organization (Optional)[/bold]")
+    console.print("  [dim]For enterprise users with organization access:[/dim]")
+    console.print("  [dim]• Personal: 20-150 requests/day (depending on model)[/dim]")
+    console.print("  [dim]• Enterprise: 15,000 requests/hour[/dim]")
+
+    setup_org = Confirm.ask(
+        "\nDo you have a GitHub organization with models enabled?", default=False
+    )
+    if setup_org:
+        # Try to auto-detect first
+        try:
+            from agent.providers.github.auth import get_github_org
+
+            detected_org = get_github_org()
+            if detected_org:
+                console.print(
+                    f"\n[green]✓[/green] Detected organization: [cyan]{detected_org}[/cyan]"
+                )
+                use_detected = Confirm.ask(
+                    "Use this organization?",
+                    default=True,
+                )
+                if use_detected:
+                    provider_obj.org = detected_org
+                    console.print("  [dim]Using enterprise endpoint for higher rate limits[/dim]")
+                else:
+                    manual_org = Prompt.ask("Enter organization name")
+                    provider_obj.org = manual_org
+            else:
+                manual_org = Prompt.ask("Enter your GitHub organization name")
+                provider_obj.org = manual_org
+        except Exception as e:
+            console.print(f"[yellow]⚠[/yellow] Could not auto-detect organization: {e}")
+            manual_org = Prompt.ask("Enter your GitHub organization name")
+            provider_obj.org = manual_org
+
+
 def _mask_api_key(api_key: str | None) -> str:
     """Mask API key for display, showing only last 4 characters."""
     if api_key and len(api_key) >= 4:
@@ -239,43 +282,7 @@ def config_init() -> None:
         settings.providers.github.enabled = True
 
         # Ask about organization for enterprise rate limits
-        console.print("\n[bold]GitHub Organization (Optional)[/bold]")
-        console.print("  [dim]For enterprise users with organization access:[/dim]")
-        console.print("  [dim]• Personal: 20-150 requests/day (depending on model)[/dim]")
-        console.print("  [dim]• Enterprise: 15,000 requests/hour[/dim]")
-
-        setup_org = Confirm.ask(
-            "\nDo you have a GitHub organization with models enabled?", default=False
-        )
-        if setup_org:
-            # Try to auto-detect first
-            try:
-                from agent.providers.github.auth import get_github_org
-
-                detected_org = get_github_org()
-                if detected_org:
-                    console.print(
-                        f"\n[green]✓[/green] Detected organization: [cyan]{detected_org}[/cyan]"
-                    )
-                    use_detected = Confirm.ask(
-                        "Use this organization?",
-                        default=True,
-                    )
-                    if use_detected:
-                        settings.providers.github.org = detected_org
-                        console.print(
-                            "  [dim]Using enterprise endpoint for higher rate limits[/dim]"
-                        )
-                    else:
-                        manual_org = Prompt.ask("Enter organization name")
-                        settings.providers.github.org = manual_org
-                else:
-                    manual_org = Prompt.ask("Enter your GitHub organization name")
-                    settings.providers.github.org = manual_org
-            except Exception as e:
-                console.print(f"[yellow]⚠[/yellow] Could not auto-detect organization: {e}")
-                manual_org = Prompt.ask("Enter your GitHub organization name")
-                settings.providers.github.org = manual_org
+        _setup_github_org(settings.providers.github)
 
     elif provider == "openai":
         api_key = Prompt.ask("\nEnter your OpenAI API key", password=True)
@@ -784,43 +791,7 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
         provider_obj.endpoint = "https://models.github.ai"
 
         # Ask about organization for enterprise rate limits
-        console.print("\n[bold]GitHub Organization (Optional)[/bold]")
-        console.print("  [dim]For enterprise users with organization access:[/dim]")
-        console.print("  [dim]• Personal: 20-150 requests/day (depending on model)[/dim]")
-        console.print("  [dim]• Enterprise: 15,000 requests/hour[/dim]")
-
-        setup_org = Confirm.ask(
-            "\nDo you have a GitHub organization with models enabled?", default=False
-        )
-        if setup_org:
-            # Try to auto-detect first
-            try:
-                from agent.providers.github.auth import get_github_org
-
-                detected_org = get_github_org()
-                if detected_org:
-                    console.print(
-                        f"\n[green]✓[/green] Detected organization: [cyan]{detected_org}[/cyan]"
-                    )
-                    use_detected = Confirm.ask(
-                        "Use this organization?",
-                        default=True,
-                    )
-                    if use_detected:
-                        provider_obj.org = detected_org
-                        console.print(
-                            "  [dim]Using enterprise endpoint for higher rate limits[/dim]"
-                        )
-                    else:
-                        manual_org = Prompt.ask("Enter organization name")
-                        provider_obj.org = manual_org
-                else:
-                    manual_org = Prompt.ask("Enter your GitHub organization name")
-                    provider_obj.org = manual_org
-            except Exception as e:
-                console.print(f"[yellow]⚠[/yellow] Could not auto-detect organization: {e}")
-                manual_org = Prompt.ask("Enter your GitHub organization name")
-                provider_obj.org = manual_org
+        _setup_github_org(provider_obj)
 
 
 # Legacy functions for backward compatibility
