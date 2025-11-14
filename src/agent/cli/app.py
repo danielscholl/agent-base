@@ -17,7 +17,7 @@ from agent.cli.execution import run_single_prompt
 from agent.cli.health import run_health_check
 from agent.cli.interactive import run_chat_mode
 from agent.cli.session import get_last_session
-from agent.cli.utils import get_console
+from agent.cli.utils import get_console, hide_connection_string_if_otel_disabled
 from agent.config import AgentConfig
 
 app = typer.Typer(help="Agent - Conversational Assistant")
@@ -28,41 +28,6 @@ console = get_console()
 logger = logging.getLogger(__name__)
 
 
-def _hide_connection_string_if_otel_disabled(config: AgentConfig) -> str | None:
-    """Conditionally hide Azure Application Insights connection string.
-
-    The agent_framework auto-enables OpenTelemetry when it sees
-    APPLICATIONINSIGHTS_CONNECTION_STRING in the environment, which causes
-    1-3s exit lag from daemon threads flushing metrics.
-
-    This helper hides the connection string ONLY when telemetry is disabled,
-    allowing users who explicitly enable OTEL to still use it.
-
-    Args:
-        config: Loaded AgentConfig (must be loaded first to check enable_otel)
-
-    Returns:
-        The connection string if it was hidden, None otherwise
-
-    Example:
-        >>> config = AgentConfig.from_combined()
-        >>> saved = _hide_connection_string_if_otel_disabled(config)
-        >>> # ... create agent ...
-        >>> if saved:
-        ...     os.environ["APPLICATIONINSIGHTS_CONNECTION_STRING"] = saved
-    """
-    should_enable_otel = config.enable_otel and config.enable_otel_explicit
-
-    if not should_enable_otel and config.applicationinsights_connection_string:
-        saved = os.environ.pop("APPLICATIONINSIGHTS_CONNECTION_STRING", None)
-        if saved:
-            logger.debug(
-                "[PERF] Hiding Azure connection string to prevent OpenTelemetry "
-                "auto-init (set ENABLE_OTEL=true to enable telemetry)"
-            )
-        return saved
-
-    return None
 
 
 @app.callback(invoke_without_command=True)

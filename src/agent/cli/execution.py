@@ -27,41 +27,43 @@ from agent.cli.display import (
     execute_with_visualization,
 )
 from agent.cli.session import setup_session_logging
-from agent.cli.utils import get_console
+from agent.cli.utils import get_console, hide_connection_string_if_otel_disabled, set_model_span_attributes
 from agent.config import AgentConfig
 from agent.display import DisplayMode, set_execution_context
 
 logger = logging.getLogger(__name__)
 
 
-def _hide_connection_string_if_otel_disabled(config: AgentConfig) -> str | None:
-    """Conditionally hide Azure Application Insights connection string.
-
-    The agent_framework auto-enables OpenTelemetry when it sees
-    APPLICATIONINSIGHTS_CONNECTION_STRING in the environment, which causes
-    1-3s exit lag from daemon threads flushing metrics.
-
-    This helper hides the connection string ONLY when telemetry is disabled,
-    allowing users who explicitly enable OTEL to still use it.
+async def _execute_query(
+    agent: Agent,
+    prompt: str,
+    quiet: bool,
+    verbose: bool,
+    console: Console
+) -> str | None:
+    """Execute query with appropriate visualization mode.
 
     Args:
-        config: Loaded AgentConfig (must be loaded first to check enable_otel)
+        agent: Configured agent instance
+        prompt: User prompt to process
+        quiet: Whether to use quiet mode (no visualization)
+        verbose: Whether to show detailed execution tree
+        console: Console for output
 
     Returns:
-        The connection string if it was hidden, None otherwise
+        Response string from agent execution
     """
-    should_enable_otel = config.enable_otel and config.enable_otel_explicit
-
-    if not should_enable_otel and config.applicationinsights_connection_string:
-        saved = os.environ.pop("APPLICATIONINSIGHTS_CONNECTION_STRING", None)
-        if saved:
-            logger.debug(
-                "[PERF] Hiding Azure connection string to prevent OpenTelemetry "
-                "auto-init (set ENABLE_OTEL=true to enable telemetry)"
+    if not quiet:
+        display_mode = DisplayMode.VERBOSE if verbose else DisplayMode.MINIMAL
+        try:
+            return await execute_with_visualization(
+                agent, prompt, None, console, display_mode
             )
-        return saved
-
-    return None
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Interrupted by user[/yellow]\n")
+            raise typer.Exit(ExitCodes.INTERRUPTED)
+    else:
+        return await execute_quiet_mode(agent, prompt, None)
 
 
 async def run_single_prompt(
@@ -94,7 +96,7 @@ async def run_single_prompt(
         logger.info(f"[PERF] Config loaded: {(time.perf_counter() - perf_start)*1000:.1f}ms")
 
         # Hide Azure connection string if telemetry disabled (prevents 1-3s exit lag)
-        saved_connection_string = _hide_connection_string_if_otel_disabled(config)
+        saved_connection_string = hide_connection_string_if_otel_disabled(config)
 
         # Skip observability auto-detection in single-prompt mode for speed
         should_enable_otel = config.enable_otel and config.enable_otel_explicit
@@ -133,41 +135,13 @@ async def run_single_prompt(
                 # Add custom attributes
                 span.set_attribute("session.id", session_name)
                 span.set_attribute("mode", "single-prompt")
-                span.set_attribute("gen_ai.system", config.llm_provider or "unknown")
-                if config.llm_provider == "openai" and config.openai_model:
-                    span.set_attribute("gen_ai.request.model", config.openai_model)
-                elif config.llm_provider == "anthropic" and config.anthropic_model:
-                    span.set_attribute("gen_ai.request.model", config.anthropic_model)
-                elif config.llm_provider == "azure" and config.azure_openai_deployment:
-                    span.set_attribute("gen_ai.request.model", config.azure_openai_deployment)
-                elif config.llm_provider == "foundry" and config.azure_model_deployment:
-                    span.set_attribute("gen_ai.request.model", config.azure_model_deployment)
+                set_model_span_attributes(span, config)
 
-                # Execute with or without visualization
-                if not quiet:
-                    display_mode = DisplayMode.VERBOSE if verbose else DisplayMode.MINIMAL
-                    try:
-                        response = await execute_with_visualization(
-                            agent, prompt, None, console, display_mode
-                        )
-                    except KeyboardInterrupt:
-                        console.print("\n[yellow]Interrupted by user[/yellow]\n")
-                        raise typer.Exit(ExitCodes.INTERRUPTED)
-                else:
-                    response = await execute_quiet_mode(agent, prompt, None)
+                # Execute with shared execution logic
+                response = await _execute_query(agent, prompt, quiet, verbose, console)
         else:
             # Execute without observability wrapper
-            if not quiet:
-                display_mode = DisplayMode.VERBOSE if verbose else DisplayMode.MINIMAL
-                try:
-                    response = await execute_with_visualization(
-                        agent, prompt, None, console, display_mode
-                    )
-                except KeyboardInterrupt:
-                    console.print("\n[yellow]Interrupted by user[/yellow]\n")
-                    raise typer.Exit(ExitCodes.INTERRUPTED)
-            else:
-                response = await execute_quiet_mode(agent, prompt, None)
+            response = await _execute_query(agent, prompt, quiet, verbose, console)
 
         # Display response after completion summary
         if response:

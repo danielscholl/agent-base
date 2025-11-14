@@ -50,7 +50,7 @@ from agent.cli.session import (
     setup_session_logging,
     track_conversation,
 )
-from agent.cli.utils import get_console
+from agent.cli.utils import get_console, hide_connection_string_if_otel_disabled, set_model_span_attributes
 from agent.config import AgentConfig
 from agent.display import DisplayMode, set_execution_context
 from agent.persistence import ThreadPersistence
@@ -63,34 +63,44 @@ _BRANCH_CACHE_CWD: Path | None = None
 _BRANCH_CACHE_VALUE: str = ""
 
 
-def _hide_connection_string_if_otel_disabled(config: AgentConfig) -> str | None:
-    """Conditionally hide Azure Application Insights connection string.
-
-    The agent_framework auto-enables OpenTelemetry when it sees
-    APPLICATIONINSIGHTS_CONNECTION_STRING in the environment, which causes
-    1-3s exit lag from daemon threads flushing metrics.
-
-    This helper hides the connection string ONLY when telemetry is disabled,
-    allowing users who explicitly enable OTEL to still use it.
+async def _execute_interactive_query(
+    agent: Agent,
+    user_input: str,
+    thread: ThreadPersistence,
+    quiet: bool,
+    verbose: bool,
+    console: Console
+) -> str | None:
+    """Execute query in interactive mode with appropriate visualization.
 
     Args:
-        config: Loaded AgentConfig (must be loaded first to check enable_otel)
+        agent: Configured agent instance
+        user_input: User input to process
+        thread: Thread persistence instance
+        quiet: Whether to use quiet mode
+        verbose: Whether to show detailed execution tree
+        console: Console for output
 
     Returns:
-        The connection string if it was hidden, None otherwise
+        Response string from agent execution
     """
-    should_enable_otel = config.enable_otel and config.enable_otel_explicit
-
-    if not should_enable_otel and config.applicationinsights_connection_string:
-        saved = os.environ.pop("APPLICATIONINSIGHTS_CONNECTION_STRING", None)
-        if saved:
-            logger.debug(
-                "[PERF] Hiding Azure connection string to prevent OpenTelemetry "
-                "auto-init (set ENABLE_OTEL=true to enable telemetry)"
+    if not quiet:
+        display_mode = DisplayMode.VERBOSE if verbose else DisplayMode.MINIMAL
+        try:
+            return await execute_with_visualization(
+                agent, user_input, thread, console, display_mode
             )
-        return saved
-
-    return None
+        except KeyboardInterrupt:
+            console.print(
+                "\n[yellow]Operation cancelled[/yellow] - Press Ctrl+C again to exit\n"
+            )
+            raise
+    else:
+        try:
+            return await execute_quiet_mode(agent, user_input, thread)
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Operation cancelled[/yellow]\n")
+            raise
 
 
 def _render_startup_banner(config: AgentConfig, console: Console) -> None:
@@ -223,53 +233,13 @@ async def _execute_agent_query(
             # Add session context to each message span
             span.set_attribute("session.id", session_id)
             span.set_attribute("mode", "interactive")
-            span.set_attribute("gen_ai.system", config.llm_provider or "unknown")
-            if config.llm_provider == "openai" and config.openai_model:
-                span.set_attribute("gen_ai.request.model", config.openai_model)
-            elif config.llm_provider == "anthropic" and config.anthropic_model:
-                span.set_attribute("gen_ai.request.model", config.anthropic_model)
-            elif config.llm_provider == "azure" and config.azure_openai_deployment:
-                span.set_attribute("gen_ai.request.model", config.azure_openai_deployment)
-            elif config.llm_provider == "foundry" and config.azure_model_deployment:
-                span.set_attribute("gen_ai.request.model", config.azure_model_deployment)
+            set_model_span_attributes(span, config)
 
-            # Execute with or without visualization
-            if not quiet:
-                display_mode = DisplayMode.VERBOSE if verbose else DisplayMode.MINIMAL
-                try:
-                    return await execute_with_visualization(
-                        agent, user_input, thread, console, display_mode
-                    )
-                except KeyboardInterrupt:
-                    console.print(
-                        "\n[yellow]Operation cancelled[/yellow] - Press Ctrl+C again to exit\n"
-                    )
-                    raise
-            else:
-                try:
-                    return await execute_quiet_mode(agent, user_input, thread)
-                except KeyboardInterrupt:
-                    console.print("\n[yellow]Operation cancelled[/yellow]\n")
-                    raise
+            # Execute with shared execution logic
+            return await _execute_interactive_query(agent, user_input, thread, quiet, verbose, console)
     else:
         # Execute without observability wrapper
-        if not quiet:
-            display_mode = DisplayMode.VERBOSE if verbose else DisplayMode.MINIMAL
-            try:
-                return await execute_with_visualization(
-                    agent, user_input, thread, console, display_mode
-                )
-            except KeyboardInterrupt:
-                console.print(
-                    "\n[yellow]Operation cancelled[/yellow] - Press Ctrl+C again to exit\n"
-                )
-                raise
-        else:
-            try:
-                return await execute_quiet_mode(agent, user_input, thread)
-            except KeyboardInterrupt:
-                console.print("\n[yellow]Operation cancelled[/yellow]\n")
-                raise
+        return await _execute_interactive_query(agent, user_input, thread, quiet, verbose, console)
 
 
 async def run_chat_mode(
@@ -313,7 +283,7 @@ async def run_chat_mode(
         )
 
         # Hide Azure connection string if telemetry disabled (prevents 1-3s exit lag)
-        saved_connection_string = _hide_connection_string_if_otel_disabled(config)
+        saved_connection_string = hide_connection_string_if_otel_disabled(config)
 
         # Disable observability auto-detection in interactive mode by default
         should_enable_otel = config.enable_otel and config.enable_otel_explicit

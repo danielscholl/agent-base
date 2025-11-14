@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import agent.cli.interactive
 
 from agent.cli.interactive import _get_status_bar_text
 
@@ -43,8 +44,6 @@ def test_status_bar_includes_directory():
 def test_status_bar_includes_git_branch(mock_run):
     """Test that git branch is included when available."""
     # Clear cache to force subprocess call
-    import agent.cli.interactive
-
     agent.cli.interactive._BRANCH_CACHE_CWD = None
     agent.cli.interactive._BRANCH_CACHE_VALUE = ""
 
@@ -69,8 +68,6 @@ def test_status_bar_includes_git_branch(mock_run):
 def test_status_bar_handles_no_git(mock_run):
     """Test that status bar works when not in git repo."""
     # Clear cache to force subprocess call
-    import agent.cli.interactive
-
     agent.cli.interactive._BRANCH_CACHE_CWD = None
     agent.cli.interactive._BRANCH_CACHE_VALUE = ""
 
@@ -98,8 +95,6 @@ def test_status_bar_handles_no_git(mock_run):
 def test_status_bar_handles_git_exception(mock_run):
     """Test that status bar handles git command exceptions."""
     # Clear cache to force subprocess call
-    import agent.cli.interactive
-
     agent.cli.interactive._BRANCH_CACHE_CWD = None
     agent.cli.interactive._BRANCH_CACHE_VALUE = ""
 
@@ -122,8 +117,6 @@ def test_status_bar_handles_git_exception(mock_run):
 def test_status_bar_git_timeout(mock_run):
     """Test that git command timeout is handled gracefully."""
     # Clear cache to force subprocess call
-    import agent.cli.interactive
-
     agent.cli.interactive._BRANCH_CACHE_CWD = None
     agent.cli.interactive._BRANCH_CACHE_VALUE = ""
 
