@@ -351,5 +351,6 @@ class TestObservabilitySpanCreation:
 
         # Directly check that expected attributes were set
         from unittest import mock
+
         mock_span.set_attribute.assert_any_call("session.id", mock.ANY)
         mock_span.set_attribute.assert_any_call("mode", "single-prompt")

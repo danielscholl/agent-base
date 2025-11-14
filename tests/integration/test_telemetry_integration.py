@@ -17,7 +17,6 @@ from agent.observability import check_telemetry_endpoint
 from tests.mocks.mock_client import MockChatClient
 
 
-
 @pytest.mark.integration
 @pytest.mark.cli
 class TestTelemetryAutoDetection:
