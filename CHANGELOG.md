@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.5](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.4...agent-template-v0.2.5) (2025-11-14)
+
+
+### Features
+
+* **telemetry:** auto-detect otlp endpoint to enable observability ([d3a4aa0](https://github.com/danielscholl/agent-base/commit/d3a4aa06d9eb0e5318219764a5020f8ce6f8fc43))
+
+
+### Bug Fixes
+
+* **telemetry:** restore auto-detection and fix observability initialization ([fba0e41](https://github.com/danielscholl/agent-base/commit/fba0e41f69af44e44e31d5b6425706e660c48b0b))
+* **tests:** address copilot review feedback ([e417750](https://github.com/danielscholl/agent-base/commit/e417750eab04d118f14b07d7b8c5c5cb6a195378))
+
 ## [0.2.4](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.3...agent-template-v0.2.4) (2025-11-14)
 
 
