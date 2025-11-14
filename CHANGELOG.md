@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.3](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.2...agent-template-v0.2.3) (2025-11-14)
+
+
+### Bug Fixes
+
+* **config:** provider flag and menu display improvements ([33c6d2b](https://github.com/danielscholl/agent-base/commit/33c6d2b4b918178012d9ab50f60e68cd73e3d2f7))
+* **config:** trigger release for provider flag fix ([c659b40](https://github.com/danielscholl/agent-base/commit/c659b40236fb404692c5e6ec4bd9ade10e934d2a))
+
 ## [0.2.2](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.1...agent-template-v0.2.2) (2025-11-14)
 
 
