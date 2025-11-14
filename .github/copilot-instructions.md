@@ -3,6 +3,29 @@
 This repository contains a production-ready conversational AI agent framework optimized for GitHub Copilot use.
 The following guidelines ensure code quality, consistency, and efficiency in development practices.
 
+## Working with Copilot Coding Agent
+
+When assigned to work on this repository, follow these best practices:
+
+* **Well-Scoped Issues**: Work best with clear, specific tasks like bug fixes, test additions, or focused feature implementations
+* **Validation Required**: Always run the complete validation sequence before considering work complete
+* **Iterative Feedback**: Review PR comments and iterate on changes as requested
+* **Test Coverage**: Maintain or improve the 85% test coverage requirement
+* **Code Style**: Follow existing patterns and architecture decisions documented in `docs/decisions/`
+
+**Good Task Examples:**
+- Add input validation to a specific function
+- Write unit tests for a new tool
+- Fix a specific bug with clear reproduction steps
+- Add documentation for a feature
+- Refactor a module following documented patterns
+
+**Tasks Requiring Human Review:**
+- Large architectural changes
+- Security-sensitive code (authentication, authorization)
+- Breaking changes to public APIs
+- New provider integrations
+
 ## Project Overview
 
 Agent Base is a production-ready conversational AI agent framework built with Python 3.12+. It provides multi-provider LLM support (OpenAI, Anthropic, Azure OpenAI, Azure AI Foundry) with enterprise features including session management, memory, observability, and extensible toolsets.
