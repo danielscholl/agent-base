@@ -55,7 +55,8 @@ if platform.system() == "Windows" and not sys.stdout.isatty():
     try:
         import locale
 
-        if "utf" not in locale.getpreferredencoding().lower():
+        encoding = locale.getpreferredencoding() or ''
+        if "utf" not in encoding.lower():
             # Force UTF-8 for better Unicode support
             os.environ["PYTHONIOENCODING"] = "utf-8"
             # Create console with legacy Windows mode disabled
