@@ -285,8 +285,6 @@ def run_health_check(console: Console | None = None) -> None:
                 # This branch is ONLY reached when mem0 is both configured and functional
                 console.print("  [cyan]◉[/cyan] Backend: [cyan]mem0[/cyan]")
 
-                from agent.memory.mem0_utils import get_storage_path
-
                 is_cloud = bool(config.mem0_api_key and config.mem0_org_id)
 
                 if is_cloud:
