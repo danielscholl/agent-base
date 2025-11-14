@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.2.4](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.3...agent-template-v0.2.4) (2025-11-14)
+
+
+### Features
+
+* **config/providers:** introduce registry-based provider setup ([0851c11](https://github.com/danielscholl/agent-base/commit/0851c11f42897fef977b39218ce602d0d172c54b))
+* **health:** extract health check into dedicated module ([790d69a](https://github.com/danielscholl/agent-base/commit/790d69a7eaa579b7d0477acc353b65453083346a))
+* **mem0:** enhance mem0 integration with dependency checks and embedding model configuration ([8aa6ff9](https://github.com/danielscholl/agent-base/commit/8aa6ff918ad70974f54500a7ecef5da06de2ffe5))
+* **mem0:** refine local health check and add provider embedding mappings ([29b5da3](https://github.com/danielscholl/agent-base/commit/29b5da31943f6d34861486f4f64d2a8f37be319e))
+
+
+### Bug Fixes
+
+* **health:** remove duplicate import of get_storage_path ([69d45b0](https://github.com/danielscholl/agent-base/commit/69d45b0b1eafa718cd4856bd85d80063d49c55df))
+* **mem0:** fix memory persistence and improve dependency management ([1aacc75](https://github.com/danielscholl/agent-base/commit/1aacc75e0b56ce298d2cca0a2a5438cb1f6019dc))
+* **providers:** address CodeQL and Copilot review comments ([ede0db1](https://github.com/danielscholl/agent-base/commit/ede0db137938874c3e8b2d1de16eb0b90c8bb2ae))
+* **providers:** use modern type union syntax (X | Y) ([0de189a](https://github.com/danielscholl/agent-base/commit/0de189abd3b6c0510100724ef194f3f3999e54ba))
+
+
+### Code Refactoring
+
+* **cli:** add set_model_span_attributes and centralized _execute_query ([d365a8a](https://github.com/danielscholl/agent-base/commit/d365a8a19dda48ba2393d73be2f457f3465e1dc4))
+* **cli:** extract health check to dedicated module ([655fc3c](https://github.com/danielscholl/agent-base/commit/655fc3c1f2ba480e5c69184ae1e7eb1fd22d270b))
+* **cli:** extract interactive and execution modes ([8145c83](https://github.com/danielscholl/agent-base/commit/8145c83a2c5b9887e84081fd23986a51ad69e1d4))
+* **cli:** extract single-prompt and chat logic into modules ([9d0e97c](https://github.com/danielscholl/agent-base/commit/9d0e97c120251040b3f27bdfdba79b5221b4e97c))
+* **cli:** move telemetry helpers to utils and add shared execution ([d365a8a](https://github.com/danielscholl/agent-base/commit/d365a8a19dda48ba2393d73be2f457f3465e1dc4))
+* **cli:** remove in-file _hide_connection_string helper implementations ([d365a8a](https://github.com/danielscholl/agent-base/commit/d365a8a19dda48ba2393d73be2f457f3465e1dc4))
+* **cli:** standardize imports and typing ([2c3e1a4](https://github.com/danielscholl/agent-base/commit/2c3e1a47d9294f42455cf219c6810dfbfb2f2b85))
+* **config:** eliminate 353 lines with provider registry pattern ([60f430b](https://github.com/danielscholl/agent-base/commit/60f430b0d8e0fbc2edf0c937a34563af3502ce8d))
+* **mem0:** add _create_embedder_config and get_embedding_model helpers ([dbbbea4](https://github.com/danielscholl/agent-base/commit/dbbbea44c7e32b3a67dc4132d6f6b187ad394eae))
+* **mem0:** centralize embedding model selection and embedder config ([dbbbea4](https://github.com/danielscholl/agent-base/commit/dbbbea44c7e32b3a67dc4132d6f6b187ad394eae))
+* **mem0:** use get_embedding_model in health check and embedder setup ([dbbbea4](https://github.com/danielscholl/agent-base/commit/dbbbea44c7e32b3a67dc4132d6f6b187ad394eae))
+
+
+### Continuous Integration
+
+* **workflow:** install dev and mem0 extras ([484d1c2](https://github.com/danielscholl/agent-base/commit/484d1c2319107681470602fb41f133f0f03b0981))
+
+
+### Miscellaneous
+
+* **config:** add type: ignore for mem0 import ([81ed90f](https://github.com/danielscholl/agent-base/commit/81ed90f3c84845f7bee3508a9ffe620a01ac7bef))
+* **coverage:** exclude extracted CLI modules from coverage ([ebef494](https://github.com/danielscholl/agent-base/commit/ebef4946c627159a6859f6e8a224ea038a4acdc0))
+
 ## [0.2.3](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.2...agent-template-v0.2.3) (2025-11-14)
 
 
