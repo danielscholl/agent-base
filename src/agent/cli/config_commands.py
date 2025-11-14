@@ -34,24 +34,9 @@ DOCKER_ENABLE_TIMEOUT = 30  # seconds
 MODEL_CHECK_TIMEOUT = 5  # seconds
 MODEL_PULL_TIMEOUT = 1200  # seconds (20 minutes)
 
-# Configure console with proper encoding handling for Windows
-if platform.system() == "Windows" and not sys.stdout.isatty():
-    # Running in non-interactive mode (subprocess, pipe, etc)
-    try:
-        import locale
-
-        encoding = locale.getpreferredencoding() or ""
-        if "utf" not in encoding.lower():
-            os.environ["PYTHONIOENCODING"] = "utf-8"
-            console = Console(force_terminal=True, legacy_windows=False)
-        else:
-            console = Console()
-    except Exception:
-        console = Console(legacy_windows=True, safe_box=True)
-else:
-    console = Console()
-
-
+# Use shared utility for Windows console encoding setup
+from agent.cli.utils import get_console
+console = get_console()
 def _setup_github_org(provider_obj: Any) -> None:
     """Helper to configure GitHub organization for enterprise rate limits.
 
