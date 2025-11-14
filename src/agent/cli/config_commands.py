@@ -1,8 +1,10 @@
 """Interactive CLI commands for managing agent configuration."""
 
 import os
+import platform
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +34,21 @@ DOCKER_ENABLE_TIMEOUT = 30  # seconds
 MODEL_CHECK_TIMEOUT = 5  # seconds
 MODEL_PULL_TIMEOUT = 1200  # seconds (20 minutes)
 
-console = Console()
+# Configure console with proper encoding handling for Windows
+if platform.system() == "Windows" and not sys.stdout.isatty():
+    # Running in non-interactive mode (subprocess, pipe, etc)
+    try:
+        import locale
+
+        if "utf" not in locale.getpreferredencoding().lower():
+            os.environ["PYTHONIOENCODING"] = "utf-8"
+            console = Console(force_terminal=True, legacy_windows=False)
+        else:
+            console = Console()
+    except Exception:
+        console = Console(legacy_windows=True, safe_box=True)
+else:
+    console = Console()
 
 
 def _mask_api_key(api_key: str | None) -> str:
@@ -217,9 +233,49 @@ def config_init() -> None:
             console.print("  [dim]Or set GITHUB_TOKEN environment variable[/dim]")
 
         # Ask for model (with recommended default)
-        model = Prompt.ask("\nModel", default="gpt-5-nano", show_default=True)
+        model = Prompt.ask("\nModel", default="gpt-4o-mini", show_default=True)
         settings.providers.github.model = model
+        settings.providers.github.endpoint = "https://models.github.ai"
         settings.providers.github.enabled = True
+
+        # Ask about organization for enterprise rate limits
+        console.print("\n[bold]GitHub Organization (Optional)[/bold]")
+        console.print("  [dim]For enterprise users with organization access:[/dim]")
+        console.print("  [dim]• Personal: 20-150 requests/day (depending on model)[/dim]")
+        console.print("  [dim]• Enterprise: 15,000 requests/hour[/dim]")
+
+        setup_org = Confirm.ask(
+            "\nDo you have a GitHub organization with models enabled?", default=False
+        )
+        if setup_org:
+            # Try to auto-detect first
+            try:
+                from agent.providers.github.auth import get_github_org
+
+                detected_org = get_github_org()
+                if detected_org:
+                    console.print(
+                        f"\n[green]✓[/green] Detected organization: [cyan]{detected_org}[/cyan]"
+                    )
+                    use_detected = Confirm.ask(
+                        "Use this organization?",
+                        default=True,
+                    )
+                    if use_detected:
+                        settings.providers.github.org = detected_org
+                        console.print(
+                            "  [dim]Using enterprise endpoint for higher rate limits[/dim]"
+                        )
+                    else:
+                        manual_org = Prompt.ask("Enter organization name")
+                        settings.providers.github.org = manual_org
+                else:
+                    manual_org = Prompt.ask("Enter your GitHub organization name")
+                    settings.providers.github.org = manual_org
+            except Exception as e:
+                console.print(f"[yellow]⚠[/yellow] Could not auto-detect organization: {e}")
+                manual_org = Prompt.ask("Enter your GitHub organization name")
+                settings.providers.github.org = manual_org
 
     elif provider == "openai":
         api_key = Prompt.ask("\nEnter your OpenAI API key", password=True)
@@ -721,10 +777,50 @@ def _configure_provider(provider: str, provider_obj: Any, settings: Any) -> None
         # Model selection
         model = Prompt.ask(
             "Model",
-            default="gpt-5-nano",
+            default="gpt-4o-mini",
             show_default=True,
         )
         provider_obj.model = model
+        provider_obj.endpoint = "https://models.github.ai"
+
+        # Ask about organization for enterprise rate limits
+        console.print("\n[bold]GitHub Organization (Optional)[/bold]")
+        console.print("  [dim]For enterprise users with organization access:[/dim]")
+        console.print("  [dim]• Personal: 20-150 requests/day (depending on model)[/dim]")
+        console.print("  [dim]• Enterprise: 15,000 requests/hour[/dim]")
+
+        setup_org = Confirm.ask(
+            "\nDo you have a GitHub organization with models enabled?", default=False
+        )
+        if setup_org:
+            # Try to auto-detect first
+            try:
+                from agent.providers.github.auth import get_github_org
+
+                detected_org = get_github_org()
+                if detected_org:
+                    console.print(
+                        f"\n[green]✓[/green] Detected organization: [cyan]{detected_org}[/cyan]"
+                    )
+                    use_detected = Confirm.ask(
+                        "Use this organization?",
+                        default=True,
+                    )
+                    if use_detected:
+                        provider_obj.org = detected_org
+                        console.print(
+                            "  [dim]Using enterprise endpoint for higher rate limits[/dim]"
+                        )
+                    else:
+                        manual_org = Prompt.ask("Enter organization name")
+                        provider_obj.org = manual_org
+                else:
+                    manual_org = Prompt.ask("Enter your GitHub organization name")
+                    provider_obj.org = manual_org
+            except Exception as e:
+                console.print(f"[yellow]⚠[/yellow] Could not auto-detect organization: {e}")
+                manual_org = Prompt.ask("Enter your GitHub organization name")
+                provider_obj.org = manual_org
 
 
 # Legacy functions for backward compatibility
@@ -900,7 +996,7 @@ def config_memory() -> None:
         # Check provider compatibility first
         try:
             from agent.config import AgentConfig
-            from agent.memory.mem0_utils import is_provider_compatible
+            from agent.memory.mem0_utils import SUPPORTED_PROVIDERS, is_provider_compatible
 
             # Load current provider from settings
             current_config = AgentConfig.from_combined()
@@ -910,7 +1006,7 @@ def config_memory() -> None:
                 console.print("\n[yellow]⚠[/yellow] Warning: mem0 requires a cloud LLM provider")
                 console.print(f"  [dim]Current provider: {current_config.llm_provider}[/dim]")
                 console.print(f"  [dim]Issue: {reason}[/dim]")
-                console.print("  [dim]Supported providers: openai, anthropic, azure, gemini[/dim]")
+                console.print(f"  [dim]Supported providers: {', '.join(SUPPORTED_PROVIDERS)}[/dim]")
                 console.print(
                     "\n[dim]mem0 will fall back to in_memory until you switch to a compatible provider.[/dim]"
                 )

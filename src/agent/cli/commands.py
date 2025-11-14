@@ -271,7 +271,7 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
 
     try:
         if action == "start":
-            # Check if Docker is available
+            # Check if Docker CLI is installed
             try:
                 subprocess.run(
                     ["docker", "--version"],
@@ -280,10 +280,21 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
                     timeout=5,
                 )
             except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-                console.print("\n[red]Error: Docker is not installed or not running[/red]")
+                console.print("\n[red]Error: Docker is not installed[/red]")
                 console.print(
                     "[yellow]Install Docker from: https://docs.docker.com/get-docker/[/yellow]\n"
                 )
+                return
+
+            # Check if Docker daemon is actually running
+            daemon_check = subprocess.run(
+                ["docker", "info"],
+                capture_output=True,
+                timeout=10,
+            )
+            if daemon_check.returncode != 0:
+                console.print("\n[red]Error: Docker daemon is not running[/red]")
+                console.print("[yellow]Please start Docker Desktop or the Docker daemon[/yellow]\n")
                 return
 
             # Check if already running
@@ -343,6 +354,19 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
                 pass
 
         elif action == "stop":
+            # Check if Docker daemon is running
+            daemon_check = subprocess.run(
+                ["docker", "info"],
+                capture_output=True,
+                timeout=10,
+            )
+            if daemon_check.returncode != 0:
+                console.print("\n[yellow]Docker daemon is not running[/yellow]")
+                console.print(
+                    "[dim]Cannot check or stop containers when Docker is not running[/dim]\n"
+                )
+                return
+
             # Stop the container
             result = subprocess.run(
                 ["docker", "stop", CONTAINER_NAME],
@@ -370,6 +394,19 @@ async def handle_telemetry_command(user_input: str, console: Console) -> None:
                 console.print("\n[yellow]Telemetry dashboard was not running[/yellow]\n")
 
         elif action == "status":
+            # Check if Docker daemon is running
+            daemon_check = subprocess.run(
+                ["docker", "info"],
+                capture_output=True,
+                timeout=10,
+            )
+            if daemon_check.returncode != 0:
+                console.print("\n[yellow]Docker daemon is not running[/yellow]")
+                console.print(
+                    "[dim]Cannot check container status when Docker is not running[/dim]\n"
+                )
+                return
+
             # Check if running
             result = subprocess.run(
                 ["docker", "ps", "--filter", f"name={CONTAINER_NAME}", "--format", "{{.Names}}"],

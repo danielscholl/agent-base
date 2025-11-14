@@ -79,3 +79,45 @@ def get_github_token() -> str:
             "1. Try running: gh auth login\n"
             "2. Set GITHUB_TOKEN environment variable: export GITHUB_TOKEN=ghp_..."
         ) from e
+
+
+def get_github_org() -> str | None:
+    """Get user's primary GitHub organization from gh CLI.
+
+    Returns the first organization from the user's org list, which is
+    typically their primary enterprise organization (e.g., "microsoft").
+    This enables organization-scoped API requests with higher rate limits.
+
+    Returns:
+        Organization login name, or None if not available
+
+    Examples:
+        >>> org = get_github_org()
+        >>> # Returns "microsoft" for Microsoft employees
+        >>> # Returns None if gh CLI is not available or user has no orgs
+    """
+    # Check if gh CLI is available
+    if not shutil.which("gh"):
+        logger.debug("gh CLI not available, cannot detect organization")
+        return None
+
+    try:
+        result = subprocess.run(
+            ["gh", "api", "user/orgs", "--jq", ".[0].login"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        )
+        org_login = result.stdout.strip()
+
+        if org_login:
+            logger.debug(f"Detected GitHub organization: {org_login}")
+            return org_login
+        else:
+            logger.debug("User has no organization memberships")
+            return None
+
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        logger.debug(f"Failed to get GitHub organization: {e}")
+        return None

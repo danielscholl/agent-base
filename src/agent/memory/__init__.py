@@ -75,14 +75,14 @@ def create_memory_manager(config: "AgentConfig") -> MemoryManager:
     if config.memory_type == "mem0":
         # Check provider compatibility first
         try:
-            from agent.memory.mem0_utils import is_provider_compatible
+            from agent.memory.mem0_utils import SUPPORTED_PROVIDERS, is_provider_compatible
 
             is_compatible, reason = is_provider_compatible(config)
             if not is_compatible:
                 logger.warning(
                     f"mem0 not available: {reason}. "
                     f"Falling back to InMemoryStore. "
-                    f"To use mem0, switch to a supported provider (openai, anthropic, azure, gemini)."
+                    f"To use mem0, switch to a supported provider ({', '.join(SUPPORTED_PROVIDERS)})."
                 )
                 return InMemoryStore(config)
         except ImportError:

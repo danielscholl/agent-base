@@ -202,6 +202,8 @@ class Agent:
             return GitHubChatClient(
                 model_id=self.config.github_model,
                 token=self.config.github_token,
+                endpoint=self.config.github_endpoint,
+                org=self.config.github_org,
             )
         elif self.config.llm_provider == "local":
             from agent_framework.openai import OpenAIChatClient

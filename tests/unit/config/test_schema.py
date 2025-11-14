@@ -75,8 +75,9 @@ class TestProviderConfigs:
         config = GitHubProviderConfig()
         assert config.enabled is False
         assert config.token is None
-        assert config.model == "gpt-5-nano"
-        assert config.endpoint == "https://models.inference.ai.azure.com"
+        assert config.model == "gpt-4o-mini"
+        assert config.endpoint == "https://models.github.ai"
+        assert config.org is None
 
 
 class TestProviderConfig:

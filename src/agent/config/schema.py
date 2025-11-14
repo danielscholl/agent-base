@@ -70,8 +70,9 @@ class GitHubProviderConfig(BaseModel):
 
     enabled: bool = False
     token: str | None = None
-    model: str = "gpt-5-nano"
-    endpoint: str = "https://models.inference.ai.azure.com"
+    model: str = "gpt-4o-mini"
+    endpoint: str = "https://models.github.ai"
+    org: str | None = None  # Optional: org name for enterprise rate limits
 
 
 class ProviderConfig(BaseModel):

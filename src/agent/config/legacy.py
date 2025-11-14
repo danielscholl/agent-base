@@ -10,6 +10,21 @@ from dotenv import load_dotenv
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash-exp"
 
 
+def _auto_detect_github_org() -> str | None:
+    """Auto-detect GitHub organization from gh CLI for enterprise users.
+
+    Returns:
+        Organization login name if detected, None otherwise
+    """
+    try:
+        from agent.providers.github.auth import get_github_org
+
+        return get_github_org()
+    except Exception:
+        # Silently fail - organization is optional
+        return None
+
+
 @dataclass
 class AgentConfig:
     """Configuration for Agent.
@@ -64,8 +79,9 @@ class AgentConfig:
 
     # GitHub Models (when llm_provider == "github")
     github_token: str | None = None
-    github_model: str = "gpt-5-nano"
-    github_endpoint: str = "https://models.inference.ai.azure.com"
+    github_model: str = "gpt-4o-mini"
+    github_endpoint: str = "https://models.github.ai"
+    github_org: str | None = None  # Optional: org name for enterprise rate limits
     # Uses GITHUB_TOKEN env var or gh CLI authentication
 
     # Local Provider (when llm_provider == "local")
@@ -149,8 +165,9 @@ class AgentConfig:
             gemini_use_vertexai=os.getenv("GEMINI_USE_VERTEXAI", "false").lower() == "true",
             # GitHub Models
             github_token=os.getenv("GITHUB_TOKEN"),
-            github_model=agent_model or "gpt-5-nano",
-            github_endpoint=os.getenv("GITHUB_ENDPOINT", "https://models.inference.ai.azure.com"),
+            github_model=agent_model or "gpt-4o-mini",
+            github_endpoint=os.getenv("GITHUB_ENDPOINT", "https://models.github.ai"),
+            github_org=os.getenv("GITHUB_ORG") or _auto_detect_github_org(),
             # Local Provider
             local_base_url=os.getenv(
                 "LOCAL_BASE_URL", "http://localhost:12434/engines/llama.cpp/v1"
@@ -381,6 +398,7 @@ class AgentConfig:
             github_token=settings.providers.github.token,
             github_model=settings.providers.github.model,
             github_endpoint=settings.providers.github.endpoint,
+            github_org=settings.providers.github.org,
             # Local Provider
             local_base_url=settings.providers.local.base_url,
             local_model=settings.providers.local.model,
@@ -517,6 +535,7 @@ class AgentConfig:
             github_token=settings.providers.github.token,
             github_model=settings.providers.github.model,
             github_endpoint=settings.providers.github.endpoint,
+            github_org=settings.providers.github.org,
             # Local Provider
             local_base_url=settings.providers.local.base_url,
             local_model=settings.providers.local.model,

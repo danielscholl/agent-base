@@ -45,7 +45,30 @@ from agent.persistence import ThreadPersistence
 from agent.utils.keybindings import ClearPromptHandler, KeybindingManager
 
 app = typer.Typer(help="Agent - Conversational Assistant")
-console = Console()
+
+# Configure console with proper encoding handling for Windows
+# When running in non-interactive mode (like through subprocess), Windows
+# defaults to CP1252 which can't handle Unicode. We force UTF-8 when possible.
+if platform.system() == "Windows" and not sys.stdout.isatty():
+    # Running in non-interactive mode (subprocess, pipe, etc)
+    # Try to use UTF-8 if available
+    try:
+        import locale
+
+        if "utf" not in locale.getpreferredencoding().lower():
+            # Force UTF-8 for better Unicode support
+            os.environ["PYTHONIOENCODING"] = "utf-8"
+            # Create console with legacy Windows mode disabled
+            console = Console(force_terminal=True, legacy_windows=False)
+        else:
+            console = Console()
+    except Exception:
+        # Fallback to safe ASCII mode if encoding detection fails
+        console = Console(legacy_windows=True, safe_box=True)
+else:
+    # Normal interactive mode or non-Windows
+    console = Console()
+
 logger = logging.getLogger(__name__)
 
 # Cache git branch lookup to avoid spawning a subprocess every prompt
@@ -502,16 +525,18 @@ def run_health_check() -> None:
         # Docker
         console.print("\n[bold]Docker:[/bold]")
         try:
-            result = subprocess.run(
+            # First check if Docker CLI is installed
+            version_result = subprocess.run(
                 ["docker", "--version"],
                 capture_output=True,
                 text=True,
                 timeout=5,
             )
-            if result.returncode == 0:
-                version = result.stdout.strip().replace("Docker version ", "").split(",")[0]
+            if version_result.returncode == 0:
+                version = version_result.stdout.strip().replace("Docker version ", "").split(",")[0]
 
-                # Get Docker resources
+                # Check if Docker daemon is actually running by attempting docker info
+                daemon_running = False
                 resources_info = ""
                 try:
                     info_result = subprocess.run(
@@ -521,41 +546,52 @@ def run_health_check() -> None:
                         timeout=10,
                     )
                     if info_result.returncode == 0:
+                        daemon_running = True
                         docker_info = json.loads(info_result.stdout)
                         ncpu = docker_info.get("NCPU", 0)
                         mem_total = docker_info.get("MemTotal", 0)
                         if ncpu > 0 and mem_total > 0:
                             mem_gb = mem_total / (1024**3)
                             resources_info = f" · {ncpu} cores, {mem_gb:.1f} GiB"
-                except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError) as e:
-                    logger.debug(f"Failed to get Docker resources: {e}")
+                    else:
+                        # docker info failed - daemon is not running
+                        logger.debug(f"Docker daemon not running: {info_result.stderr}")
+                except subprocess.TimeoutExpired as e:
+                    logger.debug(f"Docker info timed out: {e}")
+                except (json.JSONDecodeError, KeyError) as e:
+                    logger.debug(f"Failed to parse Docker info: {e}")
 
-                console.print(
-                    f"  [green]◉[/green] Running [dim]({version})[/dim]{resources_info}",
-                    highlight=False,
-                )
-
-                # Check for Docker Model Runner models
-                try:
-                    import requests
-
-                    response = requests.get(
-                        "http://localhost:12434/engines/llama.cpp/v1/models", timeout=2
+                if daemon_running:
+                    console.print(
+                        f"  [green]◉[/green] Running [dim]({version})[/dim]{resources_info}",
+                        highlight=False,
                     )
-                    if response.status_code == 200:
-                        models_data = response.json()
-                        models = models_data.get("data", [])
-                        for model in models:
-                            model_id = model.get("id", "unknown")
-                            console.print(
-                                f"  [green]•[/green] [dim]{model_id}[/dim]",
-                                highlight=False,
-                            )
-                except Exception as e:
-                    logger.debug(f"Failed to fetch Docker models: {e}")
-                    # Silently continue - DMR might not be enabled
+
+                    # Check for Docker Model Runner models
+                    try:
+                        import requests
+
+                        response = requests.get(
+                            "http://localhost:12434/engines/llama.cpp/v1/models", timeout=2
+                        )
+                        if response.status_code == 200:
+                            models_data = response.json()
+                            models = models_data.get("data", [])
+                            for model in models:
+                                model_id = model.get("id", "unknown")
+                                console.print(
+                                    f"  [green]•[/green] [dim]{model_id}[/dim]",
+                                    highlight=False,
+                                )
+                    except Exception as e:
+                        logger.debug(f"Failed to fetch Docker models: {e}")
+                        # Silently continue - DMR might not be enabled
+                else:
+                    console.print(
+                        f"  [yellow]◉[/yellow] Not running [dim]({version} installed, daemon not started)[/dim]"
+                    )
             else:
-                console.print("  [yellow]◉[/yellow] Not running")
+                console.print("  [dim]○[/dim] Not installed")
         except FileNotFoundError:
             console.print("  [dim]○[/dim] Not installed")
         except subprocess.TimeoutExpired:
