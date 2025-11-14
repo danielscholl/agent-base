@@ -326,9 +326,6 @@ class TestAgentValidation:
         assert "agent" in clean_output.lower()
         assert "--prompt" in clean_output
 
-    @pytest.mark.skipif(
-        platform.system() == "Windows", reason="Unicode console issues on Windows CI"
-    )
     def test_version_command(self, validator):
         """Test version command."""
         result = validator.run_command("uv run agent --version", timeout=5)

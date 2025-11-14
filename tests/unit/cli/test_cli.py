@@ -182,7 +182,6 @@ class TestCLIIntegration:
         assert "agent" in clean_output.lower() or "Agent" in clean_output
         assert "--help" in clean_output
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="Unix-specific test")
     def test_cli_version_via_subprocess(self):
         """Test CLI version output via subprocess."""
         result = subprocess.run(

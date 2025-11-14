@@ -281,8 +281,9 @@ class TestProviderConnectivityOptimization:
             if len(call_times) > 1:
                 start_times = [t for _, t in call_times]
                 time_spread = max(start_times) - min(start_times)
-                # If parallel, all should start within 0.005s of each other
-                assert time_spread < 0.005, f"Tests not parallel, time spread: {time_spread}s"
+                # If parallel, all should start within 0.02s of each other
+                # Note: Using 0.02s for Windows compatibility (less precise timing)
+                assert time_spread < 0.02, f"Tests not parallel, time spread: {time_spread}s"
 
     @pytest.mark.asyncio
     async def test_multiple_enabled_providers(self):
