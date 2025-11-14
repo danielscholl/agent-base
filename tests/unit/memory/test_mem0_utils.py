@@ -1,5 +1,6 @@
 """Unit tests for mem0 utility functions."""
 
+import os
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -145,8 +146,6 @@ class TestMem0Utils:
             call_args = mock_memory_class.from_config.call_args[0][0]
             assert call_args["vector_store"]["provider"] == "chroma"
             # Use os.path.join for cross-platform path checking
-            import os
-
             expected_path = os.path.join(str(config.memory_dir), "chroma_db")
             assert call_args["vector_store"]["config"]["path"] == expected_path
 
