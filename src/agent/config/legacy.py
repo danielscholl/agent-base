@@ -485,7 +485,7 @@ class AgentConfig:
             settings = AgentSettings(**merged_dict)
         # else: just use file settings as-is
 
-        # Determine primary provider (file takes precedence over env)
+        # Determine primary provider (CLI/env takes precedence over file)
         llm_provider_env = os.getenv("LLM_PROVIDER")
 
         # Check if config file actually exists
@@ -493,11 +493,11 @@ class AgentConfig:
 
         config_file_exists = config_path.exists() if config_path else get_config_path().exists()
 
-        # File provider takes precedence over env
-        if settings.providers.enabled:
-            llm_provider = settings.providers.enabled[0]
-        elif llm_provider_env:
+        # CLI/env provider takes precedence over file (allows --provider flag to work)
+        if llm_provider_env:
             llm_provider = llm_provider_env
+        elif settings.providers.enabled:
+            llm_provider = settings.providers.enabled[0]
         elif not config_file_exists:
             # No config file and no LLM_PROVIDER env var
             # Show helpful message and offer to run init
