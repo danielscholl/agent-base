@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent.cli.app import _test_all_providers, _test_provider_connectivity_async
+from agent.cli.health import _test_all_providers, _test_provider_connectivity_async
 from agent.config import AgentConfig
 
 
@@ -43,7 +43,7 @@ class TestHealthCheckLogging:
         original_level = azure_logger.level
 
         # Mock Agent to raise Azure auth error
-        with patch("agent.cli.app.Agent") as MockAgent:
+        with patch("agent.cli.health.Agent") as MockAgent:
             # Simulate Azure auth failure
             MockAgent.side_effect = Exception("Please run 'az login' to set up an account")
 
@@ -67,7 +67,7 @@ class TestHealthCheckLogging:
         original_level = framework_logger.level
 
         # Mock Agent to raise framework auth error
-        with patch("agent.cli.app.Agent") as MockAgent:
+        with patch("agent.cli.health.Agent") as MockAgent:
             MockAgent.side_effect = Exception(
                 "Failed to retrieve Azure token for the specified endpoint"
             )
@@ -106,7 +106,7 @@ class TestHealthCheckLogging:
             original_levels[logger.name] = level
 
         # Mock Agent to raise error
-        with patch("agent.cli.app.Agent") as MockAgent:
+        with patch("agent.cli.health.Agent") as MockAgent:
             MockAgent.side_effect = Exception("Test error")
 
             # Run the connectivity test
@@ -125,7 +125,7 @@ class TestHealthCheckLogging:
         original_level = azure_logger.level
 
         # Mock successful Agent run
-        with patch("agent.cli.app.Agent") as MockAgent:
+        with patch("agent.cli.health.Agent") as MockAgent:
             mock_agent = MagicMock()
             mock_agent.run = AsyncMock(return_value="test response")
             mock_agent.chat_client = MagicMock()
@@ -147,7 +147,7 @@ class TestHealthCheckLogging:
         """Test that non-Azure providers get generic error messages."""
         config = AgentConfig(llm_provider="openai", openai_api_key="test-key")
 
-        with patch("agent.cli.app.Agent") as MockAgent:
+        with patch("agent.cli.health.Agent") as MockAgent:
             MockAgent.side_effect = Exception("Some random error")
 
             success, status = await _test_provider_connectivity_async("openai", config)
@@ -166,7 +166,7 @@ class TestHealthCheckLogging:
             azure_model_deployment="test-model",
         )
 
-        with patch("agent.cli.app.Agent") as MockAgent:
+        with patch("agent.cli.health.Agent") as MockAgent:
             MockAgent.side_effect = Exception("Please run 'az login' to set up an account")
 
             success, status = await _test_provider_connectivity_async("foundry", config)
@@ -191,7 +191,7 @@ class TestProviderConnectivityOptimization:
             openai_model="gpt-5-mini",
         )
 
-        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+        with patch("agent.cli.health._test_provider_connectivity_async") as mock_test:
             mock_test.return_value = (True, "Connected")
 
             results = await _test_all_providers(config)
@@ -212,7 +212,7 @@ class TestProviderConnectivityOptimization:
             openai_model="gpt-5-mini",
         )
 
-        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+        with patch("agent.cli.health._test_provider_connectivity_async") as mock_test:
             mock_test.return_value = (True, "Connected")
 
             results = await _test_all_providers(config)
@@ -235,7 +235,7 @@ class TestProviderConnectivityOptimization:
             gemini_api_key="test-key",
         )
 
-        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+        with patch("agent.cli.health._test_provider_connectivity_async") as mock_test:
             mock_test.return_value = (True, "Connected")
 
             await _test_all_providers(config)
@@ -270,7 +270,7 @@ class TestProviderConnectivityOptimization:
             return True, "Connected"
 
         with patch(
-            "agent.cli.app._test_provider_connectivity_async", side_effect=mock_connectivity_test
+            "agent.cli.health._test_provider_connectivity_async", side_effect=mock_connectivity_test
         ):
             results = await _test_all_providers(config)
 
@@ -295,7 +295,7 @@ class TestProviderConnectivityOptimization:
             anthropic_api_key="test-key",
         )
 
-        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+        with patch("agent.cli.health._test_provider_connectivity_async") as mock_test:
             mock_test.return_value = (True, "Connected")
 
             await _test_all_providers(config)
@@ -316,7 +316,7 @@ class TestProviderConnectivityOptimization:
             openai_api_key="test-key",
         )
 
-        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+        with patch("agent.cli.health._test_provider_connectivity_async") as mock_test:
             mock_test.return_value = (True, "Connected")
 
             await _test_all_providers(config)
@@ -334,7 +334,7 @@ class TestProviderConnectivityOptimization:
             local_model="ai/phi4",
         )
 
-        with patch("agent.cli.app._test_provider_connectivity_async") as mock_test:
+        with patch("agent.cli.health._test_provider_connectivity_async") as mock_test:
             mock_test.return_value = (True, "Connected")
 
             results = await _test_all_providers(config)
