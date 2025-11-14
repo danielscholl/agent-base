@@ -4,6 +4,7 @@ import logging
 import os
 import platform
 import sys
+from typing import Any
 
 from rich.console import Console
 
@@ -81,7 +82,7 @@ def hide_connection_string_if_otel_disabled(config: AgentConfig) -> str | None:
     return None
 
 
-def set_model_span_attributes(span, config: AgentConfig) -> None:
+def set_model_span_attributes(span: Any, config: AgentConfig) -> None:
     """Set OpenTelemetry span attributes based on provider and model configuration.
 
     Args:

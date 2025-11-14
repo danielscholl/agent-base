@@ -17,7 +17,7 @@ from agent.cli.execution import run_single_prompt
 from agent.cli.health import run_health_check
 from agent.cli.interactive import run_chat_mode
 from agent.cli.session import get_last_session
-from agent.cli.utils import get_console, hide_connection_string_if_otel_disabled
+from agent.cli.utils import get_console
 from agent.config import AgentConfig
 
 app = typer.Typer(help="Agent - Conversational Assistant")
@@ -26,8 +26,6 @@ app = typer.Typer(help="Agent - Conversational Assistant")
 console = get_console()
 
 logger = logging.getLogger(__name__)
-
-
 
 
 @app.callback(invoke_without_command=True)

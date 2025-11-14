@@ -27,7 +27,11 @@ from agent.cli.display import (
     execute_with_visualization,
 )
 from agent.cli.session import setup_session_logging
-from agent.cli.utils import get_console, hide_connection_string_if_otel_disabled, set_model_span_attributes
+from agent.cli.utils import (
+    get_console,
+    hide_connection_string_if_otel_disabled,
+    set_model_span_attributes,
+)
 from agent.config import AgentConfig
 from agent.display import DisplayMode, set_execution_context
 
@@ -35,11 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 async def _execute_query(
-    agent: Agent,
-    prompt: str,
-    quiet: bool,
-    verbose: bool,
-    console: Console
+    agent: Agent, prompt: str, quiet: bool, verbose: bool, console: Console
 ) -> str | None:
     """Execute query with appropriate visualization mode.
 
@@ -56,9 +56,7 @@ async def _execute_query(
     if not quiet:
         display_mode = DisplayMode.VERBOSE if verbose else DisplayMode.MINIMAL
         try:
-            return await execute_with_visualization(
-                agent, prompt, None, console, display_mode
-            )
+            return await execute_with_visualization(agent, prompt, None, console, display_mode)
         except KeyboardInterrupt:
             console.print("\n[yellow]Interrupted by user[/yellow]\n")
             raise typer.Exit(ExitCodes.INTERRUPTED)

@@ -5,8 +5,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-import agent.cli.interactive
 
+import agent.cli.interactive
 from agent.cli.interactive import _get_status_bar_text
 
 # Module-level markers for all tests in this file

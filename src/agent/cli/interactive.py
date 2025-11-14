@@ -50,7 +50,11 @@ from agent.cli.session import (
     setup_session_logging,
     track_conversation,
 )
-from agent.cli.utils import get_console, hide_connection_string_if_otel_disabled, set_model_span_attributes
+from agent.cli.utils import (
+    get_console,
+    hide_connection_string_if_otel_disabled,
+    set_model_span_attributes,
+)
 from agent.config import AgentConfig
 from agent.display import DisplayMode, set_execution_context
 from agent.persistence import ThreadPersistence
@@ -69,7 +73,7 @@ async def _execute_interactive_query(
     thread: ThreadPersistence,
     quiet: bool,
     verbose: bool,
-    console: Console
+    console: Console,
 ) -> str | None:
     """Execute query in interactive mode with appropriate visualization.
 
@@ -91,9 +95,7 @@ async def _execute_interactive_query(
                 agent, user_input, thread, console, display_mode
             )
         except KeyboardInterrupt:
-            console.print(
-                "\n[yellow]Operation cancelled[/yellow] - Press Ctrl+C again to exit\n"
-            )
+            console.print("\n[yellow]Operation cancelled[/yellow] - Press Ctrl+C again to exit\n")
             raise
     else:
         try:
@@ -202,7 +204,7 @@ async def _execute_agent_query(
     quiet: bool,
     verbose: bool,
     console: Console,
-) -> str:
+) -> str | None:
     """Execute agent query with appropriate visualization.
 
     Args:
@@ -236,7 +238,9 @@ async def _execute_agent_query(
             set_model_span_attributes(span, config)
 
             # Execute with shared execution logic
-            return await _execute_interactive_query(agent, user_input, thread, quiet, verbose, console)
+            return await _execute_interactive_query(
+                agent, user_input, thread, quiet, verbose, console
+            )
     else:
         # Execute without observability wrapper
         return await _execute_interactive_query(agent, user_input, thread, quiet, verbose, console)
