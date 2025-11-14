@@ -72,16 +72,11 @@ class TestSystemPromptLoading:
         # Check paths handle both Unix (/) and Windows (\) separators
         normalized_data_path = os.path.normpath("/test/data")
         normalized_data_path_slash = normalized_data_path.replace(os.sep, "/")
-        assert (
-            normalized_data_path in prompt or normalized_data_path_slash in prompt
-        )
+        assert normalized_data_path in prompt or normalized_data_path_slash in prompt
 
         normalized_sessions_path = os.path.normpath("/test/sessions")
         normalized_sessions_path_slash = normalized_sessions_path.replace(os.sep, "/")
-        assert (
-            normalized_sessions_path in prompt
-            or normalized_sessions_path_slash in prompt
-        )
+        assert normalized_sessions_path in prompt or normalized_sessions_path_slash in prompt
         assert "True" in prompt
 
     def test_missing_placeholders_ignored(self, mock_config, tmp_path):
