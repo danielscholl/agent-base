@@ -564,7 +564,12 @@ def config_provider(provider: str, action: str | None = None) -> None:
         console.print("3. Disable provider")
         console.print("4. Cancel")
 
-        choice = Prompt.ask("Choose an option", choices=["1", "2", "3", "4"], default="4")
+        choice = Prompt.ask("Choose an option", default="4")
+
+        # Validate choice
+        if choice not in ["1", "2", "3", "4"]:
+            console.print(f"[red]Invalid choice: {choice}[/red]")
+            return
 
         if choice == "1":
             # Set as default
@@ -883,7 +888,12 @@ def config_memory() -> None:
     console.print("2. Configure mem0 (semantic search with long-term memory)")
     console.print("3. Cancel")
 
-    choice = Prompt.ask("Choose an option", choices=["1", "2", "3"], default="3")
+    choice = Prompt.ask("Choose an option", default="3")
+
+    # Validate choice
+    if choice not in ["1", "2", "3"]:
+        console.print(f"[red]Invalid choice: {choice}[/red]")
+        return
 
     if choice == "1":
         # Configure in_memory
