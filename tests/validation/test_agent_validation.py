@@ -314,7 +314,9 @@ class TestAgentValidation:
         """Create validator instance."""
         return AgentValidator()
 
-    @pytest.mark.skipif(platform.system() == "Windows", reason="Unicode console issues on Windows CI")
+    @pytest.mark.skipif(
+        platform.system() == "Windows", reason="Unicode console issues on Windows CI"
+    )
     def test_help_command(self, validator):
         """Test help command execution."""
         result = validator.run_command("uv run agent --help", timeout=10)
@@ -324,14 +326,18 @@ class TestAgentValidation:
         assert "agent" in clean_output.lower()
         assert "--prompt" in clean_output
 
-    @pytest.mark.skipif(platform.system() == "Windows", reason="Unicode console issues on Windows CI")
+    @pytest.mark.skipif(
+        platform.system() == "Windows", reason="Unicode console issues on Windows CI"
+    )
     def test_version_command(self, validator):
         """Test version command."""
         result = validator.run_command("uv run agent --version", timeout=5)
         assert result["exit_code"] == 0
         assert result["stdout"].strip()  # Not empty
 
-    @pytest.mark.skipif(platform.system() == "Windows", reason="Unicode console issues on Windows CI")
+    @pytest.mark.skipif(
+        platform.system() == "Windows", reason="Unicode console issues on Windows CI"
+    )
     def test_check_command(self, validator):
         """Test health check command shows system, agent, docker, and providers."""
         # Longer timeout needed when running in parallel (connectivity tests to multiple providers)
@@ -348,7 +354,9 @@ class TestAgentValidation:
         has_config_error = "Configuration error" in clean_output
         assert has_sections or has_config_error, "Should show health check or config error"
 
-    @pytest.mark.skipif(platform.system() == "Windows", reason="Unicode console issues on Windows CI")
+    @pytest.mark.skipif(
+        platform.system() == "Windows", reason="Unicode console issues on Windows CI"
+    )
     def test_config_command(self, validator):
         """Test config command."""
         # Longer timeout needed when running in parallel (connectivity tests to multiple providers)
@@ -379,7 +387,9 @@ class TestAgentValidation:
         assert "command_tests" in validator.config or "prompt_tests" in validator.config
 
     @pytest.mark.slow
-    @pytest.mark.skipif(platform.system() == "Windows", reason="Unicode console issues on Windows CI")
+    @pytest.mark.skipif(
+        platform.system() == "Windows", reason="Unicode console issues on Windows CI"
+    )
     def test_run_all_validation_tests(self, validator):
         """Run all validation tests from configuration."""
         results = validator.run_all_tests()

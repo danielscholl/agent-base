@@ -146,6 +146,7 @@ class TestMem0Utils:
             assert call_args["vector_store"]["provider"] == "chroma"
             # Use os.path.join for cross-platform path checking
             import os
+
             expected_path = os.path.join(str(config.memory_dir), "chroma_db")
             assert call_args["vector_store"]["config"]["path"] == expected_path
 

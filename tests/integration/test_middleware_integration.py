@@ -86,8 +86,8 @@ async def test_execution_context_propagation(agent_with_middleware: Agent):
 async def test_display_tree_integration():
     """Test that ExecutionTreeDisplay integrates with event emitter."""
     # Create display with test console
-    import os
     import io
+
     # Use StringIO to avoid encoding issues on Windows
     null_stream = io.StringIO()
     console = Console(file=null_stream, force_terminal=False, legacy_windows=False)

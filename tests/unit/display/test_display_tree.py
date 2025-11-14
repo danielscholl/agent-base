@@ -120,6 +120,7 @@ class TestExecutionPhase:
     def test_execution_phase_duration(self):
         """Test phase duration calculation."""
         import time
+
         phase = ExecutionPhase(1)
 
         # Duration should be >= 0 even if not completed

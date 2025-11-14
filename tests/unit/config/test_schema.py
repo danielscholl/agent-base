@@ -347,9 +347,9 @@ class TestDataDirExpansion:
 
     def test_storage_path_expands_tilde(self):
         """Test that ~ in mem0 storage_path is expanded."""
-        import os
+
         settings = AgentSettings(memory={"mem0": {"storage_path": "~/.agent/mem0"}})
         assert "~" not in settings.memory.mem0.storage_path
         # Check path ends with .agent and mem0 (works on Windows and Unix)
         assert ".agent" in settings.memory.mem0.storage_path
-        assert settings.memory.mem0.storage_path.endswith(f"mem0")
+        assert settings.memory.mem0.storage_path.endswith("mem0")
