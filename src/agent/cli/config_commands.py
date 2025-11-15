@@ -82,9 +82,7 @@ def _install_mem0_dependencies() -> bool:
 
     # Check if running as a uv tool by examining sys.executable
     # Support both Unix (.local/share/uv/tools/) and Windows (AppData\Local\uv\tools) paths
-    is_uv_tool = (
-        "/uv/tools/" in sys.executable or "\\uv\\tools" in sys.executable
-    )
+    is_uv_tool = "/uv/tools/" in sys.executable or "\\uv\\tools" in sys.executable
 
     if is_uv_tool:
         # Running as uv tool - need to reinstall with --with flags
@@ -124,8 +122,12 @@ def _install_mem0_dependencies() -> bool:
                                 git_url = req["git"]
 
                                 # Validate git URL format for security
-                                if not git_url.startswith(("https://", "http://", "git+https://", "git+http://")):
-                                    console.print(f"  [yellow]⚠[/yellow] Invalid git URL format: {git_url}")
+                                if not git_url.startswith(
+                                    ("https://", "http://", "git+https://", "git+http://")
+                                ):
+                                    console.print(
+                                        f"  [yellow]⚠[/yellow] Invalid git URL format: {git_url}"
+                                    )
                                 else:
                                     # Handle various git reference formats
                                     for param in ["?rev=", "?branch=", "?tag="]:
@@ -135,8 +137,10 @@ def _install_mem0_dependencies() -> bool:
                                             ref = ref.split("&")[0].split("#")[0]
 
                                             # Validate revision parameter
-                                            if not re.match(r'^[a-zA-Z0-9._/-]+$', ref):
-                                                console.print(f"  [yellow]⚠[/yellow] Invalid revision parameter: {ref}")
+                                            if not re.match(r"^[a-zA-Z0-9._/-]+$", ref):
+                                                console.print(
+                                                    f"  [yellow]⚠[/yellow] Invalid revision parameter: {ref}"
+                                                )
                                                 break
 
                                             # Ensure git+ prefix
@@ -153,7 +157,9 @@ def _install_mem0_dependencies() -> bool:
                                 package_source = name
         except Exception as e:
             # If we can't read receipt, fall back to package name
-            console.print(f"  [dim]Could not determine original install source ({e}), using package name as fallback[/dim]")
+            console.print(
+                f"  [dim]Could not determine original install source ({e}), using package name as fallback[/dim]"
+            )
 
         try:
             result = subprocess.run(
