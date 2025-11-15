@@ -1,8 +1,11 @@
 """Interactive CLI commands for managing agent configuration."""
 
 import os
+import re
 import shutil
 import subprocess
+import sys
+import tomllib
 from pathlib import Path
 
 from rich.prompt import Confirm, Prompt
@@ -29,6 +32,7 @@ except ImportError:
 DOCKER_ENABLE_TIMEOUT = 30  # seconds
 MODEL_CHECK_TIMEOUT = 5  # seconds
 MODEL_PULL_TIMEOUT = 1200  # seconds (20 minutes)
+TOOL_REINSTALL_TIMEOUT = 300  # seconds (5 minutes)
 
 # Use shared utility for Windows console encoding setup
 from agent.cli.utils import get_console
@@ -60,12 +64,142 @@ def _check_mem0_local_dependencies() -> tuple[bool, list[str]]:
 def _install_mem0_dependencies() -> bool:
     """Install mem0 optional dependencies using uv or pip.
 
+    Detects if running as a uv tool and uses appropriate installation method:
+    - For uv tools: reinstalls tool with --with flags to add dependencies.
+        - Reads uv-receipt.toml to determine original install source.
+        - Falls back to "agent-base" package name if receipt cannot be read or is malformed.
+        - Reinstallation may take several minutes (up to 5 minutes).
+        - Potential failure modes: timeout, permission errors, malformed receipt, missing uv command.
+    - For regular installs: uses uv pip install or pip install.
+
+    All exceptions are caught and logged; no exceptions are raised.
+
     Returns:
-        True if installation succeeded, False otherwise
+        True if installation succeeded, False otherwise.
     """
     console.print("\n[bold]Installing mem0 dependencies...[/bold]")
     console.print("  [dim]This will install: mem0ai, chromadb[/dim]")
 
+    # Check if running as a uv tool by examining sys.executable
+    # Support both Unix (.local/share/uv/tools/) and Windows (AppData\Local\uv\tools) paths
+    is_uv_tool = "/uv/tools/" in sys.executable or "\\uv\\tools" in sys.executable
+
+    if is_uv_tool:
+        # Running as uv tool - need to reinstall with --with flags
+        console.print(
+            "  [dim]Detected uv tool installation, reinstalling with mem0 extras...[/dim]"
+        )
+
+        # Determine the package source from uv-receipt.toml
+        package_source = "agent-base"  # Default fallback
+        try:
+            # Parse uv-receipt.toml to get original install source
+            tool_dir = Path(
+                sys.executable
+            ).parent.parent  # e.g., ~/.local/share/uv/tools/agent-base
+            receipt_file = tool_dir / "uv-receipt.toml"
+
+            if receipt_file.exists():
+                try:
+                    with open(receipt_file, "rb") as f:
+                        receipt = tomllib.load(f)
+                except FileNotFoundError:
+                    # File doesn't exist, use default
+                    pass
+                except (PermissionError, tomllib.TOMLDecodeError) as e:
+                    console.print(f"  [yellow]⚠[/yellow] Could not read install source: {e}")
+                except Exception as e:
+                    console.print(f"  [dim]Unexpected error reading receipt: {e}[/dim]")
+                else:
+                    # Extract the requirement spec
+                    requirements = receipt.get("tool", {}).get("requirements", [])
+                    if requirements and isinstance(requirements, list):
+                        req = requirements[0]  # First requirement is the tool itself
+                        if isinstance(req, dict):
+                            # Build source string from requirement dict
+                            name = req.get("name", "agent-base")
+                            if "git" in req:
+                                git_url = req["git"]
+
+                                # Validate git URL format for security
+                                if not git_url.startswith(
+                                    ("https://", "http://", "git+https://", "git+http://")
+                                ):
+                                    console.print(
+                                        f"  [yellow]⚠[/yellow] Invalid git URL format: {git_url}"
+                                    )
+                                else:
+                                    # Handle various git reference formats
+                                    for param in ["?rev=", "?branch=", "?tag="]:
+                                        if param in git_url:
+                                            base_url, ref = git_url.split(param, 1)
+                                            # Extract just the ref value before any other parameters/fragments
+                                            ref = ref.split("&")[0].split("#")[0]
+
+                                            # Validate revision parameter
+                                            if not re.match(r"^[a-zA-Z0-9._/-]+$", ref):
+                                                console.print(
+                                                    f"  [yellow]⚠[/yellow] Invalid revision parameter: {ref}"
+                                                )
+                                                break
+
+                                            # Ensure git+ prefix
+                                            if not base_url.startswith("git+"):
+                                                base_url = f"git+{base_url}"
+                                            package_source = f"{base_url}@{ref}"
+                                            break
+                                    else:
+                                        # No parameters, just ensure git+ prefix
+                                        if not git_url.startswith("git+"):
+                                            git_url = f"git+{git_url}"
+                                        package_source = git_url
+                            else:
+                                package_source = name
+        except Exception as e:
+            # If we can't read receipt, fall back to package name
+            console.print(
+                f"  [dim]Could not determine original install source ({e}), using package name as fallback[/dim]"
+            )
+
+        try:
+            result = subprocess.run(
+                [
+                    "uv",
+                    "tool",
+                    "install",
+                    "--force",
+                    "--prerelease=allow",
+                    "--with",
+                    "mem0ai",
+                    "--with",
+                    "chromadb",
+                    package_source,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=TOOL_REINSTALL_TIMEOUT,  # Longer timeout for tool reinstall
+            )
+
+            if result.returncode == 0:
+                console.print(
+                    "[green]✓[/green] Successfully reinstalled agent-base with mem0 dependencies"
+                )
+                console.print("  [dim]Restart may be required for changes to take effect[/dim]")
+                return True
+            else:
+                console.print(f"[red]✗[/red] Tool reinstall failed: {result.stderr}")
+                return False
+        except FileNotFoundError:
+            console.print("[red]✗[/red] uv command not found")
+            return False
+        except subprocess.TimeoutExpired:
+            console.print("[red]✗[/red] Installation timed out")
+            return False
+        except Exception as e:
+            console.print(f"[red]✗[/red] Installation failed: {e}")
+            return False
+
+    # Not a uv tool - use regular pip installation
     # Try uv first (faster and preferred)
     try:
         result = subprocess.run(
