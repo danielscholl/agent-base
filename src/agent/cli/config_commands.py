@@ -60,12 +60,61 @@ def _check_mem0_local_dependencies() -> tuple[bool, list[str]]:
 def _install_mem0_dependencies() -> bool:
     """Install mem0 optional dependencies using uv or pip.
 
+    Detects if running as a uv tool and uses appropriate installation method:
+    - For uv tools: reinstalls tool with --with flags to add dependencies
+    - For regular installs: uses uv pip install or pip install
+
     Returns:
         True if installation succeeded, False otherwise
     """
     console.print("\n[bold]Installing mem0 dependencies...[/bold]")
     console.print("  [dim]This will install: mem0ai, chromadb[/dim]")
 
+    # Check if running as a uv tool by examining sys.executable
+    import sys
+
+    is_uv_tool = ".local/share/uv/tools/" in sys.executable
+
+    if is_uv_tool:
+        # Running as uv tool - need to reinstall with --with flags
+        console.print("  [dim]Detected uv tool installation, reinstalling with mem0 extras...[/dim]")
+        try:
+            result = subprocess.run(
+                [
+                    "uv",
+                    "tool",
+                    "install",
+                    "--force",
+                    "--prerelease=allow",
+                    "--with",
+                    "mem0ai",
+                    "--with",
+                    "chromadb",
+                    "agent-base",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=300,  # Longer timeout for tool reinstall
+            )
+
+            if result.returncode == 0:
+                console.print("[green]✓[/green] Successfully reinstalled agent-base with mem0 dependencies")
+                console.print("  [dim]Restart may be required for changes to take effect[/dim]")
+                return True
+            else:
+                console.print(f"[red]✗[/red] Tool reinstall failed: {result.stderr}")
+                return False
+        except FileNotFoundError:
+            console.print("[red]✗[/red] uv command not found")
+            return False
+        except subprocess.TimeoutExpired:
+            console.print("[red]✗[/red] Installation timed out")
+            return False
+        except Exception as e:
+            console.print(f"[red]✗[/red] Installation failed: {e}")
+            return False
+
+    # Not a uv tool - use regular pip installation
     # Try uv first (faster and preferred)
     try:
         result = subprocess.run(
