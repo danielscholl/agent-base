@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.6](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.5...agent-template-v0.2.6) (2025-11-15)
+
+
+### Features
+
+* **cli:** derive mem0 package source from uv-receipt.toml ([d98c4f7](https://github.com/danielscholl/agent-base/commit/d98c4f72cf30e05a4a7d41bbbb2eae486f9f4c3b))
+* **config:** automatic mem0 dependency installation for uv tool environments ([aedc5b5](https://github.com/danielscholl/agent-base/commit/aedc5b5bbb133b0f9fd46e25aba472ff334770d4))
+* **config:** enhance mem0 dependencies install with cross-OS uv tool ([8ac9b24](https://github.com/danielscholl/agent-base/commit/8ac9b2461caf42f1a4ccbfa5f0a84e7df2d9e185))
+* **config:** implement mem0 dependency install path for uv tool ([4e68022](https://github.com/danielscholl/agent-base/commit/4e680220d23095bf173c34112026efc0059cd49b))
+
 ## [0.2.5](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.4...agent-template-v0.2.5) (2025-11-14)
 
 
