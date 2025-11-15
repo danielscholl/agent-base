@@ -78,6 +78,42 @@ def _install_mem0_dependencies() -> bool:
     if is_uv_tool:
         # Running as uv tool - need to reinstall with --with flags
         console.print("  [dim]Detected uv tool installation, reinstalling with mem0 extras...[/dim]")
+
+        # Determine the package source from uv-receipt.toml
+        package_source = "agent-base"  # Default fallback
+        try:
+            # Parse uv-receipt.toml to get original install source
+            tool_dir = Path(sys.executable).parent.parent  # e.g., ~/.local/share/uv/tools/agent-base
+            receipt_file = tool_dir / "uv-receipt.toml"
+
+            if receipt_file.exists():
+                import tomllib
+
+                with open(receipt_file, "rb") as f:
+                    receipt = tomllib.load(f)
+
+                # Extract the requirement spec
+                requirements = receipt.get("tool", {}).get("requirements", [])
+                if requirements and isinstance(requirements, list):
+                    req = requirements[0]  # First requirement is the tool itself
+                    if isinstance(req, dict):
+                        # Build source string from requirement dict
+                        name = req.get("name", "agent-base")
+                        if "git" in req:
+                            git_url = req["git"]
+                            # Handle git URL with optional rev/branch parameter
+                            if "?rev=" in git_url:
+                                # URL has ?rev=branch format, convert to @branch
+                                base_url, rev_param = git_url.split("?rev=", 1)
+                                package_source = f"git+{base_url}@{rev_param}"
+                            else:
+                                package_source = f"git+{git_url}"
+                        else:
+                            package_source = name
+        except Exception as e:
+            # If we can't read receipt, fall back to package name
+            console.print(f"  [dim]Could not read install source, using default: {e}[/dim]")
+
         try:
             result = subprocess.run(
                 [
@@ -90,7 +126,7 @@ def _install_mem0_dependencies() -> bool:
                     "mem0ai",
                     "--with",
                     "chromadb",
-                    "agent-base",
+                    package_source,
                 ],
                 capture_output=True,
                 text=True,
