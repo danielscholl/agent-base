@@ -61,11 +61,17 @@ def _install_mem0_dependencies() -> bool:
     """Install mem0 optional dependencies using uv or pip.
 
     Detects if running as a uv tool and uses appropriate installation method:
-    - For uv tools: reinstalls tool with --with flags to add dependencies
-    - For regular installs: uses uv pip install or pip install
+    - For uv tools: reinstalls tool with --with flags to add dependencies.
+        - Reads uv-receipt.toml to determine original install source.
+        - Falls back to "agent-base" package name if receipt cannot be read or is malformed.
+        - Reinstallation may take several minutes (up to 5 minutes).
+        - Potential failure modes: timeout, permission errors, malformed receipt, missing uv command.
+    - For regular installs: uses uv pip install or pip install.
+
+    All exceptions are caught and logged; no exceptions are raised.
 
     Returns:
-        True if installation succeeded, False otherwise
+        True if installation succeeded, False otherwise.
     """
     console.print("\n[bold]Installing mem0 dependencies...[/bold]")
     console.print("  [dim]This will install: mem0ai, chromadb[/dim]")
