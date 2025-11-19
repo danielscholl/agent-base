@@ -148,7 +148,7 @@ See [USAGE.md](USAGE.md) for complete examples.
 
 ## Skills
 
-Skills are optional, git-based extensions that add domain-specific tools to your agent. They let you expand capabilities without modifying the core codebase. Skills can include Python toolsets, standalone PEP 723 scripts, and a simple SKILL.md manifest describing how the extension should behave.
+Skills are lightweight extensions that add domain-specific capabilities to an agent without increasing the core footprint. They’re automatically discovered at runtime and come in two forms: bundled skills that ship with the agent, and plugin skills that can install from any git repository. Each skill loads only its minimal metadata by default, with additional tools or scripts activated on demand to keep token usage low.
 
 ### Installing Skills
 
