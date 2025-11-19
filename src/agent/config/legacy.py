@@ -3,8 +3,12 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from dotenv import load_dotenv
+
+if TYPE_CHECKING:
+    from .schema import AgentSettings
 
 # Default models for each provider
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash-exp"
@@ -385,7 +389,7 @@ class AgentConfig:
         return "Unknown"
 
     @staticmethod
-    def _parse_agent_skills_env(config: "AgentConfig", settings) -> None:
+    def _parse_agent_skills_env(config: "AgentConfig", settings: "AgentSettings") -> None:
         """Parse AGENT_SKILLS environment variable and apply to config.
 
         ENV takes precedence for enabled_skills (like LLM_PROVIDER).
@@ -498,8 +502,8 @@ class AgentConfig:
         # Skills configuration
         cls._parse_agent_skills_env(config, settings)
 
-        if hasattr(settings.agent, "core_skills_dir"):
-            config.core_skills_dir = settings.agent.core_skills_dir
+        if hasattr(settings.agent, "core_skills_dir") and settings.agent.core_skills_dir:
+            config.core_skills_dir = Path(settings.agent.core_skills_dir)
         if hasattr(settings.agent, "agent_skills_dir"):
             config.agent_skills_dir = Path(settings.agent.agent_skills_dir).expanduser()
         if hasattr(settings.agent, "script_timeout"):
@@ -662,8 +666,8 @@ class AgentConfig:
         # Skills configuration
         cls._parse_agent_skills_env(config, settings)
 
-        if hasattr(settings.agent, "core_skills_dir"):
-            config.core_skills_dir = settings.agent.core_skills_dir
+        if hasattr(settings.agent, "core_skills_dir") and settings.agent.core_skills_dir:
+            config.core_skills_dir = Path(settings.agent.core_skills_dir)
         if hasattr(settings.agent, "agent_skills_dir"):
             config.agent_skills_dir = Path(settings.agent.agent_skills_dir).expanduser()
         if hasattr(settings.agent, "script_timeout"):
