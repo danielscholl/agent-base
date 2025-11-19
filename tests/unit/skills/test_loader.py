@@ -15,7 +15,7 @@ def mock_config():
     config = Mock()
     # Mock skills config with proper structure
     config.skills = Mock()
-    config.skills.disabled_bundled = []  # Must be list, not Mock
+    config.skills.disabled_bundled = []  # Must be list, not Mock (loader iterates over it)
     config.skills.bundled_dir = None
     config.skills.plugins = []  # Must be list, not Mock
     config.skills.user_dir = None
@@ -639,8 +639,10 @@ class TestLoadEnabledSkills:
         loader = SkillLoader(mock_config)
         toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
 
-        # Should skip the disabled skill
+        # Should skip the disabled skill completely
         assert script_wrapper is None
+        assert toolsets == []
+        assert skill_instructions == []
 
     def test_skill_name_matching_hyphen_underscore_equivalence(self, mock_config, tmp_path):
         """Should treat hyphens and underscores as equivalent when checking disabled list."""
@@ -660,5 +662,7 @@ class TestLoadEnabledSkills:
         loader = SkillLoader(mock_config)
         toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
 
-        # Should skip the disabled skill
+        # Should skip the disabled skill completely
         assert script_wrapper is None
+        assert toolsets == []
+        assert skill_instructions == []

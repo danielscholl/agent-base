@@ -12,8 +12,11 @@ logger = logging.getLogger(__name__)
 # Cache encoding to avoid repeated loading
 _encoding_cache: dict[str, Any] = {}
 
-# Empirical estimation constant for English text
-# Based on analysis of typical English prose; may vary for other languages
+# Approximate tokens-per-word ratio for English text (fallback when tiktoken is unavailable).
+# Value based on OpenAI's published guidance and tiktoken documentation:
+# https://platform.openai.com/tokenizer, https://github.com/openai/tiktoken
+# Typical accuracy: ±20% for standard English prose; may vary significantly for other languages,
+# code, or highly technical domains. Use only as a rough estimate.
 TOKENS_PER_WORD_ESTIMATE = 1.3
 
 
