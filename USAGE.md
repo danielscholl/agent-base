@@ -218,3 +218,39 @@ The `agent config provider local` command will:
 **Recommended models for best tool calling:**
 - `ai/qwen3` - Best performance with function calls
 - `ai/phi4` - Good balance of speed and capability
+
+## Skills
+
+Skills extend the agent with domain-specific capabilities installed as Git repositories.
+
+### View Available Skills
+
+```bash
+$ agent skill show
+
+Bundled:
+  ◉ hello-extended (124 tokens)
+
+Plugins: (none installed)
+```
+
+### Install a Skill
+
+```bash
+$ agent skill install https://github.com/user/web-fetch-skill
+✓ Installed web-fetch
+```
+
+### Manage Skills
+
+```bash
+# Disable a skill
+$ agent skill disable hello-extended
+✓ Disabled bundled skill: hello-extended
+
+# Re-enable a skill
+$ agent skill enable hello-extended
+✓ Enabled bundled skill: hello-extended
+```
+
+Skills are discovered automatically at startup. See [docs/design/skills.md](docs/design/skills.md) for building your own skills.

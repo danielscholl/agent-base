@@ -311,12 +311,12 @@ def skill_callback(ctx: typer.Context) -> None:
         console.print(ctx.get_help())
 
 
-@skill_app.command("list")
-def skill_list_command() -> None:
-    """List all bundled and installed plugin skills with status."""
-    from agent.cli.skill_commands import list_skills
+@skill_app.command("show")
+def skill_show_command() -> None:
+    """Show all bundled and installed plugin skills with status."""
+    from agent.cli.skill_commands import show_skills
 
-    list_skills()
+    show_skills()
 
 
 @skill_app.command("install")

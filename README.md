@@ -165,7 +165,7 @@ Once installed, skills are automatically discovered and integrated into the agen
 Use the built-in management commands to view, enable/disable, or update installed skills:
 
 ```bash
-agent skill list
+agent skill show
 agent skill manage
 ```
 

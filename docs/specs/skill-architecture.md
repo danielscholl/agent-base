@@ -913,7 +913,7 @@ class SkillRegistryEntry:
 
 - **CLI Commands** (`test_skill_cli.py` - Phase 2):
   - `agent skill add` with various git URLs
-  - `agent skill list` output formatting
+  - `agent skill show` output formatting
   - `agent skill info` detailed output
   - `agent skill update` with git conflicts
   - `agent skill remove` cleanup verification
@@ -1038,7 +1038,7 @@ class SkillRegistryEntry:
    - Manifest validated before installation completes
 
 6. **CLI Usability** (Phase 2):
-   - `agent skill list` shows all installed skills with metadata (name, version, active via AGENT_SKILLS, SHA)
+   - `agent skill show` shows all installed skills with metadata (name, version, active via AGENT_SKILLS, SHA)
    - "Active" displayed instead of "enabled" (clarifies it's runtime via env var, not persisted)
    - Stable sorted by canonical name
    - `agent skill info <name>` shows detailed info (scripts, toolsets, manifest, fully qualified tool names)
@@ -1172,8 +1172,8 @@ uv run pytest tests/validation/test_context_overhead.py -v
 uv run agent skill add https://github.com/example/test-skill
 # Should prompt for confirmation, clone, pin SHA, register
 
-# 28. Test skill list
-uv run agent skill list
+# 28. Test skill show
+uv run agent skill show
 # Should show all installed skills with metadata, stable sorted
 
 # 29. Test skill info

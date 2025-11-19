@@ -167,8 +167,8 @@ def manage_skills() -> None:
         raise typer.Exit(1)
 
 
-def list_skills() -> None:
-    """List all bundled and installed plugin skills with their status.
+def show_skills() -> None:
+    """Show all bundled and installed plugin skills with their status.
 
     Shows:
     - Bundled skills (auto-discovered from skills/core/)
@@ -397,7 +397,7 @@ def update_skill(name: str) -> None:
 
         if not plugin:
             console.print(f"[red]Error: Skill '{name}' not found in plugin list[/red]")
-            console.print("[dim]Run 'agent skill list' to see installed skills[/dim]")
+            console.print("[dim]Run 'agent skill show' to see installed skills[/dim]")
             raise typer.Exit(1)
 
         # Use skill manager to update
@@ -471,7 +471,7 @@ def remove_skill(name: str | None = None, keep_files: bool = False, yes: bool = 
 
         if not plugin:
             console.print(f"[red]Error: Skill '{name}' not found in plugin list[/red]")
-            console.print("[dim]Run 'agent skill list' to see installed skills[/dim]")
+            console.print("[dim]Run 'agent skill show' to see installed skills[/dim]")
             raise typer.Exit(1)
 
         # Confirm removal (unless --yes flag is set)
@@ -547,7 +547,7 @@ def enable_skill(name: str | None = None) -> None:
 
             if not disabled_skills:
                 console.print("\n[yellow]All skills are already enabled[/yellow]")
-                console.print("[dim]Run 'agent skill list' to see all skills[/dim]\n")
+                console.print("[dim]Run 'agent skill show' to see all skills[/dim]\n")
                 return
 
             console.print("\n[bold]Select skill to enable:[/bold]\n")
