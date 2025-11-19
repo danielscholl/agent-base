@@ -159,14 +159,11 @@ Skills are git-based packages combining:
 **Bundled skills are auto-discovered and enabled by default.** No configuration needed!
 
 ```bash
-# List all available skills
+# List all available skills (shows token cost per skill)
 agent skill list
 
-# Disable a specific bundled skill
-agent skill disable web-access
-
-# Re-enable a disabled skill
-agent skill enable web-access
+# Manage skills interactively (enable/disable/update/remove)
+agent skill manage
 
 # Check what tools are loaded
 agent --tools
@@ -181,18 +178,28 @@ When skills are loaded, you get:
   - `script_help` - Get help for a script
   - `script_run` - Execute a script with arguments
 
-### Example: Using Kalshi Markets
+### Example: Installing and Using Skills
+
+**Install from git repository (supports monorepos):**
 
 ```bash
-# Kalshi-markets is bundled - already enabled by default!
+# Install plugins from agent-skills repository
+# This installs both web-access and kalshi-markets
+agent skill install https://github.com/danielscholl/agent-skills
 
-# Use script tools naturally
-agent -p "List kalshi scripts"
-agent -p "Show me Kalshi exchange status"
-agent -p "Search for bitcoin markets on Kalshi"
+# View installed skills with token costs
+agent skill list
+# Output:
+#   Bundled:
+#     ◉ hello-extended (core/hello-extended) · 206 tokens
+#
+#   Plugins:
+#     ◉ web-access (agent-skills, main@eb3cb56) · 280 tokens
+#     ◉ kalshi-markets (agent-skills, main@eb3cb56) · 250 tokens
 
-# Or use tools directly
-agent -p "Use script_run kalshi-markets status --json"
+# Use the skills naturally in conversation
+agent -p "Search for Python 3.13 features"  # Uses web-access
+agent -p "Check Kalshi exchange status"      # Uses kalshi-markets
 ```
 
 ### Bundled Skill
@@ -201,41 +208,51 @@ agent -p "Use script_run kalshi-markets status --json"
 - Python toolset: `greet_in_language`, `greet_multiple`
 - Script: Advanced greeting with time-awareness
 - Demonstrates hybrid skill architecture (toolset + script)
+- Auto-enabled by default (206 tokens)
 
 ### Plugin Skills
 
-**Available via https://github.com/danielscholl/agent-skills:**
+**Available at https://github.com/danielscholl/agent-skills:**
 
 **web-access** - Internet search and web content retrieval
 - `fetch.py` - Retrieve web pages as markdown
 - `search.py` - Brave Search API integration
-- Requires `BRAVE_API_KEY` environment variable for search
+- Requires `BRAVE_API_KEY` environment variable
+- 280 tokens
 
 **kalshi-markets** - Access Kalshi prediction market data
 - Market prices, orderbooks, trades (10 scripts)
 - Event and series information
-- Progressive disclosure: Scripts loaded on-demand
+- Progressive disclosure
+- 250 tokens
 
-**Install plugins:**
+### Managing Skills
+
+**Installation:**
 ```bash
-# Install both web-access and kalshi-markets from monorepo
+# Install plugins (supports single-skill and monorepo)
 agent skill install https://github.com/danielscholl/agent-skills
+
+# Interactive install (prompts for URL)
+agent skill install
+
+# View all skills with token costs and commit SHA
+agent skill list
 ```
 
-### Installing Plugin Skills
-
-Install community or custom skills from git repositories:
-
+**Management:**
 ```bash
-# Install a plugin skill
-agent skill install https://github.com/user/my-skill.git
+# Interactive management (enable/disable/update/remove)
+agent skill manage
 
-# Update an installed plugin
-agent skill update my-skill
-
-# Remove a plugin
-agent skill remove my-skill
+# Select skill → Choose action → Done
 ```
+
+**Discovery:**
+Skills are automatically discovered from git repos:
+- SKILL.md at root → Single skill
+- skill/SKILL.md → Skill in subdirectory
+- */SKILL.md → Monorepo (multiple skills)
 
 ### Creating Custom Skills
 
