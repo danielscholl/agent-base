@@ -20,34 +20,6 @@ console = get_console()
 logger = logging.getLogger(__name__)
 
 
-def skill_main_menu() -> None:
-    """Main skill management menu (shown when running 'agent skill' with no subcommand)."""
-    console.print("\n[bold]Agent Skills[/bold]\n")
-
-    console.print("1. List all skills (bundled + plugins)")
-    console.print("2. Install plugin from git repository")
-    console.print("3. Manage skills (enable/disable/remove/update)")
-    console.print("4. Exit")
-
-    choice = Prompt.ask("\nChoose an option", default="4")
-
-    if choice == "1":
-        list_skills()
-    elif choice == "2":
-        console.print()
-        git_url = Prompt.ask("Git repository URL")
-        branch = Prompt.ask("Branch", default="main")
-        install_skill(git_url, None, branch)
-    elif choice == "3":
-        manage_skills()
-    elif choice == "4":
-        console.print()
-        return
-    else:
-        console.print(f"[red]Invalid choice: {choice}[/red]\n")
-        raise typer.Exit(1)
-
-
 def manage_skills() -> None:
     """Unified skill management interface (enable/disable/remove/update)."""
     console.print("\n[bold]Manage Skills[/bold]\n")

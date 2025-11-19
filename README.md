@@ -180,26 +180,33 @@ When skills are loaded, you get:
 
 ### Example: Installing and Using Skills
 
-**Install from git repository (supports monorepos):**
+**The bundled hello-extended skill is auto-enabled:**
 
 ```bash
-# Install plugins from agent-skills repository
-# This installs both web-access and kalshi-markets
+# Bundled skill already available (no installation needed)
+agent -p "Greet me in Spanish"  # Uses hello-extended
+
+# View loaded skills
+agent skill list
+# Bundled:
+#   ◉ hello-extended (core/hello-extended) · 206 tokens
+```
+
+**Install plugin skills from git:**
+
+```bash
+# Install from agent-skills repository (monorepo with 2 skills)
 agent skill install https://github.com/danielscholl/agent-skills
 
-# View installed skills with token costs
+# Both web-access and kalshi-markets are installed
 agent skill list
-# Output:
-#   Bundled:
-#     ◉ hello-extended (core/hello-extended) · 206 tokens
-#
-#   Plugins:
-#     ◉ web-access (agent-skills, main@eb3cb56) · 280 tokens
-#     ◉ kalshi-markets (agent-skills, main@eb3cb56) · 250 tokens
+# Plugins:
+#   ◉ web-access (agent-skills, main@eb3cb56) · 280 tokens
+#   ◉ kalshi-markets (agent-skills, main@eb3cb56) · 250 tokens
 
-# Use the skills naturally in conversation
-agent -p "Search for Python 3.13 features"  # Uses web-access
-agent -p "Check Kalshi exchange status"      # Uses kalshi-markets
+# Use the plugin skills in conversation
+agent -p "Search for Python 3.13 features"  # Uses web-access plugin
+agent -p "Check Kalshi exchange status"      # Uses kalshi-markets plugin
 ```
 
 ### Bundled Skill

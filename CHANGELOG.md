@@ -1,44 +1,5 @@
 # Changelog
 
-## [Unreleased]
-
-### Added
-- **Skills CLI Commands**: New `agent skill` subcommand for managing skills
-  - `agent skill list` - List all skills with token costs and commit SHA
-  - `agent skill install [url]` - Install plugins from git (interactive if no URL)
-  - `agent skill manage` - Interactive management (enable/disable/update/remove)
-- **Auto-Discovery**: Bundled skills auto-discovered from `skills/core/` - no configuration needed
-- **Plugin Skills Support**: Install from git repositories (single-skill, skill/ subdirectory, or monorepo)
-- **Token Counting**: Per-skill token display using tiktoken (reusable utility in `utils/tokens.py`)
-- **--tools Display**: Consolidated view with nested config and all loaded toolsets
-
-### Changed
-- **BREAKING**: Skills configuration redesigned to match memory pattern
-  - Bundled skills enabled by default (opt-out via `disabled_bundled`)
-  - Plugin skills configured in `skills.plugins` with git metadata
-  - Use `agent skill` CLI commands instead of environment variables
-- **BREAKING**: Removed `AGENT_SKILLS` environment variable
-- **BREAKING**: Removed `enabled_skills`, `agent_skills_dir`, `core_skills_dir` config fields
-- Skills now use nested `skills` configuration section in settings.json
-
-### Migration
-- Remove `AGENT_SKILLS` from .env file - bundled skills now auto-enabled
-- Use `agent skill manage` to enable/disable/update/remove skills
-- Use `agent skill install <git-url>` to add plugin skills
-- Run `agent skill list` to view all available skills with token costs
-
-### Example
-```bash
-# Install plugin skills
-agent skill install https://github.com/danielscholl/agent-skills
-
-# View installed skills
-agent skill list
-
-# Manage skills interactively
-agent skill manage
-```
-
 ## [0.2.6](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.5...agent-template-v0.2.6) (2025-11-15)
 
 
