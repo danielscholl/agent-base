@@ -241,10 +241,16 @@ def show_tool_configuration(console: Console | None = None) -> None:
 
                 # Filesystem configuration
                 writes_enabled = getattr(config, "filesystem_writes_enabled", False)
-                write_status = "[green]Enabled[/green]" if writes_enabled else "[yellow]Disabled[/yellow]"
+                write_status = (
+                    "[green]Enabled[/green]" if writes_enabled else "[yellow]Disabled[/yellow]"
+                )
                 write_bullet = "[green]◉[/green]" if writes_enabled else "[red]◉[/red]"
-                read_limit_mb = getattr(config, "filesystem_max_read_bytes", 10_485_760) // 1_048_576
-                write_limit_mb = getattr(config, "filesystem_max_write_bytes", 1_048_576) // 1_048_576
+                read_limit_mb = (
+                    getattr(config, "filesystem_max_read_bytes", 10_485_760) // 1_048_576
+                )
+                write_limit_mb = (
+                    getattr(config, "filesystem_max_write_bytes", 1_048_576) // 1_048_576
+                )
 
                 console.print(
                     f"└─ [cyan]◉[/cyan] Workspace: [cyan]{workspace_root}[/cyan] [dim]({workspace_source})[/dim]"
@@ -263,7 +269,7 @@ def show_tool_configuration(console: Console | None = None) -> None:
                     )
 
             # Tool list (use • bullet for individual tools)
-            for i, tool in enumerate(tools):
+            for tool in tools:
                 console.print(f"  [dim]• {tool.__name__}[/dim]")
 
             # Add blank line after each toolset except the last

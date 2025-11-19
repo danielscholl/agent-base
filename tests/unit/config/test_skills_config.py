@@ -3,9 +3,10 @@
 This test module verifies that skills configuration is properly transferred
 from AgentSettings to AgentConfig in both from_env() and from_combined() methods.
 
-Related bugs:
-- Missing skills configuration transfer in legacy.py
-- Settings file overriding AGENT_SKILLS env variable
+Note: The AGENT_SKILLS environment variable feature was removed in the new
+skills configuration redesign. Skills are now configured via:
+- config.skills.plugins: list of plugin skill sources (git-based)
+- config.skills.disabled_bundled: list of bundled skills to disable
 """
 
 import os
@@ -19,65 +20,18 @@ from agent.config import AgentConfig
 @pytest.mark.unit
 @pytest.mark.config
 class TestSkillsConfiguration:
-    """Test skills configuration loading and precedence."""
+    """Test skills configuration loading and transfer to AgentConfig."""
 
-    def test_from_env_reads_agent_skills_all(self):
-        """Test that from_env() reads AGENT_SKILLS=all environment variable."""
-        with patch.dict(os.environ, {"AGENT_SKILLS": "all", "LLM_PROVIDER": "openai"}):
+    def test_from_env_sets_skills_to_none(self):
+        """Test that from_env() sets skills to None (no env var config for skills)."""
+        with patch.dict(os.environ, {"LLM_PROVIDER": "openai"}):
             config = AgentConfig.from_env()
 
-            assert config.enabled_skills == ["all"]
-            assert isinstance(config.enabled_skills, list)
+            # Skills should be None when loaded from env only
+            assert config.skills is None
 
-    def test_from_env_reads_agent_skills_comma_separated(self):
-        """Test that from_env() reads comma-separated skill names."""
-        with patch.dict(
-            os.environ, {"AGENT_SKILLS": "skill1,skill2,skill3", "LLM_PROVIDER": "openai"}
-        ):
-            config = AgentConfig.from_env()
-
-            assert config.enabled_skills == ["skill1", "skill2", "skill3"]
-
-    def test_from_env_reads_agent_skills_none(self):
-        """Test that from_env() handles AGENT_SKILLS=none."""
-        with patch.dict(os.environ, {"AGENT_SKILLS": "none", "LLM_PROVIDER": "openai"}):
-            config = AgentConfig.from_env()
-
-            assert config.enabled_skills == []
-
-    def test_from_env_reads_agent_skills_empty_string(self):
-        """Test that from_env() handles AGENT_SKILLS='' (empty string)."""
-        with patch.dict(os.environ, {"AGENT_SKILLS": "", "LLM_PROVIDER": "openai"}):
-            config = AgentConfig.from_env()
-
-            assert config.enabled_skills == []
-
-    def test_from_env_transfers_skills_config_to_legacy_class(self):
-        """Test that from_env() transfers all skills config to AgentConfig."""
-        with patch.dict(
-            os.environ,
-            {
-                "AGENT_SKILLS": "all",
-                "LLM_PROVIDER": "openai",
-            },
-        ):
-            config = AgentConfig.from_env()
-
-            # Verify all skills configuration is transferred
-            assert hasattr(config, "enabled_skills")
-            assert config.enabled_skills == ["all"]
-
-            # Other skills config should exist (may be None/defaults)
-            assert hasattr(config, "core_skills_dir")
-            assert hasattr(config, "agent_skills_dir")
-
-    def test_from_combined_env_takes_precedence_over_file(self, tmp_path):
-        """Test that AGENT_SKILLS env variable overrides settings.json.
-
-        This is the critical bug fix: even if settings.json has enabled_skills: [],
-        the AGENT_SKILLS env var should take precedence (like LLM_PROVIDER does).
-        """
-        # Create a settings.json with enabled_skills: []
+    def test_from_combined_transfers_skills_config(self, tmp_path):
+        """Test that from_combined() transfers skills configuration from settings."""
         settings_file = tmp_path / "settings.json"
         settings_file.write_text(
             """{
@@ -89,52 +43,34 @@ class TestSkillsConfiguration:
     }
   },
   "agent": {
-    "data_dir": "~/.agent",
-    "enabled_skills": []
-  }
-}"""
-        )
-
-        # Set AGENT_SKILLS=all in environment
-        with patch.dict(os.environ, {"AGENT_SKILLS": "all"}):
-            config = AgentConfig.from_combined(config_path=settings_file)
-
-            # ENV should win over file
-            assert config.enabled_skills == ["all"], (
-                "AGENT_SKILLS env var should override settings.json "
-                "(bug: settings.json enabled_skills: [] was overriding env)"
-            )
-
-    def test_from_combined_uses_file_when_no_env_var(self, tmp_path):
-        """Test that from_combined() uses file settings when no env var set."""
-        # Create a settings.json with specific skills
-        settings_file = tmp_path / "settings.json"
-        settings_file.write_text(
-            """{
-  "version": "1.0",
-  "providers": {
-    "enabled": ["openai"],
-    "openai": {
-      "model": "gpt-4o-mini"
-    }
+    "data_dir": "~/.agent"
   },
-  "agent": {
-    "data_dir": "~/.agent",
-    "enabled_skills": ["skill1", "skill2"]
+  "skills": {
+    "plugins": [
+      {
+        "name": "test-skill",
+        "git_url": "https://github.com/example/test-skill",
+        "enabled": true
+      }
+    ],
+    "disabled_bundled": ["old-skill"],
+    "user_dir": "~/.agent/skills"
   }
 }"""
         )
 
-        # No AGENT_SKILLS env var
         with patch.dict(os.environ, {}, clear=True):
-            # Need LLM_PROVIDER or file must have enabled providers
             config = AgentConfig.from_combined(config_path=settings_file)
 
-            # File should be used
-            assert config.enabled_skills == ["skill1", "skill2"]
+            # Verify skills config is transferred
+            assert config.skills is not None
+            assert len(config.skills.plugins) == 1
+            assert config.skills.plugins[0].name == "test-skill"
+            assert config.skills.disabled_bundled == ["old-skill"]
+            assert config.skills.user_dir.endswith("/.agent/skills")
 
-    def test_from_combined_transfers_all_skills_config(self, tmp_path):
-        """Test that from_combined() transfers all skills configuration fields."""
+    def test_from_combined_uses_default_skills_config(self, tmp_path):
+        """Test that from_combined() uses default SkillsConfig when not in settings."""
         settings_file = tmp_path / "settings.json"
         settings_file.write_text(
             """{
@@ -146,42 +82,55 @@ class TestSkillsConfiguration:
     }
   },
   "agent": {
-    "data_dir": "~/.agent",
-    "enabled_skills": ["skill1"],
-    "core_skills_dir": "/path/to/core",
-    "agent_skills_dir": "~/.agent/skills",
+    "data_dir": "~/.agent"
+  }
+}"""
+        )
+
+        with patch.dict(os.environ, {}, clear=True):
+            config = AgentConfig.from_combined(config_path=settings_file)
+
+            # Should have default skills config
+            assert config.skills is not None
+            assert config.skills.plugins == []
+            assert config.skills.disabled_bundled == []
+            assert config.skills.user_dir.endswith("/.agent/skills")
+
+    def test_from_file_transfers_skills_config(self, tmp_path):
+        """Test that from_file() transfers skills configuration."""
+        settings_file = tmp_path / "settings.json"
+        settings_file.write_text(
+            """{
+  "version": "1.0",
+  "providers": {
+    "enabled": ["openai"],
+    "openai": {
+      "model": "gpt-4o-mini"
+    }
+  },
+  "skills": {
+    "plugins": [
+      {
+        "name": "my-skill",
+        "git_url": "https://github.com/example/my-skill"
+      }
+    ],
+    "disabled_bundled": ["deprecated-skill"],
     "script_timeout": 120,
     "max_script_output": 2097152
   }
 }"""
         )
 
-        with patch.dict(os.environ, {}, clear=True):
-            config = AgentConfig.from_combined(config_path=settings_file)
+        config = AgentConfig.from_file(config_path=settings_file)
 
-            # Verify all skills config is transferred
-            assert config.enabled_skills == ["skill1"]
-            assert str(config.core_skills_dir) == "/path/to/core"
-            # agent_skills_dir gets expanded (~/ -> /Users/...)
-            assert str(config.agent_skills_dir).endswith("/.agent/skills")
-            assert config.script_timeout == 120
-            assert config.max_script_output == 2097152
-
-    def test_agent_skills_all_untrusted(self):
-        """Test that from_env() handles AGENT_SKILLS=all-untrusted."""
-        with patch.dict(os.environ, {"AGENT_SKILLS": "all-untrusted", "LLM_PROVIDER": "openai"}):
-            config = AgentConfig.from_env()
-
-            assert config.enabled_skills == ["all-untrusted"]
-
-    def test_agent_skills_whitespace_handling(self):
-        """Test that from_env() strips whitespace from skill names."""
-        with patch.dict(
-            os.environ, {"AGENT_SKILLS": " skill1 , skill2 , skill3 ", "LLM_PROVIDER": "openai"}
-        ):
-            config = AgentConfig.from_env()
-
-            assert config.enabled_skills == ["skill1", "skill2", "skill3"]
+        # Verify all skills config is transferred
+        assert config.skills is not None
+        assert len(config.skills.plugins) == 1
+        assert config.skills.plugins[0].name == "my-skill"
+        assert config.skills.disabled_bundled == ["deprecated-skill"]
+        assert config.skills.script_timeout == 120
+        assert config.skills.max_script_output == 2097152
 
 
 @pytest.mark.unit
@@ -189,17 +138,16 @@ class TestSkillsConfiguration:
 class TestSkillsConfigIntegration:
     """Integration tests for skills configuration with Agent initialization."""
 
-    def test_agent_initialization_with_skills_enabled(self):
-        """Test that Agent initializes skills when enabled_skills is set.
+    def test_agent_initialization_with_skills_config(self):
+        """Test that Agent initializes with skills configuration.
 
         This is an integration test to verify the full flow:
-        1. Config reads AGENT_SKILLS env var
-        2. Config transfers to legacy AgentConfig
-        3. Agent sees enabled_skills and loads SkillLoader
+        1. Config transfers skills from settings
+        2. Agent sees config.skills and loads SkillLoader
         """
         from agent import Agent
 
-        with patch.dict(os.environ, {"AGENT_SKILLS": "all", "LLM_PROVIDER": "openai"}):
+        with patch.dict(os.environ, {"LLM_PROVIDER": "openai"}):
             config = AgentConfig.from_env()
 
             # Mock chat client to avoid real LLM calls
@@ -207,22 +155,36 @@ class TestSkillsConfigIntegration:
 
             mock_client = MockChatClient(response="test")
 
-            # Agent should not crash with enabled_skills set
+            # Agent should not crash with skills=None
             agent = Agent(config=config, chat_client=mock_client)
 
             # Agent should have initialized
             assert agent is not None
-            assert agent.config.enabled_skills == ["all"]
+            assert agent.config.skills is None
 
-            # If skills directory exists, SkillLoader should have run
-            # (We don't assert on toolsets here since skills may not exist in test env)
-
-    def test_agent_initialization_without_skills(self):
-        """Test that Agent works normally when skills are disabled."""
+    def test_agent_initialization_with_plugin_skills(self, tmp_path):
+        """Test that Agent works with plugin skills configured."""
         from agent import Agent
 
-        with patch.dict(os.environ, {"AGENT_SKILLS": "none", "LLM_PROVIDER": "openai"}):
-            config = AgentConfig.from_env()
+        settings_file = tmp_path / "settings.json"
+        settings_file.write_text(
+            """{
+  "version": "1.0",
+  "providers": {
+    "enabled": ["openai"],
+    "openai": {
+      "model": "gpt-4o-mini"
+    }
+  },
+  "skills": {
+    "plugins": [],
+    "disabled_bundled": []
+  }
+}"""
+        )
+
+        with patch.dict(os.environ, {}, clear=True):
+            config = AgentConfig.from_combined(config_path=settings_file)
 
             from tests.mocks import MockChatClient
 
@@ -232,9 +194,10 @@ class TestSkillsConfigIntegration:
 
             # Agent should work normally
             assert agent is not None
-            assert agent.config.enabled_skills == []
+            assert agent.config.skills is not None
+            assert agent.config.skills.plugins == []
 
-            # Should have default toolsets only
+            # Should have default toolsets
             toolset_names = [type(t).__name__ for t in agent.toolsets]
             assert "HelloTools" in toolset_names
             assert "FileSystemTools" in toolset_names

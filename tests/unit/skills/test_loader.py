@@ -11,11 +11,14 @@ from agent.skills.manifest import SkillManifest
 
 @pytest.fixture
 def mock_config():
-    """Create mock AgentConfig."""
+    """Create mock AgentConfig with proper skills structure."""
     config = Mock()
-    config.enabled_skills = []
-    config.core_skills_dir = None
-    config.agent_skills_dir = None
+    # Mock skills config with proper structure
+    config.skills = Mock()
+    config.skills.disabled_bundled = []  # Must be list, not Mock
+    config.skills.bundled_dir = None
+    config.skills.plugins = []  # Must be list, not Mock
+    config.skills.user_dir = None
     return config
 
 
@@ -203,7 +206,10 @@ description: A test skill
 
     def test_load_enabled_skills_none(self, mock_config):
         """Should return empty lists if no skills enabled."""
-        mock_config.enabled_skills = []
+        # Ensure mock has proper skills config
+        mock_config.skills.disabled_bundled = []
+        mock_config.skills.bundled_dir = None
+        mock_config.skills.plugins = []
 
         loader = SkillLoader(mock_config)
         toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
@@ -213,8 +219,11 @@ description: A test skill
         assert skill_instructions == []
 
     def test_load_enabled_skills_none_marker(self, mock_config):
-        """Should return empty lists for 'none' marker."""
-        mock_config.enabled_skills = ["none"]
+        """Should return empty lists when no bundled or plugin skills configured."""
+        # Note: The 'none' marker concept is removed - skills are disabled by having empty config
+        mock_config.skills.disabled_bundled = []
+        mock_config.skills.bundled_dir = None
+        mock_config.skills.plugins = []
 
         loader = SkillLoader(mock_config)
         toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
@@ -487,17 +496,18 @@ class TestLoadEnabledSkills:
     """Test load_enabled_skills functionality."""
 
     def test_load_with_core_skills_dir(self, mock_config, tmp_path):
-        """Should load skills from core_skills_dir."""
-        core_dir = tmp_path / "core"
-        core_dir.mkdir()
+        """Should load skills from bundled_dir."""
+        bundled_dir = tmp_path / "bundled"
+        bundled_dir.mkdir()
 
-        skill1 = core_dir / "skill1"
+        skill1 = bundled_dir / "skill1"
         skill1.mkdir()
         (skill1 / "SKILL.md").write_text("---\nname: skill1\ndescription: test skill 1\n---\n")
 
-        mock_config.enabled_skills = ["skill1"]
-        mock_config.core_skills_dir = str(core_dir)
-        mock_config.agent_skills_dir = None
+        mock_config.skills.disabled_bundled = []
+        mock_config.skills.bundled_dir = str(bundled_dir)
+        mock_config.skills.plugins = []
+        mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
         toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
@@ -506,7 +516,7 @@ class TestLoadEnabledSkills:
         assert script_wrapper is None  # No scripts
 
     def test_load_with_user_skills_dir(self, mock_config, tmp_path):
-        """Should load skills from user skills directory."""
+        """Should load skills from user skills directory (plugins)."""
         user_dir = tmp_path / "user"
         user_dir.mkdir()
 
@@ -514,9 +524,16 @@ class TestLoadEnabledSkills:
         skill1.mkdir()
         (skill1 / "SKILL.md").write_text("---\nname: my-skill\ndescription: test skill\n---\n")
 
-        mock_config.enabled_skills = ["my-skill"]
-        mock_config.core_skills_dir = None
-        mock_config.agent_skills_dir = str(user_dir)
+        # Create a plugin entry
+        plugin = Mock()
+        plugin.name = "my-skill"
+        plugin.enabled = True
+        plugin.installed_path = str(skill1)
+
+        mock_config.skills.disabled_bundled = []
+        mock_config.skills.bundled_dir = None
+        mock_config.skills.plugins = [plugin]
+        mock_config.skills.user_dir = str(user_dir)
 
         loader = SkillLoader(mock_config)
         toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
@@ -524,21 +541,22 @@ class TestLoadEnabledSkills:
         assert script_wrapper is None
 
     def test_load_all_skills(self, mock_config, tmp_path):
-        """Should load all skills when enabled_skills=['all']."""
-        core_dir = tmp_path / "core"
-        core_dir.mkdir()
+        """Should load all bundled skills (auto-discovery)."""
+        bundled_dir = tmp_path / "bundled"
+        bundled_dir.mkdir()
 
-        skill1 = core_dir / "skill1"
+        skill1 = bundled_dir / "skill1"
         skill1.mkdir()
         (skill1 / "SKILL.md").write_text("---\nname: skill1\ndescription: test skill 1\n---\n")
 
-        skill2 = core_dir / "skill2"
+        skill2 = bundled_dir / "skill2"
         skill2.mkdir()
         (skill2 / "SKILL.md").write_text("---\nname: skill2\ndescription: test skill 2\n---\n")
 
-        mock_config.enabled_skills = ["all"]
-        mock_config.core_skills_dir = str(core_dir)
-        mock_config.agent_skills_dir = None
+        mock_config.skills.disabled_bundled = []  # None disabled, load all
+        mock_config.skills.bundled_dir = str(bundled_dir)
+        mock_config.skills.plugins = []
+        mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
         toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
@@ -548,10 +566,10 @@ class TestLoadEnabledSkills:
 
     def test_load_skills_with_scripts_creates_wrapper(self, mock_config, tmp_path):
         """Should create script wrapper when skills have scripts."""
-        core_dir = tmp_path / "core"
-        core_dir.mkdir()
+        bundled_dir = tmp_path / "bundled"
+        bundled_dir.mkdir()
 
-        skill1 = core_dir / "skill1"
+        skill1 = bundled_dir / "skill1"
         skill1.mkdir()
         scripts_dir = skill1 / "scripts"
         scripts_dir.mkdir()
@@ -561,9 +579,10 @@ class TestLoadEnabledSkills:
         )
         (scripts_dir / "status.py").write_text("# status script")
 
-        mock_config.enabled_skills = ["skill1"]
-        mock_config.core_skills_dir = str(core_dir)
-        mock_config.agent_skills_dir = None
+        mock_config.skills.disabled_bundled = []
+        mock_config.skills.bundled_dir = str(bundled_dir)
+        mock_config.skills.plugins = []
+        mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
         toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
@@ -576,24 +595,25 @@ class TestLoadEnabledSkills:
 
     def test_skip_invalid_manifest_continue_loading(self, mock_config, tmp_path):
         """Should continue loading other skills when one has invalid manifest."""
-        core_dir = tmp_path / "core"
-        core_dir.mkdir()
+        bundled_dir = tmp_path / "bundled"
+        bundled_dir.mkdir()
 
         # Invalid skill
-        bad_skill = core_dir / "bad-skill"
+        bad_skill = bundled_dir / "bad-skill"
         bad_skill.mkdir()
         (bad_skill / "SKILL.md").write_text("invalid yaml {]")
 
         # Valid skill
-        good_skill = core_dir / "good-skill"
+        good_skill = bundled_dir / "good-skill"
         good_skill.mkdir()
         (good_skill / "SKILL.md").write_text(
             "---\nname: good-skill\ndescription: valid skill\n---\n"
         )
 
-        mock_config.enabled_skills = ["all"]
-        mock_config.core_skills_dir = str(core_dir)
-        mock_config.agent_skills_dir = None
+        mock_config.skills.disabled_bundled = []
+        mock_config.skills.bundled_dir = str(bundled_dir)
+        mock_config.skills.plugins = []
+        mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
         toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
@@ -602,39 +622,43 @@ class TestLoadEnabledSkills:
         assert script_wrapper is None
 
     def test_skill_name_matching_case_insensitive(self, mock_config, tmp_path):
-        """Should match skill names case-insensitively."""
-        core_dir = tmp_path / "core"
-        core_dir.mkdir()
+        """Should match skill names case-insensitively when checking disabled list."""
+        bundled_dir = tmp_path / "bundled"
+        bundled_dir.mkdir()
 
-        skill1 = core_dir / "MySkill"
+        skill1 = bundled_dir / "MySkill"
         skill1.mkdir()
         (skill1 / "SKILL.md").write_text("---\nname: MySkill\ndescription: test skill\n---\n")
 
-        # Enable with lowercase
-        mock_config.enabled_skills = ["myskill"]
-        mock_config.core_skills_dir = str(core_dir)
-        mock_config.agent_skills_dir = None
+        # Disable with lowercase
+        mock_config.skills.disabled_bundled = ["myskill"]
+        mock_config.skills.bundled_dir = str(bundled_dir)
+        mock_config.skills.plugins = []
+        mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
         toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
 
+        # Should skip the disabled skill
         assert script_wrapper is None
 
     def test_skill_name_matching_hyphen_underscore_equivalence(self, mock_config, tmp_path):
-        """Should treat hyphens and underscores as equivalent."""
-        core_dir = tmp_path / "core"
-        core_dir.mkdir()
+        """Should treat hyphens and underscores as equivalent when checking disabled list."""
+        bundled_dir = tmp_path / "bundled"
+        bundled_dir.mkdir()
 
-        skill1 = core_dir / "my-skill"
+        skill1 = bundled_dir / "my-skill"
         skill1.mkdir()
         (skill1 / "SKILL.md").write_text("---\nname: my-skill\ndescription: test skill\n---\n")
 
-        # Enable with underscore
-        mock_config.enabled_skills = ["my_skill"]
-        mock_config.core_skills_dir = str(core_dir)
-        mock_config.agent_skills_dir = None
+        # Disable with underscore
+        mock_config.skills.disabled_bundled = ["my_skill"]
+        mock_config.skills.bundled_dir = str(bundled_dir)
+        mock_config.skills.plugins = []
+        mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
         toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
 
+        # Should skip the disabled skill
         assert script_wrapper is None

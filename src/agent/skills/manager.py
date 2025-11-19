@@ -233,7 +233,7 @@ class SkillManager:
 
         if not skill_dirs:
             raise SkillError(
-                f"No skills found in repository. Expected SKILL.md in root or subdirectories."
+                "No skills found in repository. Expected SKILL.md in root or subdirectories."
             )
 
         logger.info(f"Found {len(skill_dirs)} skills in monorepo")

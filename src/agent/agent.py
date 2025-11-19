@@ -111,7 +111,9 @@ class Agent:
                         logger.debug(f"Auto-detected bundled_dir: {skills_config.bundled_dir}")
 
                     skill_loader = SkillLoader(self.config)
-                    skill_toolsets, script_tools, skill_instructions = skill_loader.load_enabled_skills()
+                    skill_toolsets, script_tools, skill_instructions = (
+                        skill_loader.load_enabled_skills()
+                    )
 
                     # Store skill instructions for system prompt injection
                     self.skill_instructions = skill_instructions
@@ -129,7 +131,9 @@ class Agent:
 
                     if script_tools:
                         toolsets.append(script_tools)
-                        logger.info(f"Loaded script wrapper with {script_tools.script_count} scripts")
+                        logger.info(
+                            f"Loaded script wrapper with {script_tools.script_count} scripts"
+                        )
 
                     if skill_instructions:
                         logger.info(

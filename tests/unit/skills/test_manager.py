@@ -69,8 +69,12 @@ class TestSkillManager:
 
         with patch("agent.skills.manager.datetime") as mock_dt:
             mock_dt.now.return_value.timestamp.return_value = 1234567890.0
-            entry = manager.install("https://github.com/example/test-skill", trusted=True)
+            entries = manager.install("https://github.com/example/test-skill", trusted=True)
 
+        # install() now returns list[SkillRegistryEntry]
+        assert isinstance(entries, list)
+        assert len(entries) == 1
+        entry = entries[0]
         assert entry.name == "test-skill"
         assert entry.git_url == "https://github.com/example/test-skill"
         assert entry.trusted is True
@@ -256,10 +260,14 @@ class TestInstallWithBranchAndTag:
 
         with patch("agent.skills.manager.datetime") as mock_dt:
             mock_dt.now.return_value.timestamp.return_value = 1234567890.0
-            entry = manager.install(
+            entries = manager.install(
                 "https://github.com/example/test-skill", branch="develop", trusted=True
             )
 
+        # install() now returns list[SkillRegistryEntry]
+        assert isinstance(entries, list)
+        assert len(entries) == 1
+        entry = entries[0]
         assert entry.branch == "develop"
         # Verify clone_from was called with branch argument
         call_kwargs = mock_repo_class.clone_from.call_args[1]

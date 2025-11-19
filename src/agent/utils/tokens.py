@@ -5,12 +5,12 @@ Falls back to word-based estimation when tiktoken is unavailable.
 """
 
 import logging
-from typing import Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Cache encoding to avoid repeated loading
-_encoding_cache: dict[str, any] = {}
+_encoding_cache: dict[str, Any] = {}
 
 
 def count_tokens(text: str, encoding: str = "cl100k_base") -> int:
