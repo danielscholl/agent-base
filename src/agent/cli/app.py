@@ -33,6 +33,7 @@ def main(
     ctx: typer.Context,
     prompt: str = typer.Option(None, "-p", "--prompt", help="Execute a single prompt and exit"),
     check: bool = typer.Option(False, "--check", help="Show configuration and connectivity status"),
+    tools: bool = typer.Option(False, "--tools", help="Show tool configuration"),
     version_flag: bool = typer.Option(False, "--version", help="Show version"),
     telemetry: str = typer.Option(
         None, "--telemetry", help="Manage telemetry dashboard (start|stop|status|url)"
@@ -57,6 +58,7 @@ def main(
     Examples:
         agent                                       # Interactive mode
         agent --check                               # Show configuration and connectivity
+        agent --tools                               # Show tool configuration
         agent -p "Say hello to Alice"               # Single query (clean output)
         agent -p "Say hello" --verbose              # Single query with execution details
         agent --provider openai                     # Use OpenAI provider
@@ -81,6 +83,12 @@ def main(
 
     if check:
         run_health_check(console)
+        return
+
+    if tools:
+        from agent.cli.health import show_tool_configuration
+
+        show_tool_configuration(console)
         return
 
     if telemetry:

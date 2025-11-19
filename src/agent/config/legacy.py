@@ -111,6 +111,12 @@ class AgentConfig:
     # System prompt configuration
     system_prompt_file: str | None = None
 
+    # Filesystem tools configuration
+    workspace_root: Path | None = None
+    filesystem_writes_enabled: bool = False
+    filesystem_max_read_bytes: int = 10_485_760  # 10MB default
+    filesystem_max_write_bytes: int = 1_048_576  # 1MB default
+
     # Observability configuration
     enable_otel: bool = False
     enable_otel_explicit: bool = False  # Track if ENABLE_OTEL was explicitly set
@@ -204,6 +210,16 @@ class AgentConfig:
 
         # System prompt configuration
         config.system_prompt_file = os.getenv("AGENT_SYSTEM_PROMPT")
+
+        # Filesystem tools configuration
+        workspace_root_env = os.getenv("AGENT_WORKSPACE_ROOT")
+        if workspace_root_env:
+            config.workspace_root = Path(workspace_root_env).expanduser().resolve()
+        config.filesystem_writes_enabled = (
+            os.getenv("FILESYSTEM_WRITES_ENABLED", "false").lower() == "true"
+        )
+        config.filesystem_max_read_bytes = int(os.getenv("FILESYSTEM_MAX_READ_BYTES", "10485760"))
+        config.filesystem_max_write_bytes = int(os.getenv("FILESYSTEM_MAX_WRITE_BYTES", "1048576"))
 
         # Observability configuration
         # Track whether ENABLE_OTEL was explicitly set in environment
@@ -422,6 +438,16 @@ class AgentConfig:
         config.mem0_user_id = settings.memory.mem0.user_id or os.getenv("USER") or "default-user"
         config.mem0_project_id = settings.memory.mem0.project_id
 
+        # Filesystem tools configuration
+        if hasattr(settings.agent, "workspace_root") and settings.agent.workspace_root:
+            config.workspace_root = settings.agent.workspace_root
+        if hasattr(settings.agent, "filesystem_writes_enabled"):
+            config.filesystem_writes_enabled = settings.agent.filesystem_writes_enabled
+        if hasattr(settings.agent, "filesystem_max_read_bytes"):
+            config.filesystem_max_read_bytes = settings.agent.filesystem_max_read_bytes
+        if hasattr(settings.agent, "filesystem_max_write_bytes"):
+            config.filesystem_max_write_bytes = settings.agent.filesystem_max_write_bytes
+
         # Observability configuration
         config.enable_otel = settings.telemetry.enabled
         config.enable_otel_explicit = settings.telemetry.enabled
@@ -558,6 +584,16 @@ class AgentConfig:
         config.mem0_org_id = settings.memory.mem0.org_id
         config.mem0_user_id = settings.memory.mem0.user_id or os.getenv("USER") or "default-user"
         config.mem0_project_id = settings.memory.mem0.project_id
+
+        # Filesystem tools configuration
+        if hasattr(settings.agent, "workspace_root") and settings.agent.workspace_root:
+            config.workspace_root = settings.agent.workspace_root
+        if hasattr(settings.agent, "filesystem_writes_enabled"):
+            config.filesystem_writes_enabled = settings.agent.filesystem_writes_enabled
+        if hasattr(settings.agent, "filesystem_max_read_bytes"):
+            config.filesystem_max_read_bytes = settings.agent.filesystem_max_read_bytes
+        if hasattr(settings.agent, "filesystem_max_write_bytes"):
+            config.filesystem_max_write_bytes = settings.agent.filesystem_max_write_bytes
 
         # Observability configuration
         config.enable_otel = settings.telemetry.enabled

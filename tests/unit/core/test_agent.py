@@ -20,18 +20,19 @@ class TestAgent:
         assert agent.chat_client == mock_chat_client
 
     def test_agent_initialization_defaults_to_hello_tools(self, mock_config, mock_chat_client):
-        """Test Agent defaults to HelloTools if no toolsets provided."""
+        """Test Agent defaults to HelloTools and FileSystemTools if no toolsets provided."""
         agent = Agent(config=mock_config, chat_client=mock_chat_client)
 
-        assert len(agent.toolsets) == 1
+        # Default toolsets: HelloTools + FileSystemTools
+        assert len(agent.toolsets) == 2
         assert isinstance(agent.toolsets[0], HelloTools)
 
     def test_agent_collects_tools_from_toolsets(self, mock_config, mock_chat_client):
         """Test Agent collects all tools from toolsets."""
         agent = Agent(config=mock_config, chat_client=mock_chat_client)
 
-        # HelloTools has 2 tools
-        assert len(agent.tools) == 2
+        # Default: HelloTools (2) + FileSystemTools (7) = 9 tools
+        assert len(agent.tools) == 9
 
     def test_agent_creates_agent_with_tools(self, mock_config, mock_chat_client):
         """Test Agent creates agent with tools via chat client."""
@@ -42,7 +43,8 @@ class TestAgent:
         created = mock_chat_client.created_agents[0]
         assert created["name"] == "Agent"
         assert "Helpful AI assistant" in created["instructions"]
-        assert len(created["tools"]) == 2
+        # Default toolsets: HelloTools (2) + FileSystemTools (7) = 9 tools
+        assert len(created["tools"]) == 9
 
     def test_agent_with_custom_toolsets(self, mock_config, mock_chat_client):
         """Test Agent with custom toolsets."""

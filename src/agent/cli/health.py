@@ -196,6 +196,55 @@ async def _test_all_providers(config: AgentConfig) -> list[tuple[str, str, bool,
     return results
 
 
+def show_tool_configuration(console: Console | None = None) -> None:
+    """Display detailed tool configuration.
+
+    Args:
+        console: Rich console instance for output
+    """
+    if console is None:
+        console = get_console()
+
+    try:
+        config = AgentConfig.from_combined()
+
+        console.print("\n[bold]Filesystem Tools:[/bold]")
+
+        from pathlib import Path
+
+        # Determine workspace root and source
+        if hasattr(config, "workspace_root") and config.workspace_root is not None:
+            workspace_root = config.workspace_root
+            workspace_source = "config"
+        elif env_workspace := os.getenv("AGENT_WORKSPACE_ROOT"):
+            workspace_root = Path(env_workspace).expanduser().resolve()
+            workspace_source = "env"
+        else:
+            workspace_root = Path.cwd().resolve()
+            workspace_source = "cwd"
+
+        console.print(
+            f"  [cyan]◉[/cyan] Workspace: [cyan]{workspace_root}[/cyan] [dim]({workspace_source})[/dim]"
+        )
+
+        # Write status
+        writes_enabled = getattr(config, "filesystem_writes_enabled", False)
+        write_status = "[green]Enabled[/green]" if writes_enabled else "[yellow]Disabled[/yellow]"
+        console.print(f"  [cyan]◉[/cyan] Writes: {write_status}")
+
+        # Size limits
+        read_limit_mb = getattr(config, "filesystem_max_read_bytes", 10_485_760) // 1_048_576
+        write_limit_mb = getattr(config, "filesystem_max_write_bytes", 1_048_576) // 1_048_576
+        console.print(f"  [cyan]◉[/cyan] Read Limit: [dim]{read_limit_mb}MB[/dim]")
+        console.print(f"  [cyan]◉[/cyan] Write Limit: [dim]{write_limit_mb}MB[/dim]")
+
+        console.print()
+
+    except Exception as e:
+        console.print(f"[red]✗[/red] Error loading tool configuration: {e}")
+        raise typer.Exit(ExitCodes.GENERAL_ERROR)
+
+
 def run_health_check(console: Console | None = None) -> None:
     """Run unified health check with configuration and connectivity.
 

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from agent.config import AgentConfig
+from agent.tools.filesystem import FileSystemTools
 from agent.tools.hello import HelloTools
 from agent.tools.toolset import AgentToolset
 
@@ -88,7 +89,7 @@ class Agent:
 
         # Initialize toolsets (avoid global state)
         if toolsets is None:
-            toolsets = [HelloTools(self.config)]
+            toolsets = [HelloTools(self.config), FileSystemTools(self.config)]
         self.toolsets = toolsets
 
         # Collect all tools from toolsets
