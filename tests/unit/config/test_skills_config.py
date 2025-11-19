@@ -161,7 +161,8 @@ class TestSkillsConfiguration:
 
             # Verify all skills config is transferred
             assert config.enabled_skills == ["skill1"]
-            assert config.core_skills_dir == "/path/to/core"
+            # core_skills_dir is now a Path object (type fix)
+            assert str(config.core_skills_dir) == "/path/to/core"
             # agent_skills_dir gets expanded (~/ -> /Users/...)
             assert str(config.agent_skills_dir).endswith("/.agent/skills")
             assert config.script_timeout == 120
@@ -182,6 +183,86 @@ class TestSkillsConfiguration:
             config = AgentConfig.from_env()
 
             assert config.enabled_skills == ["skill1", "skill2", "skill3"]
+
+    def test_core_skills_dir_type_conversion_from_file(self, tmp_path):
+        """Test that core_skills_dir is converted from str to Path in from_file()."""
+        from pathlib import Path
+
+        settings_file = tmp_path / "settings.json"
+        settings_file.write_text(
+            """{
+  "version": "1.0",
+  "providers": {
+    "enabled": ["openai"],
+    "openai": {
+      "model": "gpt-4o-mini"
+    }
+  },
+  "agent": {
+    "data_dir": "~/.agent",
+    "core_skills_dir": "/absolute/path/to/core"
+  }
+}"""
+        )
+
+        with patch.dict(os.environ, {}, clear=True):
+            config = AgentConfig.from_file(config_path=settings_file)
+
+            # core_skills_dir should be converted to Path
+            assert isinstance(config.core_skills_dir, Path)
+            assert str(config.core_skills_dir) == "/absolute/path/to/core"
+
+    def test_core_skills_dir_type_conversion_from_combined(self, tmp_path):
+        """Test that core_skills_dir is converted from str to Path in from_combined()."""
+        from pathlib import Path
+
+        settings_file = tmp_path / "settings.json"
+        settings_file.write_text(
+            """{
+  "version": "1.0",
+  "providers": {
+    "enabled": ["openai"],
+    "openai": {
+      "model": "gpt-4o-mini"
+    }
+  },
+  "agent": {
+    "data_dir": "~/.agent",
+    "core_skills_dir": "/absolute/path/to/core"
+  }
+}"""
+        )
+
+        with patch.dict(os.environ, {}, clear=True):
+            config = AgentConfig.from_combined(config_path=settings_file)
+
+            # core_skills_dir should be converted to Path
+            assert isinstance(config.core_skills_dir, Path)
+            assert str(config.core_skills_dir) == "/absolute/path/to/core"
+
+    def test_core_skills_dir_none_handling(self, tmp_path):
+        """Test that core_skills_dir=None is handled correctly."""
+        settings_file = tmp_path / "settings.json"
+        settings_file.write_text(
+            """{
+  "version": "1.0",
+  "providers": {
+    "enabled": ["openai"],
+    "openai": {
+      "model": "gpt-4o-mini"
+    }
+  },
+  "agent": {
+    "data_dir": "~/.agent"
+  }
+}"""
+        )
+
+        with patch.dict(os.environ, {}, clear=True):
+            config = AgentConfig.from_combined(config_path=settings_file)
+
+            # core_skills_dir should remain None when not set
+            assert config.core_skills_dir is None
 
 
 @pytest.mark.unit

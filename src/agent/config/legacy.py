@@ -491,8 +491,8 @@ class AgentConfig:
         elif hasattr(settings.agent, "enabled_skills"):
             config.enabled_skills = settings.agent.enabled_skills
 
-        if hasattr(settings.agent, "core_skills_dir"):
-            config.core_skills_dir = settings.agent.core_skills_dir
+        if hasattr(settings.agent, "core_skills_dir") and settings.agent.core_skills_dir:
+            config.core_skills_dir = Path(settings.agent.core_skills_dir).expanduser()
         if hasattr(settings.agent, "agent_skills_dir"):
             config.agent_skills_dir = Path(settings.agent.agent_skills_dir).expanduser()
         if hasattr(settings.agent, "script_timeout"):
@@ -668,8 +668,8 @@ class AgentConfig:
         elif hasattr(settings.agent, "enabled_skills"):
             config.enabled_skills = settings.agent.enabled_skills
 
-        if hasattr(settings.agent, "core_skills_dir"):
-            config.core_skills_dir = settings.agent.core_skills_dir
+        if hasattr(settings.agent, "core_skills_dir") and settings.agent.core_skills_dir:
+            config.core_skills_dir = Path(settings.agent.core_skills_dir).expanduser()
         if hasattr(settings.agent, "agent_skills_dir"):
             config.agent_skills_dir = Path(settings.agent.agent_skills_dir).expanduser()
         if hasattr(settings.agent, "script_timeout"):
