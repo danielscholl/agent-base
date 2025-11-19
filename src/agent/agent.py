@@ -94,21 +94,23 @@ class Agent:
         if toolsets is None:
             toolsets = [HelloTools(self.config), FileSystemTools(self.config)]
 
-            # Load skills if enabled
-            if hasattr(self.config, "enabled_skills") and self.config.enabled_skills:
-                try:
+            # Load skills (if config has skills section)
+            try:
+                skills_config = getattr(self.config, "skills", None)
+                if skills_config is None:
+                    # No skills configuration - skip skills loading
+                    logger.debug("No skills configuration found - skipping skills loading")
+                else:
                     from agent.skills.loader import SkillLoader
 
-                    # Set default core_skills_dir if not configured
-                    if self.config.core_skills_dir is None:
-                        # Default to <repo>/skills/core
+                    # Auto-detect bundled_dir if not set
+                    if skills_config.bundled_dir is None:
                         repo_root = Path(__file__).parent.parent.parent
-                        self.config.core_skills_dir = repo_root / "skills" / "core"
+                        skills_config.bundled_dir = str(repo_root / "skills" / "core")
+                        logger.debug(f"Auto-detected bundled_dir: {skills_config.bundled_dir}")
 
                     skill_loader = SkillLoader(self.config)
-                    skill_toolsets, script_tools, skill_instructions = (
-                        skill_loader.load_enabled_skills()
-                    )
+                    skill_toolsets, script_tools, skill_instructions = skill_loader.load_enabled_skills()
 
                     # Store skill instructions for system prompt injection
                     self.skill_instructions = skill_instructions
@@ -119,18 +121,16 @@ class Agent:
 
                     if script_tools:
                         toolsets.append(script_tools)
-                        logger.info(
-                            f"Loaded script wrapper with {script_tools.script_count} scripts"
-                        )
+                        logger.info(f"Loaded script wrapper with {script_tools.script_count} scripts")
 
                     if skill_instructions:
                         logger.info(
                             f"Collected {len(skill_instructions)} skill instruction blocks for system prompt"
                         )
 
-                except Exception as e:
-                    logger.error(f"Failed to load skills: {e}", exc_info=True)
-                    # Continue without skills - graceful degradation
+            except Exception as e:
+                logger.error(f"Failed to load skills: {e}", exc_info=True)
+                # Continue without skills - graceful degradation
 
         self.toolsets = toolsets
 

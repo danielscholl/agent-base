@@ -197,7 +197,7 @@ async def _test_all_providers(config: AgentConfig) -> list[tuple[str, str, bool,
 
 
 def show_tool_configuration(console: Console | None = None) -> None:
-    """Display detailed tool configuration.
+    """Display detailed tool configuration (matches --check style).
 
     Args:
         console: Rich console instance for output
@@ -208,9 +208,26 @@ def show_tool_configuration(console: Console | None = None) -> None:
     try:
         config = AgentConfig.from_combined()
 
-        console.print("\n[bold]Filesystem Tools:[/bold]")
-
         from pathlib import Path
+
+        # Import here to avoid circular dependencies
+        from agent.agent import Agent
+
+        # Create agent instance to load toolsets
+        agent = Agent(config)
+
+        # Core Toolsets Section
+        console.print("\n[bold]Core Toolsets:[/bold]")
+        core_toolsets = [t for t in agent.toolsets if type(t).__name__ in ["HelloTools"]]
+        for toolset in core_toolsets:
+            toolset_name = type(toolset).__name__
+            tools = toolset.get_tools()
+            console.print(f"  [cyan]◉[/cyan] {toolset_name} · {len(tools)} tools")
+            for tool in tools:
+                console.print(f"    [dim]- {tool.__name__}[/dim]")
+
+        # Filesystem Tools Section (config + toolset combined)
+        console.print("\n[bold]Filesystem Tools:[/bold]")
 
         # Determine workspace root and source
         if hasattr(config, "workspace_root") and config.workspace_root is not None:
@@ -223,20 +240,57 @@ def show_tool_configuration(console: Console | None = None) -> None:
             workspace_root = Path.cwd().resolve()
             workspace_source = "cwd"
 
+        # Configuration
+        writes_enabled = getattr(config, "filesystem_writes_enabled", False)
+        write_status = "[green]Enabled[/green]" if writes_enabled else "[yellow]Disabled[/yellow]"
+        read_limit_mb = getattr(config, "filesystem_max_read_bytes", 10_485_760) // 1_048_576
+        write_limit_mb = getattr(config, "filesystem_max_write_bytes", 1_048_576) // 1_048_576
+
         console.print(
             f"  [cyan]◉[/cyan] Workspace: [cyan]{workspace_root}[/cyan] [dim]({workspace_source})[/dim]"
         )
+        console.print(
+            f"  [cyan]◉[/cyan] Writes: {write_status} · Read: [dim]{read_limit_mb}MB[/dim] · Write: [dim]{write_limit_mb}MB[/dim]"
+        )
 
-        # Write status
-        writes_enabled = getattr(config, "filesystem_writes_enabled", False)
-        write_status = "[green]Enabled[/green]" if writes_enabled else "[yellow]Disabled[/yellow]"
-        console.print(f"  [cyan]◉[/cyan] Writes: {write_status}")
+        # FileSystemTools toolset
+        fs_toolsets = [t for t in agent.toolsets if type(t).__name__ == "FileSystemTools"]
+        for toolset in fs_toolsets:
+            tools = toolset.get_tools()
+            console.print(f"  [cyan]◉[/cyan] FileSystemTools · {len(tools)} tools")
+            for tool in tools:
+                console.print(f"    [dim]- {tool.__name__}[/dim]")
 
-        # Size limits
-        read_limit_mb = getattr(config, "filesystem_max_read_bytes", 10_485_760) // 1_048_576
-        write_limit_mb = getattr(config, "filesystem_max_write_bytes", 1_048_576) // 1_048_576
-        console.print(f"  [cyan]◉[/cyan] Read Limit: [dim]{read_limit_mb}MB[/dim]")
-        console.print(f"  [cyan]◉[/cyan] Write Limit: [dim]{write_limit_mb}MB[/dim]")
+        # Skills Section (config + toolsets combined)
+        skills_toolsets = [
+            t for t in agent.toolsets
+            if type(t).__name__ not in ["HelloTools", "FileSystemTools"]
+        ]
+
+        if skills_toolsets or agent.skill_instructions:
+            console.print("\n[bold]Skills:[/bold]")
+
+            # Skills configuration
+            if agent.skill_instructions:
+                total_words = sum(len(s.split()) for s in agent.skill_instructions)
+                console.print(
+                    f"  [cyan]◉[/cyan] {len(agent.skill_instructions)} loaded [dim]({total_words} words of instructions)[/dim]"
+                )
+
+            # Skill toolsets
+            for toolset in skills_toolsets:
+                toolset_name = type(toolset).__name__
+                tools = toolset.get_tools()
+
+                # Show skill source for skill-specific toolsets
+                skill_source = ""
+                if toolset_name != "ScriptToolset":
+                    # Try to infer skill name from toolset (e.g., HelloExtended -> hello-extended)
+                    skill_source = f" [dim](skill)[/dim]"
+
+                console.print(f"  [cyan]◉[/cyan] {toolset_name}{skill_source} · {len(tools)} tools")
+                for tool in tools:
+                    console.print(f"    [dim]- {tool.__name__}[/dim]")
 
         console.print()
 

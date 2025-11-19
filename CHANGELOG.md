@@ -1,5 +1,33 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Skills CLI Commands**: New `agent skill` subcommand for managing skills
+  - `agent skill list` - List all bundled and installed plugin skills
+  - `agent skill install <git-url>` - Install plugin skills from git
+  - `agent skill update <name>` - Update installed plugin skills
+  - `agent skill remove <name>` - Remove plugin skills
+  - `agent skill enable/disable <name>` - Toggle skill enablement
+- **Auto-Discovery**: Bundled skills auto-discovered from `skills/core/` - no configuration needed
+- **Plugin Skills Support**: Install and manage community skills from git repositories
+- **--tools Display**: Now shows all loaded toolsets including skill tools
+
+### Changed
+- **BREAKING**: Skills configuration redesigned to match memory pattern
+  - Bundled skills enabled by default (opt-out via `disabled_bundled`)
+  - Plugin skills configured in `skills.plugins` with git metadata
+  - Use `agent skill` CLI commands instead of environment variables
+- **BREAKING**: Removed `AGENT_SKILLS` environment variable
+- **BREAKING**: Removed `enabled_skills`, `agent_skills_dir`, `core_skills_dir` config fields
+- Skills now use nested `skills` configuration section in settings.json
+
+### Migration
+- Remove `AGENT_SKILLS` from .env file - bundled skills now auto-enabled
+- Use `agent skill disable <name>` to disable specific bundled skills
+- Use `agent skill install <git-url>` to add plugin skills
+- Run `agent skill list` to view all available skills
+
 ## [0.2.6](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.5...agent-template-v0.2.6) (2025-11-15)
 
 

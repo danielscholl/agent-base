@@ -299,5 +299,109 @@ def config_memory_command() -> None:
     config_memory()
 
 
+# Skill command group
+skill_app = typer.Typer(help="Manage agent skills (bundled and plugins)")
+app.add_typer(skill_app, name="skill")
+
+
+@skill_app.callback(invoke_without_command=True)
+def skill_callback(ctx: typer.Context) -> None:
+    """Skill command callback - shows help if no subcommand given."""
+    if ctx.invoked_subcommand is None:
+        console.print(ctx.get_help())
+
+
+@skill_app.command("list")
+def skill_list_command() -> None:
+    """List all bundled and installed plugin skills with status."""
+    from agent.cli.skill_commands import list_skills
+
+    list_skills()
+
+
+@skill_app.command("install")
+def skill_install_command(
+    git_url: str = typer.Argument(..., help="Git repository URL"),
+    name: str = typer.Option(None, "--name", help="Override skill name"),
+    branch: str = typer.Option("main", "--branch", help="Git branch to use"),
+) -> None:
+    """Install a plugin skill from a git repository.
+
+    Examples:
+        agent skill install https://github.com/user/my-skill.git
+        agent skill install https://github.com/user/my-skill.git --branch develop
+        agent skill install https://github.com/user/my-skill.git --name custom-name
+    """
+    from agent.cli.skill_commands import install_skill
+
+    install_skill(git_url, name, branch)
+
+
+@skill_app.command("update")
+def skill_update_command(
+    name: str = typer.Argument(..., help="Skill name to update"),
+) -> None:
+    """Update an installed plugin skill to the latest version.
+
+    Examples:
+        agent skill update my-skill
+    """
+    from agent.cli.skill_commands import update_skill
+
+    update_skill(name)
+
+
+@skill_app.command("remove")
+def skill_remove_command(
+    name: str = typer.Argument(..., help="Skill name to remove"),
+    keep_files: bool = typer.Option(False, "--keep-files", help="Keep files but remove from config"),
+) -> None:
+    """Remove an installed plugin skill.
+
+    Examples:
+        agent skill remove my-skill
+        agent skill remove my-skill --keep-files
+    """
+    from agent.cli.skill_commands import remove_skill
+
+    remove_skill(name, keep_files)
+
+
+@skill_app.command("enable")
+def skill_enable_command(
+    name: str = typer.Argument(..., help="Skill name to enable"),
+) -> None:
+    """Enable a skill (bundled or plugin).
+
+    For bundled skills: Removes from disabled list
+    For plugin skills: Sets enabled=true
+
+    Examples:
+        agent skill enable web-access
+        agent skill enable my-plugin
+    """
+    from agent.cli.skill_commands import enable_skill
+
+    enable_skill(name)
+
+
+@skill_app.command("disable")
+def skill_disable_command(
+    name: str = typer.Argument(..., help="Skill name to disable"),
+) -> None:
+    """Disable a skill (bundled or plugin).
+
+    For bundled skills: Adds to disabled list
+    For plugin skills: Sets enabled=false
+
+    Examples:
+        agent skill disable web-access
+        agent skill disable my-plugin
+    """
+    from agent.cli.skill_commands import disable_skill
+
+    disable_skill(name)
+
+
 if __name__ == "__main__":
     app()

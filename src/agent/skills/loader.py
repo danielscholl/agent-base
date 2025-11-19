@@ -237,77 +237,94 @@ class SkillLoader:
 
         This is the main entry point called by Agent.__init__().
 
+        Behavior:
+        - Auto-discovers all bundled skills (opt-out via disabled_bundled)
+        - Loads plugin skills from config.skills.plugins (only if enabled=true)
+
         Returns:
             Tuple of (skill_toolsets, script_wrapper_toolset, skill_instructions)
 
         Raises:
             SkillError: If critical skill loading fails
         """
-        # Get enabled skills from config
-        enabled_skills = getattr(self.config, "enabled_skills", [])
+        # Get skills config
+        skills_config = self.config.skills
 
-        if not enabled_skills or enabled_skills == ["none"]:
-            # No skills enabled
-            return [], None, []
+        # Get disabled bundled skills list
+        disabled_bundled = getattr(skills_config, "disabled_bundled", [])
+
+        # Get canonical names for disabled skills (normalize for matching)
+        from agent.skills.security import normalize_skill_name
+
+        disabled_canonical = {normalize_skill_name(name) for name in disabled_bundled}
 
         # Collect all skill directories to scan
-        skill_dirs_to_scan = []
+        bundled_skill_dirs = []
+        plugin_skill_dirs = []
 
-        # Add core skills directory
-        core_skills_dir = getattr(self.config, "core_skills_dir", None)
-        if core_skills_dir:
-            core_path = (
-                Path(core_skills_dir) if isinstance(core_skills_dir, str) else core_skills_dir
-            )
-            if core_path.exists():
-                skill_dirs_to_scan.extend(self.scan_skill_directory(core_path))
+        # 1. Auto-discover bundled skills (always scan unless explicitly disabled)
+        bundled_dir = getattr(skills_config, "bundled_dir", None)
+        if bundled_dir:
+            bundled_path = Path(bundled_dir) if isinstance(bundled_dir, str) else Path(bundled_dir)
+            if bundled_path.exists():
+                bundled_skill_dirs = self.scan_skill_directory(bundled_path)
+                logger.info(f"Auto-discovered {len(bundled_skill_dirs)} bundled skills")
 
-        # Add user skills directory
-        user_skills_dir = getattr(self.config, "agent_skills_dir", None)
-        if user_skills_dir:
-            user_path = (
-                Path(user_skills_dir) if isinstance(user_skills_dir, str) else user_skills_dir
-            )
-            if user_path.exists():
-                skill_dirs_to_scan.extend(self.scan_skill_directory(user_path))
+        # 2. Load enabled plugin skills from config.skills.plugins
+        plugins = getattr(skills_config, "plugins", [])
+        user_dir = getattr(skills_config, "user_dir", None)
 
-        # Load each skill
+        for plugin in plugins:
+            if not plugin.enabled:
+                continue
+
+            # Try installed_path first, fall back to user_dir/name
+            if plugin.installed_path:
+                plugin_path = Path(plugin.installed_path)
+            elif user_dir:
+                plugin_path = Path(user_dir) / normalize_skill_name(plugin.name)
+            else:
+                logger.warning(f"Plugin '{plugin.name}' has no installed_path and no user_dir set")
+                continue
+
+            if plugin_path.exists() and (plugin_path / "SKILL.md").exists():
+                plugin_skill_dirs.append(plugin_path)
+            else:
+                logger.warning(
+                    f"Plugin skill '{plugin.name}' not found at {plugin_path}. "
+                    f"Run: agent skill install {plugin.git_url}"
+                )
+
+        # Load all skills (bundled + plugins)
         all_toolsets = []
         all_scripts = {}
-        skill_instructions = []  # Collect SKILL.md instructions for system prompt
+        skill_instructions = []
 
-        for skill_dir in skill_dirs_to_scan:
+        for skill_dir in bundled_skill_dirs + plugin_skill_dirs:
             try:
                 manifest, toolsets, scripts = self.load_skill(skill_dir)
-
-                # Check if this skill is enabled
-                skill_enabled = False
-                # Get canonical name for matching
-                from agent.skills.security import normalize_skill_name
-
                 canonical_name = normalize_skill_name(manifest.name)
 
-                if "all" in enabled_skills:
-                    # Load all trusted skills
-                    # For Phase 1, bundled skills (in core_skills_dir) are auto-trusted
-                    skill_enabled = True
-                elif canonical_name in [s.lower().replace("_", "-") for s in enabled_skills]:
-                    skill_enabled = True
+                # Check if bundled skill is disabled
+                is_bundled = skill_dir in bundled_skill_dirs
+                if is_bundled and canonical_name in disabled_canonical:
+                    logger.info(f"Skipping disabled bundled skill: {manifest.name}")
+                    continue
 
-                if skill_enabled:
-                    all_toolsets.extend(toolsets)
-                    if scripts:
-                        all_scripts[canonical_name] = scripts
-                        self._loaded_scripts[canonical_name] = scripts
+                # Load the skill
+                all_toolsets.extend(toolsets)
+                if scripts:
+                    all_scripts[canonical_name] = scripts
+                    self._loaded_scripts[canonical_name] = scripts
 
-                    # Collect skill instructions for system prompt
-                    if manifest.instructions:
-                        skill_instructions.append(f"# {manifest.name}\n\n{manifest.instructions}")
+                # Collect skill instructions for system prompt
+                if manifest.instructions:
+                    skill_instructions.append(f"# {manifest.name}\n\n{manifest.instructions}")
 
-                    logger.info(
-                        f"Loaded skill '{manifest.name}': "
-                        f"{len(toolsets)} toolsets, {len(scripts)} scripts"
-                    )
+                logger.info(
+                    f"Loaded {'bundled' if is_bundled else 'plugin'} skill '{manifest.name}': "
+                    f"{len(toolsets)} toolsets, {len(scripts)} scripts"
+                )
 
             except SkillManifestError as e:
                 logger.error(f"Failed to load skill from {skill_dir}: {e}")
@@ -319,7 +336,6 @@ class SkillLoader:
         # Create script wrapper toolset if we have scripts
         script_wrapper = None
         if all_scripts:
-            # Import here to avoid circular dependency
             from agent.skills.script_tools import ScriptToolset
 
             script_wrapper = ScriptToolset(self.config, all_scripts)

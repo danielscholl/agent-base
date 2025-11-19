@@ -54,18 +54,22 @@ class SkillManager:
         branch: str | None = None,
         tag: str | None = None,
         trusted: bool = False,
-    ) -> SkillRegistryEntry:
-        """Install a skill from a git repository.
+    ) -> list[SkillRegistryEntry]:
+        """Install skill(s) from a git repository.
+
+        Supports both single-skill and monorepo structures:
+        - Single-skill: SKILL.md in repository root
+        - Monorepo: Multiple subdirectories each containing SKILL.md
 
         Args:
             git_url: Git repository URL
-            skill_name: Custom skill name (auto-detected from manifest if None)
+            skill_name: Custom skill name for single-skill repos (auto-detected if None)
             branch: Git branch to clone (default: main/master)
             tag: Git tag to checkout (takes precedence over branch)
             trusted: Mark skill as trusted (skip confirmation prompt)
 
         Returns:
-            SkillRegistryEntry for the installed skill
+            List of SkillRegistryEntry for installed skills (single-skill: 1 entry, monorepo: multiple)
 
         Raises:
             SkillError: If installation fails
@@ -97,46 +101,19 @@ class SkillManager:
             # Get commit SHA
             commit_sha = pin_commit_sha(temp_dir)
 
-            # Validate SKILL.md exists and is valid
-            manifest_path = temp_dir / "SKILL.md"
-            validate_manifest(manifest_path)
+            # Detect repository structure
+            root_manifest = temp_dir / "SKILL.md"
 
-            # Parse manifest to get skill name
-            manifest = parse_skill_manifest(temp_dir)
-
-            # Use manifest name or custom name
-            final_name = skill_name or manifest.name
-            canonical_name = normalize_skill_name(final_name)
-
-            # Check if already installed
-            if self.registry.exists(canonical_name):
-                raise SkillError(f"Skill '{canonical_name}' is already installed")
-
-            # Move to final location
-            final_path = self.skills_dir / canonical_name
-            if final_path.exists():
-                shutil.rmtree(final_path)
-
-            shutil.move(str(temp_dir), str(final_path))
-            temp_dir = None  # Prevent cleanup
-
-            # Register skill
-            entry = SkillRegistryEntry(
-                name=final_name,
-                name_canonical=canonical_name,
-                git_url=git_url,
-                commit_sha=commit_sha,
-                branch=branch,
-                tag=tag,
-                installed_path=final_path,
-                trusted=trusted,
-                installed_at=datetime.now(),
-            )
-
-            self.registry.register(entry)
-
-            logger.info(f"Successfully installed skill '{final_name}' at {final_path}")
-            return entry
+            if root_manifest.exists():
+                # Single-skill repository (SKILL.md in root)
+                return self._install_single_skill(
+                    temp_dir, git_url, commit_sha, branch, tag, trusted, skill_name
+                )
+            else:
+                # Potential monorepo - scan for subdirectories with SKILL.md
+                return self._install_monorepo_skills(
+                    temp_dir, git_url, commit_sha, branch, tag, trusted
+                )
 
         except Exception as e:
             logger.error(f"Failed to install skill: {e}")
@@ -146,6 +123,161 @@ class SkillManager:
             # Cleanup temp directory if it still exists
             if temp_dir and temp_dir.exists():
                 shutil.rmtree(temp_dir)
+
+    def _install_single_skill(
+        self,
+        temp_dir: Path,
+        git_url: str,
+        commit_sha: str,
+        branch: str | None,
+        tag: str | None,
+        trusted: bool,
+        skill_name: str | None = None,
+    ) -> list[SkillRegistryEntry]:
+        """Install a single skill from repository root.
+
+        Args:
+            temp_dir: Temporary directory with cloned repo
+            git_url: Git repository URL
+            commit_sha: Commit SHA
+            branch: Git branch used
+            tag: Git tag used
+            trusted: Trusted flag
+            skill_name: Optional custom skill name
+
+        Returns:
+            List with single SkillRegistryEntry
+        """
+        # Validate SKILL.md
+        manifest_path = temp_dir / "SKILL.md"
+        validate_manifest(manifest_path)
+
+        # Parse manifest
+        manifest = parse_skill_manifest(temp_dir)
+
+        # Use manifest name or custom name
+        final_name = skill_name or manifest.name
+        canonical_name = normalize_skill_name(final_name)
+
+        # Check if already installed
+        if self.registry.exists(canonical_name):
+            raise SkillError(f"Skill '{canonical_name}' is already installed")
+
+        # Move to final location
+        final_path = self.skills_dir / canonical_name
+        if final_path.exists():
+            shutil.rmtree(final_path)
+
+        shutil.move(str(temp_dir), str(final_path))
+
+        # Register skill
+        entry = SkillRegistryEntry(
+            name=final_name,
+            name_canonical=canonical_name,
+            git_url=git_url,
+            commit_sha=commit_sha,
+            branch=branch,
+            tag=tag,
+            installed_path=final_path,
+            trusted=trusted,
+            installed_at=datetime.now(),
+        )
+
+        self.registry.register(entry)
+
+        logger.info(f"Successfully installed skill '{final_name}' at {final_path}")
+        return [entry]
+
+    def _install_monorepo_skills(
+        self,
+        temp_dir: Path,
+        git_url: str,
+        commit_sha: str,
+        branch: str | None,
+        tag: str | None,
+        trusted: bool,
+    ) -> list[SkillRegistryEntry]:
+        """Install multiple skills from a monorepo structure.
+
+        Scans for subdirectories containing SKILL.md and installs each as a separate skill.
+
+        Args:
+            temp_dir: Temporary directory with cloned repo
+            git_url: Git repository URL
+            commit_sha: Commit SHA
+            branch: Git branch used
+            tag: Git tag used
+            trusted: Trusted flag
+
+        Returns:
+            List of SkillRegistryEntry for all installed skills
+        """
+        # Scan for skill subdirectories
+        skill_dirs = []
+        for item in temp_dir.iterdir():
+            if item.is_dir() and not item.name.startswith("."):
+                skill_md = item / "SKILL.md"
+                if skill_md.exists() and skill_md.is_file():
+                    skill_dirs.append(item)
+
+        if not skill_dirs:
+            raise SkillError(
+                f"No skills found in repository. Expected SKILL.md in root or subdirectories."
+            )
+
+        logger.info(f"Found {len(skill_dirs)} skills in monorepo")
+
+        # Install each skill
+        installed_entries = []
+        for skill_dir in skill_dirs:
+            try:
+                # Validate SKILL.md
+                manifest_path = skill_dir / "SKILL.md"
+                validate_manifest(manifest_path)
+
+                # Parse manifest
+                manifest = parse_skill_manifest(skill_dir)
+                canonical_name = normalize_skill_name(manifest.name)
+
+                # Check if already installed
+                if self.registry.exists(canonical_name):
+                    logger.warning(f"Skill '{canonical_name}' already installed, skipping")
+                    continue
+
+                # Copy skill directory to final location
+                final_path = self.skills_dir / canonical_name
+                if final_path.exists():
+                    shutil.rmtree(final_path)
+
+                shutil.copytree(skill_dir, final_path)
+
+                # Register skill
+                entry = SkillRegistryEntry(
+                    name=manifest.name,
+                    name_canonical=canonical_name,
+                    git_url=git_url,
+                    commit_sha=commit_sha,
+                    branch=branch,
+                    tag=tag,
+                    installed_path=final_path,
+                    trusted=trusted,
+                    installed_at=datetime.now(),
+                )
+
+                self.registry.register(entry)
+                installed_entries.append(entry)
+
+                logger.info(f"Successfully installed skill '{manifest.name}' at {final_path}")
+
+            except Exception as e:
+                logger.error(f"Failed to install skill from {skill_dir.name}: {e}")
+                # Continue with other skills
+                continue
+
+        if not installed_entries:
+            raise SkillError("No skills were successfully installed from repository")
+
+        return installed_entries
 
     def update(self, skill_name: str, confirm: bool = True) -> SkillRegistryEntry:
         """Update a skill to the latest version.

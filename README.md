@@ -156,15 +156,20 @@ Skills are git-based packages combining:
 
 ### Using Skills
 
+**Bundled skills are auto-discovered and enabled by default.** No configuration needed!
+
 ```bash
-# Enable skills via environment variable
-export AGENT_SKILLS="kalshi-markets,hello-extended"
+# List all available skills
+agent skill list
 
-# Or load all bundled skills
-export AGENT_SKILLS="all"
+# Disable a specific bundled skill
+agent skill disable web-access
 
-# Run agent with skills enabled
-agent
+# Re-enable a disabled skill
+agent skill enable web-access
+
+# Check what tools are loaded
+agent --tools
 ```
 
 ### Available Tools
@@ -179,34 +184,62 @@ When skills are loaded, you get:
 ### Example: Using Kalshi Markets
 
 ```bash
-# Enable kalshi-markets skill
-export AGENT_SKILLS="kalshi-markets"
+# Kalshi-markets is bundled - already enabled by default!
 
-# Start agent and use script tools
-agent -p "Use script_list to see available kalshi scripts"
-agent -p "Use script_help to learn about the status script"
-agent -p "Use script_run to check Kalshi exchange status"
+# Use script tools naturally
+agent -p "List kalshi scripts"
+agent -p "Show me Kalshi exchange status"
+agent -p "Search for bitcoin markets on Kalshi"
+
+# Or use tools directly
+agent -p "Use script_run kalshi-markets status --json"
 ```
 
-### Bundled Skills
+### Bundled Skill
 
-**kalshi-markets** - Access Kalshi prediction market data (10 scripts)
-- Market prices, orderbooks, trades
-- Event and series information
-- Progressive disclosure: Scripts not loaded until executed
-
-**hello-extended** - Extended greeting capabilities (hybrid example)
+**hello-extended** - Extended greeting capabilities (example skill)
 - Python toolset: `greet_in_language`, `greet_multiple`
 - Script: Advanced greeting with time-awareness
+- Demonstrates hybrid skill architecture (toolset + script)
 
-**web-access** - Internet search and web content retrieval (script-based)
+### Plugin Skills
+
+**Available via https://github.com/danielscholl/agent-skills:**
+
+**web-access** - Internet search and web content retrieval
 - `fetch.py` - Retrieve web pages as markdown
 - `search.py` - Brave Search API integration
 - Requires `BRAVE_API_KEY` environment variable for search
 
+**kalshi-markets** - Access Kalshi prediction market data
+- Market prices, orderbooks, trades (10 scripts)
+- Event and series information
+- Progressive disclosure: Scripts loaded on-demand
+
+**Install plugins:**
+```bash
+# Install both web-access and kalshi-markets from monorepo
+agent skill install https://github.com/danielscholl/agent-skills
+```
+
+### Installing Plugin Skills
+
+Install community or custom skills from git repositories:
+
+```bash
+# Install a plugin skill
+agent skill install https://github.com/user/my-skill.git
+
+# Update an installed plugin
+agent skill update my-skill
+
+# Remove a plugin
+agent skill remove my-skill
+```
+
 ### Creating Custom Skills
 
-See [docs/SKILLS.md](docs/SKILLS.md) for the complete skill development guide.
+See [docs/design/skills.md](docs/design/skills.md) for the complete skill development guide.
 
 Minimal skill structure:
 ```

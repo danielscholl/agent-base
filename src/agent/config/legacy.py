@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from dotenv import load_dotenv
 
@@ -121,12 +121,8 @@ class AgentConfig:
     filesystem_max_read_bytes: int = 10_485_760  # 10MB default
     filesystem_max_write_bytes: int = 1_048_576  # 1MB default
 
-    # Skill system configuration
-    agent_skills_dir: Path | None = None  # Default: ~/.agent/skills
-    core_skills_dir: Path | None = None  # Default: <repo>/skills/core
-    enabled_skills: list[str] | None = None  # From AGENT_SKILLS env var
-    script_timeout: int = 60  # Seconds
-    max_script_output: int = 1_048_576  # 1MB
+    # Skills configuration (from settings.skills)
+    skills: Any = None  # SkillsConfig from schema.py
 
     # Observability configuration
     enable_otel: bool = False
@@ -232,25 +228,8 @@ class AgentConfig:
         config.filesystem_max_read_bytes = int(os.getenv("FILESYSTEM_MAX_READ_BYTES", "10485760"))
         config.filesystem_max_write_bytes = int(os.getenv("FILESYSTEM_MAX_WRITE_BYTES", "1048576"))
 
-        # Skill system configuration
-        skills_dir_env = os.getenv("AGENT_SKILLS_DIR")
-        if skills_dir_env:
-            config.agent_skills_dir = Path(skills_dir_env).expanduser()
-        else:
-            config.agent_skills_dir = Path.home() / ".agent" / "skills"
-
-        # core_skills_dir will be set by Agent class (defaults to <repo>/skills/core)
-
-        # Parse AGENT_SKILLS environment variable
-        skills_str = os.getenv("AGENT_SKILLS", "").strip()
-        if skills_str in ("", "none"):
-            config.enabled_skills = []
-        elif skills_str == "all":
-            config.enabled_skills = ["all"]
-        elif skills_str == "all-untrusted":
-            config.enabled_skills = ["all-untrusted"]
-        else:
-            config.enabled_skills = [s.strip() for s in skills_str.split(",")]
+        # Skills configuration - will be set from settings.skills in from_combined()
+        # No environment variable configuration for skills
 
         # Observability configuration
         # Track whether ENABLE_OTEL was explicitly set in environment
@@ -388,26 +367,6 @@ class AgentConfig:
             return f"Local/{self.local_model}"
         return "Unknown"
 
-    @staticmethod
-    def _parse_agent_skills_env(config: "AgentConfig", settings: "AgentSettings") -> None:
-        """Parse AGENT_SKILLS environment variable and apply to config.
-
-        ENV takes precedence for enabled_skills (like LLM_PROVIDER).
-        This allows AGENT_SKILLS=all to work for testing without editing settings.json.
-        """
-        if os.getenv("AGENT_SKILLS") is not None:
-            skills_str = os.getenv("AGENT_SKILLS", "").strip()
-            if skills_str in ("", "none"):
-                config.enabled_skills = []
-            elif skills_str == "all":
-                config.enabled_skills = ["all"]
-            elif skills_str == "all-untrusted":
-                config.enabled_skills = ["all-untrusted"]
-            else:
-                config.enabled_skills = [s.strip() for s in skills_str.split(",")]
-        elif hasattr(settings.agent, "enabled_skills"):
-            config.enabled_skills = settings.agent.enabled_skills
-
     @classmethod
     def from_file(cls, config_path: Path | None = None) -> "AgentConfig":
         """Load configuration from JSON settings file.
@@ -500,16 +459,7 @@ class AgentConfig:
             config.filesystem_max_write_bytes = settings.agent.filesystem_max_write_bytes
 
         # Skills configuration
-        cls._parse_agent_skills_env(config, settings)
-
-        if hasattr(settings.agent, "core_skills_dir") and settings.agent.core_skills_dir:
-            config.core_skills_dir = Path(settings.agent.core_skills_dir)
-        if hasattr(settings.agent, "agent_skills_dir"):
-            config.agent_skills_dir = Path(settings.agent.agent_skills_dir).expanduser()
-        if hasattr(settings.agent, "script_timeout"):
-            config.script_timeout = settings.agent.script_timeout
-        if hasattr(settings.agent, "max_script_output"):
-            config.max_script_output = settings.agent.max_script_output
+        config.skills = settings.skills
 
         # Observability configuration
         config.enable_otel = settings.telemetry.enabled
@@ -534,15 +484,10 @@ class AgentConfig:
         fallbacks/defaults, while explicit file configuration takes precedence. This
         avoids confusion from global env vars meant for other tools.
 
-        Exception: AGENT_SKILLS environment variable takes precedence over file settings
-        to allow easy skill toggling without editing settings.json.
-
         Precedence (highest to lowest):
         1. Settings file (~/.agent/settings.json)
         2. Environment variables (fallback)
         3. Default values
-
-        Special: AGENT_SKILLS env var overrides file settings.agent.enabled_skills
 
         Args:
             config_path: Optional path to settings.json file
@@ -664,16 +609,7 @@ class AgentConfig:
             config.filesystem_max_write_bytes = settings.agent.filesystem_max_write_bytes
 
         # Skills configuration
-        cls._parse_agent_skills_env(config, settings)
-
-        if hasattr(settings.agent, "core_skills_dir") and settings.agent.core_skills_dir:
-            config.core_skills_dir = Path(settings.agent.core_skills_dir)
-        if hasattr(settings.agent, "agent_skills_dir"):
-            config.agent_skills_dir = Path(settings.agent.agent_skills_dir).expanduser()
-        if hasattr(settings.agent, "script_timeout"):
-            config.script_timeout = settings.agent.script_timeout
-        if hasattr(settings.agent, "max_script_output"):
-            config.max_script_output = settings.agent.max_script_output
+        config.skills = settings.skills
 
         # Observability configuration
         config.enable_otel = settings.telemetry.enabled
