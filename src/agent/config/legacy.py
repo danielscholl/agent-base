@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from dotenv import load_dotenv
 
 if TYPE_CHECKING:
-    from .schema import AgentSettings
+    pass
 
 # Default models for each provider
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash-exp"
