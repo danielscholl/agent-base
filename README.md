@@ -116,6 +116,9 @@ agent
 # Check the agent configuration
 agent --check
 
+# Check the tools being exposed to the agent
+agent --tools
+
 # Single query (clean output for scripting)
 agent -p "Say hello to Alice"
 
@@ -145,155 +148,29 @@ See [USAGE.md](USAGE.md) for complete examples.
 
 ## Skills
 
-agent-base supports a plugin system for domain-specific capabilities through **skills** - self-contained packages that extend the agent with specialized tools without bloating the core codebase.
+Skills are optional, git-based extensions that add domain-specific tools to your agent. They let you expand capabilities without modifying the core codebase. Skills can include Python toolsets, standalone PEP 723 scripts, and a simple SKILL.md manifest describing how the extension should behave.
 
-### What are Skills?
+### Installing Skills
 
-Skills are git-based packages combining:
-- **Python Toolsets**: Testable, type-safe tool classes for frequent operations
-- **Standalone Scripts**: PEP 723 scripts for context-heavy operations (progressive disclosure)
-- **SKILL.md Manifest**: YAML front matter + markdown instructions
-
-### Using Skills
-
-**Bundled skills are auto-discovered and enabled by default.** No configuration needed!
+Agent Base supports installing skills directly from any git repository:
 
 ```bash
-# List all available skills (shows token cost per skill)
-agent skill list
-
-# Manage skills interactively (enable/disable/update/remove)
-agent skill manage
-
-# Check what tools are loaded
-agent --tools
+agent skill install <git-url>
 ```
 
-### Available Tools
-
-When skills are loaded, you get:
-- **Skill toolset methods** - Direct tool calls (e.g., `greet_in_language`)
-- **Script wrapper tools** - Progressive disclosure pattern:
-  - `script_list` - List available scripts
-  - `script_help` - Get help for a script
-  - `script_run` - Execute a script with arguments
-
-### Example: Installing and Using Skills
-
-**The bundled hello-extended skill is auto-enabled:**
-
-```bash
-# Bundled skill already available (no installation needed)
-agent -p "Greet me in Spanish"  # Uses hello-extended
-
-# View loaded skills
-agent skill list
-# Bundled:
-#   ◉ hello-extended (core/hello-extended) · 206 tokens
-```
-
-**Install plugin skills from git:**
-
-```bash
-# Install from agent-skills repository (monorepo with 2 skills)
-agent skill install https://github.com/danielscholl/agent-skills
-
-# Both web-access and kalshi-markets are installed
-agent skill list
-# Plugins:
-#   ◉ web-access (agent-skills, main@eb3cb56) · 280 tokens
-#   ◉ kalshi-markets (agent-skills, main@eb3cb56) · 250 tokens
-
-# Use the plugin skills in conversation
-agent -p "Search for Python 3.13 features"  # Uses web-access plugin
-agent -p "Check Kalshi exchange status"      # Uses kalshi-markets plugin
-```
-
-### Bundled Skill
-
-**hello-extended** - Extended greeting capabilities (example skill)
-- Python toolset: `greet_in_language`, `greet_multiple`
-- Script: Advanced greeting with time-awareness
-- Demonstrates hybrid skill architecture (toolset + script)
-- Auto-enabled by default (206 tokens)
-
-### Plugin Skills
-
-**Available at https://github.com/danielscholl/agent-skills:**
-
-**web-access** - Internet search and web content retrieval
-- `fetch.py` - Retrieve web pages as markdown
-- `search.py` - Brave Search API integration
-- Requires `BRAVE_API_KEY` environment variable
-- 280 tokens
-
-**kalshi-markets** - Access Kalshi prediction market data
-- Market prices, orderbooks, trades (10 scripts)
-- Event and series information
-- Progressive disclosure
-- 250 tokens
+Once installed, skills are automatically discovered and integrated into the agent runtime.
 
 ### Managing Skills
 
-**Installation:**
+Use the built-in management commands to view, enable/disable, or update installed skills:
+
 ```bash
-# Install plugins (supports single-skill and monorepo)
-agent skill install https://github.com/danielscholl/agent-skills
-
-# Interactive install (prompts for URL)
-agent skill install
-
-# View all skills with token costs and commit SHA
 agent skill list
-```
-
-**Management:**
-```bash
-# Interactive management (enable/disable/update/remove)
 agent skill manage
-
-# Select skill → Choose action → Done
 ```
 
-**Discovery:**
-Skills are automatically discovered from git repos:
-- SKILL.md at root → Single skill
-- skill/SKILL.md → Skill in subdirectory
-- */SKILL.md → Monorepo (multiple skills)
+See [SKILLS.md](docs/design/skills.md) for additional details and information on constructing skills.
 
-### Creating Custom Skills
-
-See [docs/design/skills.md](docs/design/skills.md) for the complete skill development guide.
-
-Minimal skill structure:
-```
-my-skill/
-├── SKILL.md              # Manifest with YAML front matter
-├── toolsets/             # Optional: Python toolset classes
-│   └── mytools.py
-└── scripts/              # Optional: PEP 723 standalone scripts
-    └── myscript.py
-```
-
-Example SKILL.md:
-```yaml
----
-name: my-skill
-description: Brief description of what this skill does
-toolsets:
-  - toolsets.mytools:MyToolset
----
-
-# Usage instructions in markdown...
-```
-
-### Context Efficiency
-
-Skills use progressive disclosure to maintain <5K token overhead:
-- Only SKILL.md manifest loaded into context
-- Scripts discovered but NOT loaded (just metadata)
-- Execute scripts on-demand via `script_run`
-- 10+ tools available with minimal context usage
 
 ## Contributing
 

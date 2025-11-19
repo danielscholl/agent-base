@@ -35,6 +35,7 @@ def _get_repo_paths() -> tuple[Path, str]:
 
 class _MockConfig:
     """Empty config class for SkillLoader when we don't need full configuration."""
+
     pass
 
 

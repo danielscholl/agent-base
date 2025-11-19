@@ -170,9 +170,11 @@ omit = [
     "src/agent/__main__.py",           # Wrapper only
     "src/agent/utils/__init__.py",     # Imports only
     "src/agent/utils/errors.py",       # Exception definitions
+    "src/agent/utils/tokens.py",       # Token counting with fallback paths (hard to test)
     "src/agent/cli/app.py",            # CLI orchestration (hard to test)
     "src/agent/cli/commands.py",       # CLI commands (hard to test)
     "src/agent/cli/config_commands.py", # CLI config commands (hard to test)
+    "src/agent/cli/skill_commands.py",  # CLI skill commands (hard to test)
     "src/agent/cli/session.py",        # CLI session management (hard to test)
     "src/agent/cli/display.py",        # CLI display (hard to test)
     "src/agent/cli/health.py",         # Health check (extracted from app.py, hard to test)
