@@ -118,6 +118,8 @@ class TraceLogger:
         messages: list[dict[str, Any]],
         model: str | None = None,
         provider: str | None = None,
+        system_instructions: str | None = None,
+        tools_summary: dict[str, Any] | None = None,
     ) -> None:
         """Log LLM request data.
 
@@ -126,6 +128,8 @@ class TraceLogger:
             messages: Request messages
             model: Model name
             provider: Provider name
+            system_instructions: System prompt sent to LLM (if include_messages=True)
+            tools_summary: Tool definitions summary (if include_messages=True)
         """
         trace_entry: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
@@ -138,12 +142,22 @@ class TraceLogger:
         if self.include_messages:
             trace_entry["message_count"] = len(messages)
             trace_entry["messages"] = messages
+
+            # Add system instructions if provided
+            if system_instructions:
+                trace_entry["system_instructions"] = system_instructions
+                trace_entry["system_instructions_length"] = len(system_instructions)
+                trace_entry["system_instructions_tokens_est"] = len(system_instructions) // 4
+
+            # Add tools summary if provided
+            if tools_summary:
+                trace_entry["tools"] = tools_summary
         else:
             trace_entry["message_count"] = len(messages)
 
         try:
             with open(self.trace_file, "a") as f:
-                json.dump(trace_entry, f)
+                json.dump(trace_entry, f, default=str)
                 f.write("\n")
         except Exception as e:
             logger.error(f"Failed to write trace log: {e}")

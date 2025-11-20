@@ -104,6 +104,7 @@ async def auto_save_session(
     console: Console | None = None,
     session_name: str | None = None,
     agent: Agent | None = None,
+    log_dir: Path | None = None,
 ) -> None:
     """Auto-save session on exit if it has messages.
 
@@ -116,6 +117,7 @@ async def auto_save_session(
         console: Console for output (optional)
         session_name: Optional session name (if not provided, generates timestamp)
         agent: Optional Agent instance for memory saving
+        log_dir: Optional log directory path (avoids path reconstruction)
     """
     import time
 
@@ -160,7 +162,9 @@ async def auto_save_session(
                         console.print(f"[yellow]Warning: Failed to save memory: {e}[/yellow]")
 
             # Copy trace log file if it exists
-            log_dir = persistence.storage_dir.parent / "logs"
+            # Use provided log_dir or reconstruct from persistence storage dir
+            if log_dir is None:
+                log_dir = persistence.storage_dir.parent / "logs"
             trace_log_file = log_dir / f"session-{session_name}-trace.log"
             if trace_log_file.exists():
                 try:

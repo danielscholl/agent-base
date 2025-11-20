@@ -55,6 +55,33 @@ def get_trace_logger() -> Any:
     return _trace_logger
 
 
+def _extract_model_from_config(config: AgentConfig) -> str | None:
+    """Extract model name from config based on provider.
+
+    Args:
+        config: Agent configuration
+
+    Returns:
+        Model name or None
+    """
+    provider = config.llm_provider
+    if provider == "openai":
+        return config.openai_model
+    elif provider == "anthropic":
+        return config.anthropic_model
+    elif provider == "azure":
+        return config.azure_openai_deployment
+    elif provider == "gemini":
+        return config.gemini_model
+    elif provider == "github":
+        return config.github_model
+    elif provider == "local":
+        return config.local_model
+    elif provider == "foundry":
+        return config.azure_model_deployment
+    return None
+
+
 # ============================================================================
 # Agent-Level Middleware
 # ============================================================================
@@ -92,6 +119,9 @@ async def agent_run_logging_middleware(
 
     # Generate request ID for trace logging
     request_id = str(uuid.uuid4())
+
+    # Load config once for trace logging (reused for request and response)
+    config = AgentConfig.from_env() if get_trace_logger() else None
 
     # Emit LLM request event
     llm_event_id = None
@@ -185,29 +215,15 @@ async def agent_run_logging_middleware(
                                 ),
                             }
 
-            # Log request with optional full payload info
-            trace_entry: dict[str, Any] = {
-                "timestamp": datetime.now().isoformat(),
-                "request_id": request_id,
-                "type": "request",
-                "model": model,
-                "provider": provider,
-                "message_count": len(messages),
-            }
-
-            if trace_logger.include_messages:
-                trace_entry["messages"] = messages
-                if system_instructions:
-                    trace_entry["system_instructions"] = system_instructions
-                    trace_entry["system_instructions_length"] = len(system_instructions)
-                    trace_entry["system_instructions_tokens_est"] = len(system_instructions) // 4
-                if tools_summary:
-                    trace_entry["tools"] = tools_summary
-
-            # Write to trace log
-            with open(trace_logger.trace_file, "a") as f:
-                json.dump(trace_entry, f, default=str)
-                f.write("\n")
+            # Log request using TraceLogger
+            trace_logger.log_request(
+                request_id=request_id,
+                messages=messages,
+                model=model,
+                provider=provider,
+                system_instructions=system_instructions,
+                tools_summary=tools_summary,
+            )
 
         except Exception as e:
             logger.debug(f"Failed to log trace request: {e}")
@@ -304,25 +320,8 @@ async def agent_run_logging_middleware(
                                 "total_tokens"
                             )
 
-                # Get model from config (same as request)
-                config = AgentConfig.from_env()
-                provider = config.llm_provider
-
-                model = None
-                if provider == "openai":
-                    model = config.openai_model
-                elif provider == "anthropic":
-                    model = config.anthropic_model
-                elif provider == "azure":
-                    model = config.azure_openai_deployment
-                elif provider == "gemini":
-                    model = config.gemini_model
-                elif provider == "github":
-                    model = config.github_model
-                elif provider == "local":
-                    model = config.local_model
-                elif provider == "foundry":
-                    model = config.azure_model_deployment
+                # Get model from config (loaded once at middleware start)
+                model = _extract_model_from_config(config) if config else None
 
                 trace_logger.log_response(
                     request_id=request_id,

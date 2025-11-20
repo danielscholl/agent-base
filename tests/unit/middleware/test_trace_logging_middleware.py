@@ -326,14 +326,15 @@ class TestMiddlewareTraceLogging:
         mock_config.openai_model = "gpt-4o-mini"
 
         # Messages with different serialization methods
-        msg1 = Mock()
+        # Use to_dict
+        msg1 = Mock(spec=["to_dict"])
         msg1.to_dict = lambda: {"role": "user", "content": "Using to_dict"}
 
-        msg2 = Mock()
+        # Use model_dump (no to_dict attribute)
+        msg2 = Mock(spec=["model_dump"])
         msg2.model_dump = lambda: {"role": "assistant", "content": "Using model_dump"}
-        # Remove to_dict to test fallback
-        del msg2.to_dict
 
+        # Plain string (no serialization methods)
         msg3 = "Plain string message"
 
         context = Mock(spec=["messages"])

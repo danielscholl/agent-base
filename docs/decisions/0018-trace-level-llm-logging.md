@@ -96,7 +96,29 @@ cat ~/.agent/logs/session-*-trace.log | jq .
 
 **Trace Log Format:**
 
-Each line is a JSON object with the following structure:
+Each line is a JSON object. **Request entries** (when `ENABLE_SENSITIVE_DATA=true`):
+
+```json
+{
+  "timestamp": "2025-11-20T10:30:45.123456",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "type": "request",
+  "model": "claude-sonnet-4-5",
+  "provider": "anthropic",
+  "message_count": 5,
+  "messages": [{"role": "user", "contents": [...]}],
+  "system_instructions": "Full system prompt text...",
+  "system_instructions_length": 21435,
+  "system_instructions_tokens_est": 5358,
+  "tools": {
+    "count": 14,
+    "tools": [{"name": "tool1", "description": "...", "estimated_tokens": 150}],
+    "total_estimated_tokens": 2491
+  }
+}
+```
+
+**Response entries:**
 
 ```json
 {
@@ -104,16 +126,22 @@ Each line is a JSON object with the following structure:
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
   "type": "response",
   "model": "claude-sonnet-4-5",
-  "message_count": 5,
-  "response_length": 1234,
+  "response": "Full response text...",
   "tokens": {
-    "input": 850,
-    "output": 423,
-    "total": 1273
+    "input": 8662,
+    "output": 121,
+    "total": 8783
   },
   "latency_ms": 1842.56
 }
 ```
+
+**Enhanced Fields** (when `ENABLE_SENSITIVE_DATA=true`):
+- `system_instructions`: Complete system prompt sent to LLM
+- `system_instructions_length`: Character count
+- `system_instructions_tokens_est`: Estimated token count (chars / 4)
+- `tools`: Per-tool breakdown with names, descriptions, and token estimates
+- `tools.total_estimated_tokens`: Sum of all tool definition tokens
 
 **Token Extraction:**
 
