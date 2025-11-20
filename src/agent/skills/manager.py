@@ -127,7 +127,7 @@ class SkillManager:
                 # Check if plugins/ contains subdirectories with skills/ subdirectory
                 has_marketplace_structure = False
                 for item in plugins_dir.iterdir():
-                    if item.is_dir() and (item / "skills").exists():
+                    if item.is_dir() and (item / "skills").is_dir():
                         has_marketplace_structure = True
                         break
 
@@ -447,9 +447,9 @@ class SkillManager:
             # Step 1: Remove existing installation
             self.remove(skill_name)
 
-            # Step 2: Reinstall from original source
+            # Step 2: Reinstall from original source (use entry.name to preserve original casing)
             entries = self.install(
-                git_url=git_url, branch=branch, tag=tag, trusted=trusted, skill_name=skill_name
+                git_url=git_url, branch=branch, tag=tag, trusted=trusted, skill_name=entry.name
             )
 
             # Find the updated entry (should be first for single-skill, or match name for monorepo)

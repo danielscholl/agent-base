@@ -341,13 +341,12 @@ class TestMarketplaceStructure:
                 "https://github.com/danielscholl/agent-skills", branch="marketplace", trusted=True
             )
 
-        # Should install both skills
+        # Should install both skills (order-independent)
         assert isinstance(entries, list)
         assert len(entries) == 2
-        assert entries[0].name == "web"
-        assert entries[1].name == "kalshi-markets"
-        assert entries[0].git_url == "https://github.com/danielscholl/agent-skills"
-        assert entries[1].git_url == "https://github.com/danielscholl/agent-skills"
+        skill_names = {e.name for e in entries}
+        assert skill_names == {"web", "kalshi-markets"}
+        assert all(e.git_url == "https://github.com/danielscholl/agent-skills" for e in entries)
 
     @patch("agent.skills.manager.Repo")
     @patch("agent.skills.manager.pin_commit_sha")
