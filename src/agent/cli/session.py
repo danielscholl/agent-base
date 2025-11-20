@@ -72,9 +72,7 @@ def setup_session_logging(
     )
 
     # Setup trace logging if log level is trace
-    # Support both AGENT_LOG_LEVEL and LOG_LEVEL (backward compatibility)
-    actual_log_level = os.getenv("AGENT_LOG_LEVEL") or os.getenv("LOG_LEVEL") or "INFO"
-    if actual_log_level.upper() == "TRACE":
+    if log_level == "TRACE":
         from agent.middleware import set_trace_logger
         from agent.trace_logger import TraceLogger
 

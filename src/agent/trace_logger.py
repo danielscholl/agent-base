@@ -157,7 +157,7 @@ class TraceLogger:
 
         try:
             with open(self.trace_file, "a") as f:
-                json.dump(trace_entry, f, default=str)
+                json.dump(trace_entry, f, default=str, ensure_ascii=False)
                 f.write("\n")
         except Exception as e:
             logger.error(f"Failed to write trace log: {e}")

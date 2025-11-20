@@ -477,7 +477,7 @@ class TestMiddlewareTraceLogging:
         # Mock config
         mock_config = Mock()
         mock_config.llm_provider = "anthropic"
-        mock_config.anthropic_model = "claude-haiku-4-5"
+        mock_config.anthropic_model = "claude-haiku-4-5-20251001"
 
         # Mock agent with chat_options
         chat_options = Mock()
