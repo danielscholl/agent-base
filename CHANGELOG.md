@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.8](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.7...agent-template-v0.2.8) (2025-11-20)
+
+
+### Bug Fixes
+
+* read version from package metadata instead of hardcoding ([dd1a54c](https://github.com/danielscholl/agent-base/commit/dd1a54c4feefca384c83fab72337e5c7cae7d6cc))
+* read version from package metadata instead of hardcoding ([86fc680](https://github.com/danielscholl/agent-base/commit/86fc680a5323280fd75aa8c8e43742c43fa162a0))
+* **skills:** remove Pydantic warning by renaming json parameter ([155cc01](https://github.com/danielscholl/agent-base/commit/155cc0133a2ce27838b95212803eb8391534ed5d))
+* **skills:** remove Pydantic warning by renaming json parameter ([936f5b8](https://github.com/danielscholl/agent-base/commit/936f5b829c54fb0fb6288740cd86fcee4ea391ae))
+* **skills:** resolve Windows file handle cleanup issue during skill installation ([9db5a2b](https://github.com/danielscholl/agent-base/commit/9db5a2b6bcae4aa68dcbc3322f7b5836e37cca50))
+* **skills:** resolve Windows file handle cleanup issue during skill installation ([b3202d6](https://github.com/danielscholl/agent-base/commit/b3202d69454af78d9ee5dd453842701aab68e95a))
+* use PackageNotFoundError instead of catching all exceptions ([5c382e0](https://github.com/danielscholl/agent-base/commit/5c382e0daae43182e0f7b1795831fbce6f211377))
+
 ## [0.2.7](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.6...agent-template-v0.2.7) (2025-11-20)
 
 
