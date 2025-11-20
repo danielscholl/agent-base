@@ -5,24 +5,49 @@ toolsets:
   - toolsets.hello:HelloExtended
 ---
 
-# hello-extended
+<skill-hello-extended>
+  <triggers>
+    <use>Non-English greetings, multi-person greetings, cultural context</use>
+    <skip>Simple English (use built-in greet_user)</skip>
+  </triggers>
 
-## 🎯 Triggers
-**USE:** greetings in Spanish/French/German/Japanese/Chinese, multiple greetings
-**SKIP:** simple English greetings (use built-in `greet_user`)
+  <tools>
+    <direct>
+      <greet_in_language>
+        <sig>name:str, language:str</sig>
+        <langs>es|fr|de|ja|zh|en</langs>
+        <desc>Culturally appropriate greeting</desc>
+      </greet_in_language>
+      <greet_multiple>
+        <sig>names:list[str]</sig>
+        <desc>Greet multiple people efficiently</desc>
+      </greet_multiple>
+    </direct>
 
-## Tools
+    <script name="advanced_greeting.py">
+      <features>time-aware, formatted, bulk</features>
+      <cmd>script_run hello-extended advanced_greeting.py --json</cmd>
+      <opts>
+        <opt>--names "Alice,Bob"</opt>
+        <opt>--language es|fr|de|ja|zh|en</opt>
+        <opt>--format plain|emoji|formal</opt>
+        <opt>--time-aware</opt>
+      </opts>
+    </script>
+  </tools>
 
-**Direct (instant):**
-- `greet_in_language(name, language)` - Culturally appropriate greeting
-  Languages: Spanish (es), French (fr), German (de), Japanese (ja), Chinese (zh), English (en)
-- `greet_multiple(names)` - Greet list of people
+  <examples>
+    <ex case="single-lang">greet_in_language("Alice", "es")</ex>
+    <ex case="multi-person">greet_multiple(["Alice", "Bob", "Charlie"])</ex>
+    <ex case="advanced">script_run hello-extended advanced_greeting.py --json --names "Alice,Bob" --language es --format emoji</ex>
+  </examples>
 
-**Script (advanced):**
-- `advanced_greeting.py` - Time-aware, formatted greetings
-  Usage: `script_run hello-extended advanced_greeting.py --json`
-
-## Quick Guide
-- One person, specific language → `greet_in_language("Alice", "es")`
-- Multiple people → `greet_multiple(["Alice", "Bob", "Charlie"])`
-- Fancy formatting → `script_run hello-extended advanced_greeting.py --json`
+  <lang-map>
+    <l c="es">Spanish: ¡Hola!</l>
+    <l c="fr">French: Bonjour!</l>
+    <l c="de">German: Hallo!</l>
+    <l c="ja">Japanese: こんにちは!</l>
+    <l c="zh">Chinese: 你好!</l>
+    <l c="en">English: Hello!</l>
+  </lang-map>
+</skill-hello-extended>

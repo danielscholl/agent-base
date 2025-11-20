@@ -157,16 +157,64 @@ async def my_tool(
     self,
     input: Annotated[str, Field(description="User input")]
 ) -> dict:
-    """Tool description for LLM.
-
-    Args:
-        input: Description of input parameter
-
-    Returns:
-        Structured response dict with success status
-    """
+    """Brief tool description for LLM. Include key constraints and defaults."""
     ...
 ```
+
+**Tool docstrings** should be concise for LLM consumption (see [ADR-0017](docs/decisions/0017-tool-docstring-optimization.md)):
+
+```python
+# GOOD - Simple tool (10-20 tokens)
+"""Say hello to someone. Returns greeting message."""
+
+# GOOD - Complex tool (25-40 tokens)
+"""Read text file within workspace by line range. Paths relative to workspace root. Default: first 200 lines. Returns content with truncation flag for large files."""
+
+# BAD - Verbose (200+ tokens)
+"""Read text file contents by line range with chunking support.
+
+Reads text files with UTF-8 encoding, provides pagination for large files,
+and detects binary files automatically.
+
+Args:
+    path: File path relative to workspace root
+    start_line: Starting line number (1-based, default: 1)
+    max_lines: Maximum lines to read (capped at 1000, default: 200)
+
+Returns:
+    Success response with file content:
+    {
+        "success": True,
+        "result": {
+            "path": str,
+            "start_line": int,
+            # ... 50 more lines
+        }
+    }
+
+Example:
+    >>> result = await tools.read_file("src/main.py", start_line=1, max_lines=50)
+    >>> if result["success"]:
+    ...     print(result["result"]["content"])
+"""
+```
+
+**What to include in tool docstrings:**
+- What the tool does (first sentence)
+- Critical constraints ("Paths relative to workspace root")
+- Required prerequisites ("Requires filesystem_writes_enabled")
+- Key defaults ("Default: first 200 lines")
+- ✗ Code examples (`>>> usage`)
+- ✗ Complete response format structures
+- ✗ Detailed parameter documentation (use `Field(description="...")` instead)
+- ✗ Implementation details
+- ✗ Multi-line Args/Returns/Example sections
+
+**Move comprehensive documentation to:**
+- Class docstrings (for detailed tool guides)
+- Module docstrings (for implementation notes)
+- Separate documentation files
+- Code comments (for inline complexity)
 
 **Structured responses** for all tools:
 

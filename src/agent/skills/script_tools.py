@@ -64,16 +64,7 @@ class ScriptToolset(AgentToolset):
             str | None, Field(description="Skill name, or None for all skills")
         ] = None,
     ) -> dict:
-        """List available scripts for a skill or all skills.
-
-        Returns script metadata programmatically without reading SKILL.md.
-
-        Args:
-            skill_name: Optional skill name to filter (case-insensitive)
-
-        Returns:
-            Dict with success, result (script metadata), and message
-        """
+        """List available scripts for skill or all skills. Returns script metadata with names and paths."""
         try:
             if skill_name is not None:
                 # Normalize skill name
@@ -120,17 +111,7 @@ class ScriptToolset(AgentToolset):
             str, Field(description="Script name (e.g., 'status' or 'status.py')")
         ],
     ) -> dict:
-        """Get help for a skill script by running --help.
-
-        Use this to discover what arguments and options are available before running the script.
-
-        Args:
-            skill_name: Skill name (case-insensitive)
-            script_name: Script name with or without .py extension
-
-        Returns:
-            Dict with success, result (help text), and message
-        """
+        """Get help for skill script by running --help. Use to discover arguments and options before running. Returns help text."""
         try:
             # Normalize names
             canonical_skill = normalize_skill_name(skill_name)
@@ -189,19 +170,7 @@ class ScriptToolset(AgentToolset):
         args: Annotated[list[str] | None, Field(description="Script arguments")] = None,
         json: Annotated[bool, Field(description="Request JSON output")] = True,
     ) -> dict:
-        """Execute a skill script with arguments.
-
-        Most scripts support --json for structured output. Check --help first to see available options.
-
-        Args:
-            skill_name: Skill name (case-insensitive)
-            script_name: Script name with or without .py extension
-            args: Script arguments (max 100 args, 4KB total)
-            json: Request JSON output (adds --json flag)
-
-        Returns:
-            Dict with success, result, and message
-        """
+        """Execute skill script with arguments. Most scripts support --json for structured output. Check --help first. Max 100 args. Returns script output."""
         try:
             # Normalize args
             if args is None:

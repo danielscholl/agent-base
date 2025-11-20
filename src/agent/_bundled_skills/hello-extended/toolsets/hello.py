@@ -40,17 +40,7 @@ class HelloExtended(AgentToolset):
             str, Field(description="Language code (en, es, fr, de, ja, zh)")
         ] = "en",
     ) -> dict:
-        """Generate greeting in specified language.
-
-        Supports common languages with culturally appropriate greetings.
-
-        Args:
-            name: Name to greet
-            language: Language code (en, es, fr, de, ja, zh)
-
-        Returns:
-            Dict with success, result (greeting text), and message
-        """
+        """Generate greeting in specified language (en, es, fr, de, ja, zh). Returns culturally appropriate greeting."""
         greetings = {
             "en": f"Hello, {name}!",
             "es": f"¡Hola, {name}!",
@@ -76,15 +66,7 @@ class HelloExtended(AgentToolset):
         names: Annotated[list[str], Field(description="List of names to greet")],
         language: Annotated[str, Field(description="Language code")] = "en",
     ) -> dict:
-        """Generate greetings for multiple people.
-
-        Args:
-            names: List of names to greet
-            language: Language code for all greetings
-
-        Returns:
-            Dict with success, result (list of greetings), and message
-        """
+        """Generate greetings for multiple people in same language. Returns list of greeting messages."""
         greetings = []
 
         for name in names:
