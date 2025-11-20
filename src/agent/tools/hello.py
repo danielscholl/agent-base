@@ -25,14 +25,72 @@ class HelloTools(AgentToolset):
     - Structured success/error responses
     - Type hints and validation
     - Error handling patterns
-    - Docstrings for LLM consumption
+    - Concise docstrings for LLM (comprehensive docs here)
 
-    Example:
-        >>> config = AgentConfig.from_env()
-        >>> tools = HelloTools(config)
-        >>> result = await tools.hello_world("Alice")
-        >>> print(result)
-        {'success': True, 'result': 'Hello, Alice!', 'message': 'Greeted Alice'}
+    ## Detailed Implementation Guide
+
+    ### hello_world(name: str = "World") -> dict
+    Simple demonstration tool showing basic patterns. Always succeeds.
+
+    **Response format:**
+    ```python
+    {
+        "success": True,
+        "result": "Hello, <name>! ◉‿◉",
+        "message": "Greeted <name>"
+    }
+    ```
+
+    **Usage:**
+    ```python
+    >>> config = AgentConfig.from_env()
+    >>> tools = HelloTools(config)
+    >>> result = await tools.hello_world("Alice")
+    >>> print(result["result"])
+    Hello, Alice! ◉‿◉
+    ```
+
+    **Tests:** `tests/unit/tools/test_hello_tools.py`
+
+    ### greet_user(name: str, language: str = "en") -> dict
+    Demonstrates error handling with language validation.
+
+    **Supported languages:**
+    - en: English
+    - es: Spanish
+    - fr: French
+
+    **Success response format:**
+    ```python
+    {
+        "success": True,
+        "result": "<localized greeting>",
+        "message": "Greeted <name> in <language>"
+    }
+    ```
+
+    **Error response format:**
+    ```python
+    {
+        "success": False,
+        "error": "unsupported_language",
+        "message": "Language '<language>' not supported. Use: en, es, fr"
+    }
+    ```
+
+    **Usage:**
+    ```python
+    >>> tools = HelloTools(config)
+    >>> result = await tools.greet_user("Alice", "es")
+    >>> print(result["result"])
+    ¡Hola, Alice! ◉‿◉
+
+    >>> result = await tools.greet_user("Bob", "de")
+    >>> print(result["error"])
+    unsupported_language
+    ```
+
+    **Tests:** `tests/unit/tools/test_hello_tools.py`
     """
 
     def __init__(self, config: AgentConfig):
@@ -54,28 +112,7 @@ class HelloTools(AgentToolset):
     async def hello_world(
         self, name: Annotated[str, Field(description="Name to greet")] = "World"
     ) -> dict:
-        """Say hello to someone.
-
-        This is a simple demonstration tool that shows the basic patterns
-        for tool implementation. It always succeeds and returns a greeting.
-
-        Args:
-            name: Name of person to greet (default: "World")
-
-        Returns:
-            Success response with greeting message in format:
-            {
-                "success": True,
-                "result": "Hello, <name>!",
-                "message": "Greeted <name>"
-            }
-
-        Example:
-            >>> tools = HelloTools(config)
-            >>> result = await tools.hello_world("Alice")
-            >>> print(result["result"])
-            Hello, Alice!
-        """
+        """Say hello to someone. Returns greeting message."""
         greeting = f"Hello, {name}! ◉‿◉"
         return self._create_success_response(result=greeting, message=f"Greeted {name}")
 
@@ -84,48 +121,7 @@ class HelloTools(AgentToolset):
         name: Annotated[str, Field(description="User's name")],
         language: Annotated[str, Field(description="Language code (en, es, fr)")] = "en",
     ) -> dict:
-        """Greet user in different languages.
-
-        This tool demonstrates error handling by validating the language
-        parameter and returning structured error responses when invalid.
-
-        Supported languages:
-        - en: English
-        - es: Spanish
-        - fr: French
-
-        Args:
-            name: User's name
-            language: Language code (en, es, fr) - defaults to "en"
-
-        Returns:
-            Success response with localized greeting, or error response if
-            language not supported.
-
-            Success format:
-            {
-                "success": True,
-                "result": "<greeting in requested language>",
-                "message": "Greeted <name> in <language>"
-            }
-
-            Error format:
-            {
-                "success": False,
-                "error": "unsupported_language",
-                "message": "Language '<language>' not supported. Use: en, es, fr"
-            }
-
-        Example:
-            >>> tools = HelloTools(config)
-            >>> result = await tools.greet_user("Alice", "es")
-            >>> print(result["result"])
-            ¡Hola, Alice!
-
-            >>> result = await tools.greet_user("Bob", "de")
-            >>> print(result["error"])
-            unsupported_language
-        """
+        """Greet user in different languages (en, es, fr). Returns localized greeting or error if language unsupported."""
         greetings = {
             "en": f"Hello, {name}! ◉‿◉",
             "es": f"¡Hola, {name}! ◉‿◉",

@@ -1320,3 +1320,66 @@ class TestResponseFormatConsistency:
                 assert "result" in result
             else:
                 assert "error" in result
+
+
+# ============================================================================
+# Token Efficiency Tests (ADR-0017)
+# ============================================================================
+
+
+@pytest.mark.unit
+@pytest.mark.tools
+class TestFileSystemToolsTokenEfficiency:
+    """Test FileSystemTools docstrings follow optimization pattern (ADR-0017)."""
+
+    def test_filesystem_tools_docstrings_are_concise(self, fs_tools_readonly):
+        """Test tool docstrings are optimized for LLM consumption."""
+        from agent.utils.tokens import count_tokens
+
+        # FileSystemTools are complex tools with security constraints
+        # Target: 25-40 tokens per tool, max 50 tokens
+        for tool in fs_tools_readonly.get_tools():
+            docstring = tool.__doc__ or ""
+            token_count = count_tokens(docstring)
+
+            assert token_count <= 50, (
+                f"{tool.__name__} has {token_count} tokens, "
+                f"exceeds complex tool limit of 50. See ADR-0017."
+            )
+
+    def test_filesystem_tools_docstrings_no_code_examples(self, fs_tools_readonly):
+        """Test docstrings don't contain code examples (ADR-0017)."""
+        for tool in fs_tools_readonly.get_tools():
+            docstring = tool.__doc__ or ""
+
+            # No code examples
+            assert ">>>" not in docstring, (
+                f"{tool.__name__} contains code examples. " f"Move to class docstring per ADR-0017."
+            )
+
+            # No multi-line Args/Returns/Example sections
+            assert "Args:" not in docstring
+            assert "Returns:" not in docstring
+            assert "Example:" not in docstring
+
+    def test_filesystem_tools_mention_workspace(self, fs_tools_readonly):
+        """Test filesystem tools mention workspace (security context)."""
+        for tool in fs_tools_readonly.get_tools():
+            docstring = tool.__doc__ or ""
+
+            # All filesystem tools should mention workspace for security clarity
+            assert (
+                "workspace" in docstring.lower()
+            ), f"{tool.__name__} should mention workspace to clarify security sandbox"
+
+    def test_write_tools_mention_requirements(self, fs_tools_readonly):
+        """Test write operations mention filesystem_writes_enabled requirement."""
+        write_tools = ["write_file", "apply_text_edit", "create_directory"]
+
+        for tool in fs_tools_readonly.get_tools():
+            if tool.__name__ in write_tools:
+                docstring = tool.__doc__ or ""
+
+                assert (
+                    "require" in docstring.lower() or "enabled" in docstring.lower()
+                ), f"{tool.__name__} should mention filesystem_writes_enabled requirement"

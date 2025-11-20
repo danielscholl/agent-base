@@ -149,7 +149,36 @@ class TestHelloTools:
         assert "Say hello" in hello_tools.hello_world.__doc__
 
         assert hello_tools.greet_user.__doc__ is not None
-        assert "different languages" in hello_tools.greet_user.__doc__
+        assert "language" in hello_tools.greet_user.__doc__.lower()
+
+    def test_hello_tools_docstrings_are_concise(self, hello_tools):
+        """Test tool docstrings are optimized for LLM consumption (ADR-0017)."""
+        from agent.utils.tokens import count_tokens
+
+        # HelloTools are simple demonstration tools - should be <25 tokens
+        for tool in hello_tools.get_tools():
+            docstring = tool.__doc__ or ""
+            token_count = count_tokens(docstring)
+
+            assert token_count <= 25, (
+                f"{tool.__name__} has {token_count} tokens, "
+                f"exceeds simple tool limit of 25. See ADR-0017."
+            )
+
+    def test_hello_tools_docstrings_no_code_examples(self, hello_tools):
+        """Test docstrings don't contain code examples (ADR-0017)."""
+        for tool in hello_tools.get_tools():
+            docstring = tool.__doc__ or ""
+
+            # No code examples
+            assert ">>>" not in docstring, (
+                f"{tool.__name__} contains code examples. " f"Move to class docstring per ADR-0017."
+            )
+
+            # No multi-line Args/Returns/Example sections
+            assert "Args:" not in docstring
+            assert "Returns:" not in docstring
+            assert "Example:" not in docstring
 
     def test_response_format_consistency(self, hello_tools):
         """Test all responses follow consistent format."""

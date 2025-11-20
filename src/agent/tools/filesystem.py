@@ -224,36 +224,7 @@ class FileSystemTools(AgentToolset):
     async def get_path_info(
         self, path: Annotated[str, Field(description="Path relative to workspace root")] = "."
     ) -> dict:
-        """Get metadata about a path without reading contents.
-
-        Safe, read-only operation that queries file/directory metadata.
-
-        Args:
-            path: Path relative to workspace root (default: "." for workspace root)
-
-        Returns:
-            Success response with metadata:
-            {
-                "success": True,
-                "result": {
-                    "exists": bool,
-                    "type": "file" | "directory" | "symlink" | "other" | None,
-                    "size": int | None,  # bytes, only for files
-                    "modified": float | None,  # Unix timestamp
-                    "is_readable": bool,
-                    "is_writable": bool,
-                    "absolute_path": str  # resolved path
-                },
-                "message": "..."
-            }
-
-            Or error response if path validation fails.
-
-        Example:
-            >>> result = await tools.get_path_info("src/main.py")
-            >>> if result["success"]:
-            ...     print(f"File size: {result['result']['size']} bytes")
-        """
+        """Get file/directory metadata within workspace. Returns exists, type, size, permissions, timestamps."""
         # Resolve and validate path
         resolved = self._resolve_path(path)
         if isinstance(resolved, dict):
@@ -339,38 +310,7 @@ class FileSystemTools(AgentToolset):
             bool, Field(description="Include hidden files (dotfiles)")
         ] = False,
     ) -> dict:
-        """List directory contents with metadata.
-
-        Args:
-            path: Directory path relative to workspace root
-            recursive: If True, walk subdirectories
-            max_entries: Maximum number of entries to return (cap at 500)
-            include_hidden: If True, include files starting with '.'
-
-        Returns:
-            Success response with entries list:
-            {
-                "success": True,
-                "result": {
-                    "entries": [
-                        {
-                            "name": str,
-                            "relative_path": str,
-                            "type": "file" | "directory",
-                            "size": int | None
-                        },
-                        ...
-                    ],
-                    "truncated": bool  # True if more entries exist
-                },
-                "message": "..."
-            }
-
-        Example:
-            >>> result = await tools.list_directory("src", recursive=True)
-            >>> for entry in result["result"]["entries"]:
-            ...     print(f"{entry['type']}: {entry['relative_path']}")
-        """
+        """List directory contents within workspace with metadata. Supports recursive traversal. Default: 200 entries max, excludes hidden files. Returns entries with type and size."""
         # Cap max_entries at 500
         max_entries = min(max_entries, 500)
 
@@ -511,40 +451,7 @@ class FileSystemTools(AgentToolset):
         start_line: Annotated[int, Field(description="Starting line number (1-based)")] = 1,
         max_lines: Annotated[int, Field(description="Maximum lines to read")] = 200,
     ) -> dict:
-        """Read text file contents by line range with chunking support.
-
-        Reads text files with UTF-8 encoding, provides pagination for large files,
-        and detects binary files automatically.
-
-        Args:
-            path: File path relative to workspace root
-            start_line: Starting line number (1-based, default: 1)
-            max_lines: Maximum lines to read (capped at 1000, default: 200)
-
-        Returns:
-            Success response with file content:
-            {
-                "success": True,
-                "result": {
-                    "path": str,
-                    "start_line": int,
-                    "end_line": int,
-                    "total_lines": int | None,
-                    "truncated": bool,
-                    "next_start_line": int | None,
-                    "content": str,
-                    "encoding_errors": bool
-                },
-                "message": "..."
-            }
-
-            Or error response for validation/access errors.
-
-        Example:
-            >>> result = await tools.read_file("src/main.py", start_line=1, max_lines=50)
-            >>> if result["success"]:
-            ...     print(result["result"]["content"])
-        """
+        """Read text file within workspace by line range. Paths relative to workspace root. Default: first 200 lines. Returns content with truncation flag for large files."""
         # Cap max_lines at 1000
         max_lines = min(max_lines, 1000)
 
@@ -660,47 +567,7 @@ class FileSystemTools(AgentToolset):
         use_regex: Annotated[bool, Field(description="Enable regex mode")] = False,
         case_sensitive: Annotated[bool, Field(description="Case-sensitive search")] = True,
     ) -> dict:
-        """Search for text patterns across files.
-
-        Supports literal string search (default, safe) and regex search (opt-in).
-        Automatically skips binary files and respects max_matches limit.
-
-        Args:
-            query: Search pattern (literal string or regex pattern)
-            path: Directory or file to search (default: "." for workspace root)
-            glob: File pattern to match (default: "**/*" for all files)
-            max_matches: Maximum matches to return (default: 50)
-            use_regex: Enable regex mode (default: False, literal search)
-            case_sensitive: Case-sensitive search (default: True)
-
-        Returns:
-            Success response with matches:
-            {
-                "success": True,
-                "result": {
-                    "query": str,
-                    "use_regex": bool,
-                    "files_searched": int,
-                    "matches": [
-                        {
-                            "file": str,
-                            "line": int,
-                            "snippet": str,
-                            "match_start": int,
-                            "match_end": int
-                        },
-                        ...
-                    ],
-                    "truncated": bool
-                },
-                "message": "..."
-            }
-
-        Example:
-            >>> result = await tools.search_text("TODO", path="src", glob="*.py")
-            >>> for match in result["result"]["matches"]:
-            ...     print(f"{match['file']}:{match['line']}: {match['snippet']}")
-        """
+        """Search text patterns across files in workspace. Supports literal (default) and regex modes. Case-sensitive by default. Max 50 matches. Returns matches with file, line, snippet."""
 
         # Resolve and validate path
         resolved = self._resolve_path(path)
@@ -850,37 +717,7 @@ class FileSystemTools(AgentToolset):
         content: Annotated[str, Field(description="Content to write")],
         mode: Annotated[str, Field(description="Write mode: create, overwrite, append")] = "create",
     ) -> dict:
-        """Write file with safety checks and mode control.
-
-        Guarded write operation that requires filesystem_writes_enabled configuration.
-        Supports three modes: create (new files only), overwrite (existing files),
-        and append (add to end of existing or create new).
-
-        Args:
-            path: File path relative to workspace root
-            content: Content to write to file
-            mode: Write mode - "create", "overwrite", or "append" (default: "create")
-
-        Returns:
-            Success response with write statistics:
-            {
-                "success": True,
-                "result": {
-                    "path": str,
-                    "bytes_written": int,
-                    "mode": str,
-                    "existed_before": bool
-                },
-                "message": "..."
-            }
-
-            Or error response for validation/permission errors.
-
-        Example:
-            >>> result = await tools.write_file("output.txt", "Hello, World!", mode="create")
-            >>> print(result["result"]["bytes_written"])
-            13
-        """
+        """Write file within workspace with safety checks. Requires filesystem_writes_enabled. Supports create/overwrite/append modes. Returns bytes written and mode used."""
         # Check if writes are enabled
         if not self.config.filesystem_writes_enabled:
             return self._create_error_response(
@@ -961,42 +798,7 @@ class FileSystemTools(AgentToolset):
         replacement_text: Annotated[str, Field(description="Replacement text")],
         replace_all: Annotated[bool, Field(description="Replace all occurrences")] = False,
     ) -> dict:
-        """Apply surgical text edits with safety checks.
-
-        Performs exact text replacement with safety guardrails. Requires exact match
-        of expected_text - no fuzzy matching or whitespace normalization. Uses atomic
-        write (temp file + rename) to prevent corruption.
-
-        Args:
-            path: File path relative to workspace root
-            expected_text: Exact text to find (must be non-empty and match exactly)
-            replacement_text: Replacement text (can be empty for deletion)
-            replace_all: If False, error on multiple matches; if True, replace all
-
-        Returns:
-            Success response with edit statistics:
-            {
-                "success": True,
-                "result": {
-                    "path": str,
-                    "bytes_written": int,
-                    "replacements": int,
-                    "original_size": int,
-                    "new_size": int,
-                    "lines_changed": int
-                },
-                "message": "..."
-            }
-
-        Example:
-            >>> result = await tools.apply_text_edit(
-            ...     "config.py",
-            ...     "DEBUG = True",
-            ...     "DEBUG = False"
-            ... )
-            >>> print(result["result"]["replacements"])
-            1
-        """
+        """Apply exact text replacement in file within workspace. Requires filesystem_writes_enabled and exact match. Use replace_all for multiple occurrences. Returns replacement count and size delta."""
         # Check if writes are enabled
         if not self.config.filesystem_writes_enabled:
             return self._create_error_response(
@@ -1132,32 +934,7 @@ class FileSystemTools(AgentToolset):
         path: Annotated[str, Field(description="Directory path relative to workspace")],
         parents: Annotated[bool, Field(description="Create parent directories if needed")] = True,
     ) -> dict:
-        """Create directory with optional parent creation.
-
-        Creates directories for organizing agent-generated outputs. Operation is
-        idempotent (success if directory already exists). Requires filesystem_writes_enabled.
-
-        Args:
-            path: Directory path relative to workspace root
-            parents: If True, create parent directories as needed (like mkdir -p)
-
-        Returns:
-            Success response with creation details:
-            {
-                "success": True,
-                "result": {
-                    "path": str,
-                    "created": bool,  # False if already existed
-                    "parents_created": int
-                },
-                "message": "..."
-            }
-
-        Example:
-            >>> result = await tools.create_directory("outputs/logs", parents=True)
-            >>> print(result["result"]["created"])
-            True
-        """
+        """Create directory within workspace with optional parent creation. Requires filesystem_writes_enabled. Idempotent (success if exists). Returns created flag."""
         # Check if writes are enabled
         if not self.config.filesystem_writes_enabled:
             return self._create_error_response(
