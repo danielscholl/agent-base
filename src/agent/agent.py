@@ -108,7 +108,9 @@ class Agent:
                     if skills_config.bundled_dir is None:
                         # Use importlib.resources to find bundled skills in package
                         try:
-                            bundled_skills_path = resources.files("agent").joinpath("_bundled_skills")
+                            bundled_skills_path = resources.files("agent").joinpath(
+                                "_bundled_skills"
+                            )
                             skills_config.bundled_dir = str(bundled_skills_path)
                             logger.debug(f"Auto-detected bundled_dir: {skills_config.bundled_dir}")
                         except Exception as e:

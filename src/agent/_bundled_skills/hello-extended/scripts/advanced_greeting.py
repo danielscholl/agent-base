@@ -27,7 +27,7 @@ import click
 )
 @click.option("--time-aware", is_flag=True, help="Include time-based greeting")
 @click.option("--json", "json_output", is_flag=True, help="Output as JSON")
-def main(name: str, style: str, time_aware: bool, json_output: bool):
+def main(name: str, style: str, time_aware: bool, json_output: bool) -> None:
     """Generate advanced personalized greeting.
 
     Examples:
