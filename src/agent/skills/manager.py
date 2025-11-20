@@ -57,9 +57,11 @@ class SkillManager:
     ) -> list[SkillRegistryEntry]:
         """Install skill(s) from a git repository.
 
-        Supports both single-skill and monorepo structures:
+        Supports multiple repository structures:
         - Single-skill: SKILL.md in repository root
+        - Single-skill subdirectory: SKILL.md in skill/ subdirectory
         - Monorepo: Multiple subdirectories each containing SKILL.md
+        - Marketplace: plugins/{plugin-name}/skills/{skill-name}/SKILL.md (Claude Code compatible)
 
         Args:
             git_url: Git repository URL
@@ -69,7 +71,7 @@ class SkillManager:
             trusted: Mark skill as trusted (skip confirmation prompt)
 
         Returns:
-            List of SkillRegistryEntry for installed skills (single-skill: 1 entry, monorepo: multiple)
+            List of SkillRegistryEntry for installed skills (single-skill: 1 entry, monorepo/marketplace: multiple)
 
         Raises:
             SkillError: If installation fails
@@ -104,6 +106,7 @@ class SkillManager:
             # Detect repository structure (priority order)
             root_manifest = temp_dir / "SKILL.md"
             skill_subdir_manifest = temp_dir / "skill" / "SKILL.md"
+            plugins_dir = temp_dir / "plugins"
 
             if root_manifest.exists():
                 # Scenario 1: Single-skill repository (SKILL.md in root)
@@ -119,12 +122,26 @@ class SkillManager:
                 return self._install_single_skill(
                     skill_dir, git_url, commit_sha, branch, tag, trusted, skill_name
                 )
-            else:
-                # Scenario 3: Monorepo - scan for subdirectories with SKILL.md
-                logger.info("Scanning for monorepo structure (multiple skills)")
-                return self._install_monorepo_skills(
-                    temp_dir, git_url, commit_sha, branch, tag, trusted
-                )
+            elif plugins_dir.exists() and plugins_dir.is_dir():
+                # Scenario 3: Claude Code marketplace structure
+                # Check if plugins/ contains subdirectories with skills/ subdirectory
+                has_marketplace_structure = False
+                for item in plugins_dir.iterdir():
+                    if item.is_dir() and (item / "skills").is_dir():
+                        has_marketplace_structure = True
+                        break
+
+                if has_marketplace_structure:
+                    logger.info("Detected Claude Code marketplace structure")
+                    return self._install_marketplace_plugins(
+                        temp_dir, git_url, commit_sha, branch, tag, trusted
+                    )
+
+            # Scenario 4: Monorepo - scan for subdirectories with SKILL.md
+            logger.info("Scanning for monorepo structure (multiple skills)")
+            return self._install_monorepo_skills(
+                temp_dir, git_url, commit_sha, branch, tag, trusted
+            )
 
         except Exception as e:
             logger.error(f"Failed to install skill: {e}")
@@ -290,10 +307,115 @@ class SkillManager:
 
         return installed_entries
 
+    def _install_marketplace_plugins(
+        self,
+        temp_dir: Path,
+        git_url: str,
+        commit_sha: str,
+        branch: str | None,
+        tag: str | None,
+        trusted: bool,
+    ) -> list[SkillRegistryEntry]:
+        """Install skills from Claude Code marketplace structure.
+
+        Scans plugins/{plugin-name}/skills/{skill-name}/SKILL.md pattern
+        and installs each skill found.
+
+        Args:
+            temp_dir: Temporary directory with cloned repo
+            git_url: Git repository URL
+            commit_sha: Commit SHA
+            branch: Git branch used
+            tag: Git tag used
+            trusted: Trusted flag
+
+        Returns:
+            List of SkillRegistryEntry for all installed skills
+        """
+        plugins_dir = temp_dir / "plugins"
+        skill_dirs = []
+
+        # Scan marketplace structure: plugins/*/skills/*/SKILL.md
+        for plugin_dir in plugins_dir.iterdir():
+            if not plugin_dir.is_dir() or plugin_dir.name.startswith("."):
+                continue
+
+            skills_subdir = plugin_dir / "skills"
+            if not skills_subdir.exists() or not skills_subdir.is_dir():
+                continue
+
+            # Scan for skills within this plugin's skills/ directory
+            for skill_dir in skills_subdir.iterdir():
+                if skill_dir.is_dir() and not skill_dir.name.startswith("."):
+                    skill_md = skill_dir / "SKILL.md"
+                    if skill_md.exists() and skill_md.is_file():
+                        skill_dirs.append(skill_dir)
+
+        if not skill_dirs:
+            raise SkillError(
+                "No skills found in marketplace structure. "
+                "Expected plugins/{plugin}/skills/{skill}/SKILL.md"
+            )
+
+        logger.info(f"Found {len(skill_dirs)} skills in marketplace structure")
+
+        # Install each skill
+        installed_entries = []
+        for skill_dir in skill_dirs:
+            try:
+                # Validate SKILL.md
+                manifest_path = skill_dir / "SKILL.md"
+                validate_manifest(manifest_path)
+
+                # Parse manifest
+                manifest = parse_skill_manifest(skill_dir)
+                canonical_name = normalize_skill_name(manifest.name)
+
+                # Check if already installed
+                if self.registry.exists(canonical_name):
+                    logger.warning(f"Skill '{canonical_name}' already installed, skipping")
+                    continue
+
+                # Copy skill directory to final location
+                final_path = self.skills_dir / canonical_name
+                if final_path.exists():
+                    shutil.rmtree(final_path)
+
+                shutil.copytree(skill_dir, final_path)
+
+                # Register skill
+                entry = SkillRegistryEntry(
+                    name=manifest.name,
+                    name_canonical=canonical_name,
+                    git_url=git_url,
+                    commit_sha=commit_sha,
+                    branch=branch,
+                    tag=tag,
+                    installed_path=final_path,
+                    trusted=trusted,
+                    installed_at=datetime.now(),
+                )
+
+                self.registry.register(entry)
+                installed_entries.append(entry)
+
+                logger.info(f"Successfully installed skill '{manifest.name}' at {final_path}")
+
+            except Exception as e:
+                logger.error(f"Failed to install skill from {skill_dir.name}: {e}")
+                # Continue with other skills
+                continue
+
+        if not installed_entries:
+            raise SkillError("No skills were successfully installed from marketplace")
+
+        return installed_entries
+
     def update(self, skill_name: str, confirm: bool = True) -> SkillRegistryEntry:
         """Update a skill to the latest version.
 
-        Uses clean update strategy (git reset --hard) - local changes are discarded.
+        Uses uninstall + reinstall strategy to ensure clean updates.
+        Works with all repository structures (single-skill, monorepo, marketplace).
 
         Args:
             skill_name: Skill name to update
@@ -312,36 +434,37 @@ class SkillManager:
         if entry.git_url is None:
             raise SkillError(f"Skill '{skill_name}' is a bundled skill and cannot be updated")
 
+        # Save installation parameters
+        git_url = entry.git_url
+        branch = entry.branch
+        tag = entry.tag
+        trusted = entry.trusted
+        old_sha = entry.commit_sha
+
         try:
-            skill_path = entry.installed_path
+            logger.info(f"Updating skill '{skill_name}' (uninstall + reinstall)")
 
-            # Open repository
-            repo = Repo(skill_path)
+            # Step 1: Remove existing installation
+            self.remove(skill_name)
 
-            # Get current SHA
-            old_sha = pin_commit_sha(skill_path)
+            # Step 2: Reinstall from original source (use entry.name to preserve original casing)
+            entries = self.install(
+                git_url=git_url, branch=branch, tag=tag, trusted=trusted, skill_name=entry.name
+            )
 
-            # Pull latest changes (clean update)
-            origin = repo.remotes.origin
-            origin.fetch()
+            # Find the updated entry (should be first for single-skill, or match name for monorepo)
+            updated_entry = next((e for e in entries if e.name_canonical == canonical_name), None)
+            if not updated_entry:
+                raise SkillError(f"Skill '{skill_name}' not found after reinstall")
 
-            # Reset to remote branch (discard local changes)
-            if entry.branch:
-                repo.git.reset("--hard", f"origin/{entry.branch}")
-            else:
-                repo.git.reset("--hard", "origin/HEAD")
+            new_sha = updated_entry.commit_sha
 
-            # Get new SHA
-            new_sha = pin_commit_sha(skill_path)
-
-            # Update registry
-            self.registry.update_sha(canonical_name, new_sha)
-
-            # Get updated entry
-            updated_entry = self.registry.get(canonical_name)
+            # Format SHAs for logging (should always exist for git skills, but handle None for type safety)
+            old_sha_short = old_sha[:8] if old_sha else "unknown"
+            new_sha_short = new_sha[:8] if new_sha else "unknown"
 
             logger.info(
-                f"Successfully updated skill '{skill_name}' from {old_sha[:8]} to {new_sha[:8]}"
+                f"Successfully updated skill '{skill_name}' from {old_sha_short} to {new_sha_short}"
             )
             return updated_entry
 

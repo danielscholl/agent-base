@@ -98,9 +98,12 @@ class TestSkillManager:
             manager.install("https://github.com/example/test-skill")
 
     @patch("agent.skills.manager.Repo")
+    @patch("agent.skills.manager.parse_skill_manifest")
     @patch("agent.skills.manager.pin_commit_sha")
-    def test_update_success(self, mock_pin_sha, mock_repo_class, temp_skills_dir):
-        """Should update skill to latest version."""
+    def test_update_success(
+        self, mock_pin_sha, mock_parse_manifest, mock_repo_class, temp_skills_dir
+    ):
+        """Should update skill using uninstall + reinstall strategy."""
         # Setup existing installation
         skill_path = temp_skills_dir / "test-skill"
         skill_path.mkdir(parents=True)
@@ -112,20 +115,33 @@ class TestSkillManager:
             commit_sha="old123",
             branch="main",
             installed_path=skill_path,
+            trusted=True,
         )
 
         manager = SkillManager(skills_dir=temp_skills_dir)
         manager.registry.register(entry)
 
-        # Setup mocks
+        # Setup mocks for reinstall
         mock_repo = MagicMock()
-        mock_repo_class.return_value = mock_repo
-        mock_pin_sha.side_effect = ["old123", "new456"]  # old, then new
+        mock_repo_class.clone_from.return_value = mock_repo
+        mock_pin_sha.return_value = "new456"
 
-        updated = manager.update("test-skill")
+        mock_manifest = Mock()
+        mock_manifest.name = "test-skill"
+        mock_parse_manifest.return_value = mock_manifest
+
+        # Create mock SKILL.md for reinstall
+        temp_clone = temp_skills_dir / ".temp-1234567890.0"
+        temp_clone.mkdir(parents=True)
+        (temp_clone / "SKILL.md").write_text("---\nname: test-skill\ndescription: test\n---\n")
+
+        with patch("agent.skills.manager.datetime") as mock_dt:
+            mock_dt.now.return_value.timestamp.return_value = 1234567890.0
+            updated = manager.update("test-skill")
 
         assert updated.commit_sha == "new456"
-        mock_repo.git.reset.assert_called_once()
+        assert updated.git_url == "https://github.com/example/test-skill"
+        assert updated.branch == "main"
 
     def test_update_bundled_skill_fails(self, temp_skills_dir):
         """Should reject updating bundled skills (no git_url)."""
@@ -272,3 +288,84 @@ class TestInstallWithBranchAndTag:
         # Verify clone_from was called with branch argument
         call_kwargs = mock_repo_class.clone_from.call_args[1]
         assert call_kwargs["branch"] == "develop"
+
+
+class TestMarketplaceStructure:
+    """Test Claude Code marketplace structure support."""
+
+    @patch("agent.skills.manager.Repo")
+    @patch("agent.skills.manager.parse_skill_manifest")
+    @patch("agent.skills.manager.pin_commit_sha")
+    def test_install_marketplace_structure(
+        self, mock_pin_sha, mock_parse_manifest, mock_repo_class, temp_skills_dir
+    ):
+        """Should detect and install from Claude Code marketplace structure."""
+        # Setup mocks
+        mock_repo = MagicMock()
+        mock_repo_class.clone_from.return_value = mock_repo
+        mock_pin_sha.return_value = "abc123def456"
+
+        # Create mock marketplace structure in temp directory
+        temp_clone = temp_skills_dir / ".temp-1234567890.0"
+        plugins_dir = temp_clone / "plugins"
+
+        # Create two plugins with skills
+        plugin1_dir = plugins_dir / "agent-tools"
+        plugin1_skills = plugin1_dir / "skills" / "web"
+        plugin1_skills.mkdir(parents=True)
+        (plugin1_skills / "SKILL.md").write_text("---\nname: web\ndescription: Web tools\n---\n")
+        (plugin1_skills / "scripts").mkdir()
+        (plugin1_dir / "plugin.json").write_text('{"name": "agent-tools"}')
+
+        plugin2_dir = plugins_dir / "kalshi-markets"
+        plugin2_skills = plugin2_dir / "skills" / "kalshi-markets"
+        plugin2_skills.mkdir(parents=True)
+        (plugin2_skills / "SKILL.md").write_text(
+            "---\nname: kalshi-markets\ndescription: Kalshi API\n---\n"
+        )
+        (plugin2_skills / "scripts").mkdir()
+        (plugin2_dir / "plugin.json").write_text('{"name": "kalshi-markets"}')
+
+        # Mock manifests for both skills
+        mock_manifest1 = Mock()
+        mock_manifest1.name = "web"
+        mock_manifest2 = Mock()
+        mock_manifest2.name = "kalshi-markets"
+        mock_parse_manifest.side_effect = [mock_manifest1, mock_manifest2]
+
+        manager = SkillManager(skills_dir=temp_skills_dir)
+
+        with patch("agent.skills.manager.datetime") as mock_dt:
+            mock_dt.now.return_value.timestamp.return_value = 1234567890.0
+            entries = manager.install(
+                "https://github.com/danielscholl/agent-skills", branch="marketplace", trusted=True
+            )
+
+        # Should install both skills (order-independent)
+        assert isinstance(entries, list)
+        assert len(entries) == 2
+        skill_names = {e.name for e in entries}
+        assert skill_names == {"web", "kalshi-markets"}
+        assert all(e.git_url == "https://github.com/danielscholl/agent-skills" for e in entries)
+
+    @patch("agent.skills.manager.Repo")
+    @patch("agent.skills.manager.pin_commit_sha")
+    def test_marketplace_no_skills_found(self, mock_pin_sha, mock_repo_class, temp_skills_dir):
+        """Should raise error if plugins/ exists but no skills found."""
+        mock_repo = MagicMock()
+        mock_repo_class.clone_from.return_value = mock_repo
+        mock_pin_sha.return_value = "abc123"
+
+        # Create marketplace structure but no SKILL.md files
+        temp_clone = temp_skills_dir / ".temp-1234567890.0"
+        plugins_dir = temp_clone / "plugins"
+        plugin_dir = plugins_dir / "empty-plugin"
+        skills_dir = plugin_dir / "skills"
+        skills_dir.mkdir(parents=True)
+
+        manager = SkillManager(skills_dir=temp_skills_dir)
+
+        with patch("agent.skills.manager.datetime") as mock_dt:
+            mock_dt.now.return_value.timestamp.return_value = 1234567890.0
+            with pytest.raises(SkillError, match="No skills found in marketplace"):
+                manager.install("https://github.com/example/empty", trusted=True)
