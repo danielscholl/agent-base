@@ -19,7 +19,9 @@ import logging
 import time
 import uuid
 from collections.abc import Awaitable, Callable
-from typing import Any, cast
+
+# TYPE_CHECKING import for forward reference
+from typing import TYPE_CHECKING, Any, cast
 
 from agent_framework import (
     AgentRunContext,
@@ -28,9 +30,6 @@ from agent_framework import (
 )
 
 from agent.config import AgentConfig
-
-# TYPE_CHECKING import for forward reference
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from agent.trace_logger import TraceLogger
