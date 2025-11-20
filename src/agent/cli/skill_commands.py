@@ -51,7 +51,8 @@ def manage_skills() -> None:
 
         # Get all skills (bundled + plugins)
         bundled_dir = settings.skills.bundled_dir
-        if bundled_dir is None:
+        if bundled_dir is None or not Path(bundled_dir).exists():
+            # Auto-detect if not configured or if configured path doesn't exist
             _, bundled_dir = _get_repo_paths()
 
         # Scan bundled skills
@@ -185,8 +186,8 @@ def show_skills() -> None:
 
         # Get skills directories
         bundled_dir = settings.skills.bundled_dir
-        if bundled_dir is None:
-            # Auto-detect
+        if bundled_dir is None or not Path(bundled_dir).exists():
+            # Auto-detect if not configured or if configured path doesn't exist
             _, bundled_dir = _get_repo_paths()
 
         # Scan bundled skills
@@ -517,7 +518,8 @@ def enable_skill(name: str | None = None) -> None:
         if name is None:
             # Get bundled skills directory to scan for disabled bundled skills
             bundled_dir = settings.skills.bundled_dir
-            if bundled_dir is None:
+            if bundled_dir is None or not Path(bundled_dir).exists():
+                # Auto-detect if not configured or if configured path doesn't exist
                 _, bundled_dir = _get_repo_paths()
 
             # Scan for bundled skills
@@ -634,7 +636,8 @@ def disable_skill(name: str | None = None) -> None:
         if name is None:
             # Get bundled skills directory
             bundled_dir = settings.skills.bundled_dir
-            if bundled_dir is None:
+            if bundled_dir is None or not Path(bundled_dir).exists():
+                # Auto-detect if not configured or if configured path doesn't exist
                 _, bundled_dir = _get_repo_paths()
 
             # Scan for enabled bundled skills
