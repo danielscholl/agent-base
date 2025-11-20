@@ -140,11 +140,20 @@ class TestCLIExecution:
         self.runner = CliRunner()
 
     def test_version_flag(self):
-        """Test --version flag displays version."""
+        """Test --version flag displays version from package metadata."""
         result = self.runner.invoke(app, ["--version"])
         # Should exit successfully and show version
         assert result.exit_code == 0
-        assert "version" in result.stdout.lower() or result.stdout.strip()
+        assert "version" in result.stdout.lower()
+        # Verify it's not the old hardcoded version
+        assert "0.1.0" not in result.stdout
+        # Should show actual package version from pyproject.toml
+        # Don't hardcode exact version, just verify it's not empty and looks like a version
+        output = result.stdout.strip()
+        assert output  # Not empty
+        # Should contain something that looks like a version number
+
+        assert re.search(r"\d+\.\d+\.\d+", output), f"Expected version number in: {output}"
 
     def test_check_flag_runs(self):
         """Test --check flag executes."""
