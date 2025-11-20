@@ -23,10 +23,6 @@ from agent.config import (
 )
 
 # Optional import for model checking
-try:
-    import requests
-except ImportError:
-    requests = None  # type: ignore[assignment]
 
 # Timeout constants for Docker operations
 DOCKER_ENABLE_TIMEOUT = 30  # seconds
