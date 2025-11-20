@@ -113,7 +113,7 @@ class Agent:
                             )
                             skills_config.bundled_dir = str(bundled_skills_path)
                             logger.debug(f"Auto-detected bundled_dir: {skills_config.bundled_dir}")
-                        except Exception as e:
+                        except (ModuleNotFoundError, AttributeError, TypeError) as e:
                             logger.warning(f"Could not auto-detect bundled_dir: {e}")
 
                     skill_loader = SkillLoader(self.config)

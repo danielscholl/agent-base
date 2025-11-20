@@ -36,7 +36,12 @@ def _get_repo_paths() -> tuple[Path, str]:
         bundled_dir = str(bundled_skills_path)
         # For repo_root, go up from the package location
         repo_root = Path(str(bundled_skills_path)).resolve().parents[2]
-    except Exception:
+    except (ModuleNotFoundError, AttributeError, TypeError) as exc:
+        logger.warning(
+            "Could not locate bundled skills via importlib.resources: %s. "
+            "Falling back to file-based detection.",
+            exc,
+        )
         # Fall back to file-based detection (development mode)
         repo_root = Path(__file__).resolve().parents[3]
         bundled_dir = str(repo_root / "src" / "agent" / "_bundled_skills")
