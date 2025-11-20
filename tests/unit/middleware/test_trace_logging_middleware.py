@@ -481,14 +481,14 @@ class TestMiddlewareTraceLogging:
         # Mock agent with chat_options
         chat_options = Mock()
         chat_options.instructions = "You are a helpful assistant."
-        
+
         # Mock tools
         tool1 = Mock()
         tool1.to_dict = lambda: {"name": "tool1", "description": "First tool"}
         tool2 = Mock()
         tool2.to_dict = lambda: {"name": "tool2", "description": "Second tool"}
         chat_options.tools = [tool1, tool2]
-        
+
         agent = Mock()
         agent.chat_options = chat_options
 
@@ -515,7 +515,7 @@ class TestMiddlewareTraceLogging:
         assert request_entry["system_instructions"] == "You are a helpful assistant."
         assert "system_instructions_length" in request_entry
         assert "system_instructions_tokens_est" in request_entry
-        
+
         assert "tools" in request_entry
         assert request_entry["tools"]["count"] == 2
         assert len(request_entry["tools"]["tools"]) == 2
@@ -549,7 +549,7 @@ class TestMiddlewareTraceLogging:
         usage_details.total_token_count = 600
         last_message.usage = usage_details
         last_message.contents = []
-        
+
         thread = Mock()
         thread.messages = [last_message]
 
@@ -602,11 +602,11 @@ class TestMiddlewareTraceLogging:
         usage_details.output_token_count = 50
         usage_details.total_token_count = 350
         usage_content.usage = usage_details
-        
+
         last_message = Mock()
         last_message.usage = None  # No usage on message
         last_message.contents = [usage_content]
-        
+
         thread = Mock()
         thread.messages = [last_message]
 

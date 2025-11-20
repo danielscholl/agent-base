@@ -206,7 +206,7 @@ async def agent_run_logging_middleware(
 
             # Write to trace log
             with open(trace_logger.trace_file, "a") as f:
-                json.dump(trace_entry, f)
+                json.dump(trace_entry, f, default=str)
                 f.write("\n")
 
         except Exception as e:
