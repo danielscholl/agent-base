@@ -152,7 +152,6 @@ class TestCLIExecution:
         output = result.stdout.strip()
         assert output  # Not empty
         # Should contain something that looks like a version number
-        import re
 
         assert re.search(r"\d+\.\d+\.\d+", output), f"Expected version number in: {output}"
 
