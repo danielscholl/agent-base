@@ -37,7 +37,7 @@ class TestVersion:
 
     def test_version_read_from_metadata(self):
         """Test that version is read from package metadata."""
-        from importlib.metadata import version
+        from importlib.metadata import PackageNotFoundError, version
 
         from agent import __version__
 
@@ -45,6 +45,6 @@ class TestVersion:
         try:
             metadata_version = version("agent-base")
             assert __version__ == metadata_version
-        except Exception:
+        except PackageNotFoundError:
             # In development mode without installation, should be dev version
             assert __version__ == "0.0.0.dev"
