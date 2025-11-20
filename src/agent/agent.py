@@ -106,9 +106,13 @@ class Agent:
 
                     # Auto-detect bundled_dir if not set
                     if skills_config.bundled_dir is None:
-                        repo_root = Path(__file__).parent.parent.parent
-                        skills_config.bundled_dir = str(repo_root / "skills" / "core")
-                        logger.debug(f"Auto-detected bundled_dir: {skills_config.bundled_dir}")
+                        # Use importlib.resources to find bundled skills in package
+                        try:
+                            bundled_skills_path = resources.files("agent").joinpath("_bundled_skills")
+                            skills_config.bundled_dir = str(bundled_skills_path)
+                            logger.debug(f"Auto-detected bundled_dir: {skills_config.bundled_dir}")
+                        except Exception as e:
+                            logger.warning(f"Could not auto-detect bundled_dir: {e}")
 
                     skill_loader = SkillLoader(self.config)
                     skill_toolsets, script_tools, skill_instructions = (

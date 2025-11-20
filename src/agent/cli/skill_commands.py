@@ -1,6 +1,7 @@
 """CLI commands for managing agent skills."""
 
 import logging
+from importlib import resources
 from pathlib import Path
 
 import typer
@@ -23,13 +24,23 @@ logger = logging.getLogger(__name__)
 def _get_repo_paths() -> tuple[Path, str]:
     """Get repository root and bundled skills directory paths.
 
-    Assumes this file is at src/agent/cli/skill_commands.py; repo root is three levels up.
+    Uses importlib.resources to find bundled skills in package.
+    Falls back to file-based detection for development.
 
     Returns:
         tuple: (repo_root, bundled_dir) where bundled_dir is a string path
     """
-    repo_root = Path(__file__).resolve().parents[3]
-    bundled_dir = str(repo_root / "skills" / "core")
+    # Try package-based location first (works when installed)
+    try:
+        bundled_skills_path = resources.files("agent").joinpath("_bundled_skills")
+        bundled_dir = str(bundled_skills_path)
+        # For repo_root, go up from the package location
+        repo_root = Path(str(bundled_skills_path)).resolve().parents[2]
+    except Exception:
+        # Fall back to file-based detection (development mode)
+        repo_root = Path(__file__).resolve().parents[3]
+        bundled_dir = str(repo_root / "src" / "agent" / "_bundled_skills")
+
     return repo_root, bundled_dir
 
 
@@ -171,7 +182,7 @@ def show_skills() -> None:
     """Show all bundled and installed plugin skills with their status.
 
     Shows:
-    - Bundled skills (auto-discovered from skills/core/)
+    - Bundled skills (auto-discovered from agent._bundled_skills/)
     - Plugin skills (from config.skills.plugins)
     - Status: ◉ enabled / ○ disabled
     - Token count per skill (context cost)
