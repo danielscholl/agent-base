@@ -3,8 +3,10 @@
 This module handles skill installation, updates, and removal with git operations.
 """
 
+import gc
 import logging
 import shutil
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -77,6 +79,10 @@ class SkillManager:
             SkillError: If installation fails
             SkillManifestError: If SKILL.md is invalid
         """
+        # Clean up any leftover temporary directories from previous runs
+        # Do this at the start of install() to avoid interfering with tests
+        self._cleanup_temp_dirs()
+
         # Early check for duplicate if skill_name is provided
         if skill_name:
             canonical_check = normalize_skill_name(skill_name)
@@ -84,6 +90,7 @@ class SkillManager:
                 raise SkillError(f"Skill '{canonical_check}' is already installed")
 
         temp_dir = None
+        repo = None
         try:
             # Clone to temporary directory first
             temp_dir = self.skills_dir / f".temp-{datetime.now().timestamp()}"
@@ -148,9 +155,28 @@ class SkillManager:
             raise SkillError(f"Installation failed: {e}")
 
         finally:
+            # Close git repository to release file handles (important on Windows)
+            if repo is not None:
+                repo.close()
+                # On Windows, GitPython may not immediately release all file handles
+                # Force garbage collection to ensure cleanup
+                if sys.platform == "win32":
+                    del repo
+                    gc.collect()
+
             # Cleanup temp directory if it still exists
             if temp_dir and temp_dir.exists():
-                shutil.rmtree(temp_dir)
+                try:
+                    shutil.rmtree(temp_dir)
+                except (PermissionError, FileNotFoundError) as e:
+                    # On Windows, sometimes file handles aren't immediately released (PermissionError)
+                    # or the directory was already moved (FileNotFoundError)
+                    # Log the error but don't fail the installation if it succeeded
+                    if isinstance(e, PermissionError):
+                        logger.warning(
+                            f"Could not delete temporary directory {temp_dir}: {e}. "
+                            "This is harmless and will be cleaned up on next run."
+                        )
 
     def _install_single_skill(
         self,
@@ -550,3 +576,44 @@ class SkillManager:
             "scripts_count": script_count,
             "toolsets": manifest.toolsets,
         }
+
+    def _cleanup_temp_dirs(self) -> None:
+        """Clean up temporary directories from previous runs.
+
+        On Windows, GitPython sometimes doesn't release file handles immediately,
+        leaving temporary directories behind. This method attempts to clean them up.
+
+        Only removes temp directories that are "stale" - either older than 1 hour,
+        or from a timestamp that's clearly invalid (e.g., from test mocking in the past).
+        """
+        if not self.skills_dir.exists():
+            return
+
+        current_time = datetime.now().timestamp()
+        one_minute_ago = current_time - 60  # 1 minute in seconds
+        one_hour_ago = current_time - 3600  # 1 hour in seconds
+
+        for item in self.skills_dir.iterdir():
+            if item.is_dir() and item.name.startswith(".temp-"):
+                try:
+                    # Extract timestamp from directory name: .temp-{timestamp}
+                    timestamp_str = item.name[len(".temp-") :]
+                    dir_timestamp = float(timestamp_str)
+
+                    # Only remove if older than 1 hour OR if timestamp is in the far past (likely from tests)
+                    # Directories created within the last minute are considered "in progress" and left alone
+                    is_stale = (
+                        dir_timestamp < one_hour_ago  # Older than 1 hour
+                        and dir_timestamp < one_minute_ago  # Not brand new
+                    )
+
+                    if is_stale:
+                        shutil.rmtree(item)
+                        logger.debug(f"Cleaned up leftover temp directory: {item}")
+                except ValueError:
+                    # Invalid timestamp format, skip
+                    logger.debug(f"Skipping temp directory with invalid timestamp: {item}")
+                except Exception as e:
+                    # If we can't delete it now, it might still be in use
+                    # or have permission issues. Just log and continue.
+                    logger.debug(f"Could not clean up temp directory {item}: {e}")

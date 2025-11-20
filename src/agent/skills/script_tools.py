@@ -168,7 +168,7 @@ class ScriptToolset(AgentToolset):
         skill_name: Annotated[str, Field(description="Skill name")],
         script_name: Annotated[str, Field(description="Script name")],
         args: Annotated[list[str] | None, Field(description="Script arguments")] = None,
-        json: Annotated[bool, Field(description="Request JSON output")] = True,
+        json_output: Annotated[bool, Field(description="Request JSON output")] = True,
     ) -> dict:
         """Execute skill script with arguments. Most scripts support --json for structured output. Check --help first. Max 100 args. Returns script output."""
         try:
@@ -204,7 +204,7 @@ class ScriptToolset(AgentToolset):
 
             # Build command
             cmd = [self._get_uv_executable(), "run", str(script_path)] + args
-            if json:
+            if json_output:
                 cmd.append("--json")
 
             # Execute script
@@ -240,7 +240,7 @@ class ScriptToolset(AgentToolset):
                 )
 
             # Parse JSON if requested
-            if json:
+            if json_output:
                 try:
                     parsed = json_module.loads(stdout_text)
                     return self._create_success_response(

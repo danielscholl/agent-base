@@ -178,7 +178,7 @@ class TestScriptRun:
         mock_process.returncode = 0
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process):
-            result = await toolset.script_run("kalshi-markets", "status", json=False)
+            result = await toolset.script_run("kalshi-markets", "status", json_output=False)
 
         assert result["success"] is True
         assert result["result"] == "Plain text output"
@@ -221,7 +221,7 @@ class TestScriptRun:
         mock_process.returncode = 0
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process):
-            result = await toolset.script_run("kalshi-markets", "status", json=True)
+            result = await toolset.script_run("kalshi-markets", "status", json_output=True)
 
         assert result["success"] is False
         assert result["error"] == "parse_error"
