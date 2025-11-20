@@ -101,9 +101,9 @@ class TestMiddlewareTraceLogging:
 
         async def mock_next(ctx):
             # Simulate response
-            ctx.result = Mock(spec=["content", "usage"])
-            ctx.result.content = "Test response"
-            ctx.result.usage = None
+            ctx.result = Mock(spec=["text", "usage_details"])
+            ctx.result.text = "Test response"
+            ctx.result.usage_details = None
 
         with patch("agent.middleware.AgentConfig") as MockConfig:
             MockConfig.from_env.return_value = mock_config
@@ -143,13 +143,13 @@ class TestMiddlewareTraceLogging:
         context.messages = []
 
         # Mock result with token usage
-        result = Mock(spec=["content", "usage"])
-        result.content = "Test response"
-        usage = Mock(spec=["input_tokens", "output_tokens", "total_tokens"])
-        usage.input_tokens = 150
-        usage.output_tokens = 75
-        usage.total_tokens = 225
-        result.usage = usage
+        result = Mock(spec=["text", "usage_details"])
+        result.text = "Test response"
+        usage_details = Mock(spec=["input_token_count", "output_token_count", "total_token_count"])
+        usage_details.input_token_count = 150
+        usage_details.output_token_count = 75
+        usage_details.total_token_count = 225
+        result.usage_details = usage_details
 
         async def mock_next(ctx):
             ctx.result = result
@@ -193,12 +193,12 @@ class TestMiddlewareTraceLogging:
 
         context = Mock(spec=["messages"])
         context.messages = [
-            Mock(model_dump=lambda: {"role": "user", "content": "Hello"}),
+            Mock(to_dict=lambda: {"role": "user", "content": "Hello"}),
         ]
 
-        result = Mock(spec=["content", "usage"])
-        result.content = "Full response content"
-        result.usage = None
+        result = Mock(spec=["text", "usage_details"])
+        result.text = "Full response content"
+        result.usage_details = None
 
         async def mock_next(ctx):
             ctx.result = result
@@ -314,41 +314,49 @@ class TestMiddlewareTraceLogging:
     async def test_middleware_converts_messages_to_dict(self, tmp_path: Path):
         """Test middleware converts message objects to dict format."""
         import json
+        from unittest.mock import patch
 
         trace_file = tmp_path / "trace.log"
         logger = TraceLogger(trace_file=trace_file, include_messages=True)
         set_trace_logger(logger)
 
+        # Mock config
+        mock_config = Mock()
+        mock_config.llm_provider = "openai"
+        mock_config.openai_model = "gpt-4o-mini"
+
         # Messages with different serialization methods
         msg1 = Mock()
-        msg1.model_dump = lambda: {"role": "user", "content": "Using model_dump"}
+        msg1.to_dict = lambda: {"role": "user", "content": "Using to_dict"}
 
         msg2 = Mock()
-        msg2.dict = lambda: {"role": "assistant", "content": "Using dict"}
-        # Remove model_dump to test fallback
-        del msg2.model_dump
+        msg2.model_dump = lambda: {"role": "assistant", "content": "Using model_dump"}
+        # Remove to_dict to test fallback
+        del msg2.to_dict
 
         msg3 = "Plain string message"
 
         context = Mock(spec=["messages"])
         context.messages = [msg1, msg2, msg3]
 
-        response = Mock(spec=["content", "usage"])
-        response.content = "Response"
-        response.usage = None
+        result = Mock(spec=["text", "usage_details"])
+        result.text = "Response"
+        result.usage_details = None
 
         async def mock_next(ctx):
-            ctx.response = response
+            ctx.result = result
 
-        await agent_run_logging_middleware(context, mock_next)
+        with patch("agent.middleware.AgentConfig") as MockConfig:
+            MockConfig.from_env.return_value = mock_config
+            await agent_run_logging_middleware(context, mock_next)
 
         # Verify messages were converted
         log_entries = trace_file.read_text().strip().split("\n")
         request_entry = json.loads(log_entries[0])
 
         assert len(request_entry["messages"]) == 3
-        assert request_entry["messages"][0]["content"] == "Using model_dump"
-        assert request_entry["messages"][1]["content"] == "Using dict"
+        assert request_entry["messages"][0]["content"] == "Using to_dict"
+        assert request_entry["messages"][1]["content"] == "Using model_dump"
         assert request_entry["messages"][2]["content"] == "Plain string message"
 
         # Cleanup
@@ -372,10 +380,10 @@ class TestMiddlewareTraceLogging:
         context = Mock(spec=["messages"])
         context.messages = []
 
-        # Result with content attribute
-        result = Mock(spec=["content", "usage"])
-        result.content = "Response content"
-        result.usage = None
+        # Result with text attribute
+        result = Mock(spec=["text", "usage_details"])
+        result.text = "Response content"
+        result.usage_details = None
 
         async def mock_next(ctx):
             ctx.result = result
