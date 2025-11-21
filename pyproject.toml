@@ -1,6 +1,6 @@
 [project]
 name = "agent-base"
-version = "0.2.9"
+version = "0.3.0"
 description = "Production-ready conversational AI agent with extensible architecture"
 authors = [
     {name = "Daniel Scholl", email = "dascholl@microsoft.com"}

@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.3.0](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.9...agent-template-v0.3.0) (2025-11-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* This release marks the 1.0.0 MVP milestone with consolidated configuration architecture. Removed .env.example in favor of comprehensive configuration documentation at docs/design/configuration.md. The codebase is production-ready with 85%+ test coverage, comprehensive documentation, and clear migration paths for future releases.
+
+### Features
+
+* **cli:** enhance error handling in interactive mode ([3dca36d](https://github.com/danielscholl/agent-base/commit/3dca36d44fd41eaa493f7567b113cd9c1f4e697f))
+* **config:** add load_config_with_env to merge env vars into file config ([02bd160](https://github.com/danielscholl/agent-base/commit/02bd160a23181eb68d7fbc61a162b100b4fc2931))
+* **config:** add system_prompt_file support across settings ([f4ad3b8](https://github.com/danielscholl/agent-base/commit/f4ad3b8021cf15873e248e54d504b26ccd088c1f))
+* **config:** merge environment overrides into loaded settings ([4ccaff6](https://github.com/danielscholl/agent-base/commit/4ccaff6bc529cbc0f8d6d45819a51920f9c9d24b))
+* **config:** support LOCAL_MODEL env var for local provider ([e5882c8](https://github.com/danielscholl/agent-base/commit/e5882c8d1ed44cbe2f1d51e9de2dcd7c9ee3fc07))
+* **error:** implement provider error handling and messaging ([36762a1](https://github.com/danielscholl/agent-base/commit/36762a121d2e64c7231c91e047c72ba5d7efc84f))
+
+
+### Bug Fixes
+
+* **middleware:** replace AgentConfig.from_env() with load_config() ([422afbc](https://github.com/danielscholl/agent-base/commit/422afbca7b44e2be1f69f4c36d72c320c886c0b6))
+* **middleware:** replace second AgentConfig reference with load_config() ([092efee](https://github.com/danielscholl/agent-base/commit/092efee6df7a58fe15b072d02cb8cd4c2340fa26))
+* **tests:** rewrite integration LLM fixtures for new API ([73a9365](https://github.com/danielscholl/agent-base/commit/73a9365d062a59ea247a48307bc98a00320ef744))
+* **tests:** rewrite test_memory_config.py for new API ([04a9cf9](https://github.com/danielscholl/agent-base/commit/04a9cf9e1ebc70178ce7c88428f9f7cf5bc45cf0))
+* **tests:** rewrite test_memory_integration.py for new API ([de130ab](https://github.com/danielscholl/agent-base/commit/de130ab01a1412dc818b7517304611e571a27bd5))
+* **tests:** update custom_prompt_config fixture references ([9bfbba1](https://github.com/danielscholl/agent-base/commit/9bfbba11764076cfe470f6b9603da89d48a73d0c))
+* update Agent instantiation and add missing compatibility properties ([a9bef2f](https://github.com/danielscholl/agent-base/commit/a9bef2fc0230a11dcd0d2b5c8eb0787d244f2fa9))
+
+
+### Code Refactoring
+
+* **agent:** convert mem0 storage path to Path and add CONFIG_ERROR ([16e760e](https://github.com/danielscholl/agent-base/commit/16e760ed58634d0ce1b9c91aaf913870d3536e2d))
+* **agent:** defer load_config import to runtime in health and session ([16e760e](https://github.com/danielscholl/agent-base/commit/16e760ed58634d0ce1b9c91aaf913870d3536e2d))
+* **agent:** lazy-load config and normalize paths ([16e760e](https://github.com/danielscholl/agent-base/commit/16e760ed58634d0ce1b9c91aaf913870d3536e2d))
+* align test builder with AgentSettings ([e265682](https://github.com/danielscholl/agent-base/commit/e26568287e50f97c114cc46f2e85482a8afa4b90))
+* **config:** lazily import load_config to break circular imports ([a9428ea](https://github.com/danielscholl/agent-base/commit/a9428ea08e11dca7ab613558a9de7d1c90cb2579))
+* **config:** migrate to AgentSettings across codebase ([33110d6](https://github.com/danielscholl/agent-base/commit/33110d66944af7e124fa0b0b50943d2a941e92fe))
+* **tests:** migrate integration tests to AgentSettings API ([a0abd67](https://github.com/danielscholl/agent-base/commit/a0abd67bf2e68b6edf4fd91d8ba17439dbcf72a5))
+* **tests:** switch observability setup tests to use load_config ([8264635](https://github.com/danielscholl/agent-base/commit/8264635a4653e8474ee5cd1a412a7796a0d7cd84))
+* **tests:** switch tests to AgentSettings() and load_config ([5ebdadb](https://github.com/danielscholl/agent-base/commit/5ebdadbd522cf8f86ba843c5a9b3c9e9a5270f16))
+
+
+### Tests
+
+* **cli:** add config_from_env helper to apply env overrides in CLI arg tests ([cdf2c46](https://github.com/danielscholl/agent-base/commit/cdf2c46083c65bcceb70e12e877dc10455d48862))
+* **config:** update get_model_display_name expectations to include prefixes ([0315ddd](https://github.com/danielscholl/agent-base/commit/0315ddde49be49c3e0f10a8e20d359d847cecc02))
+* **config:** update tests to expect dict of env overrides ([43bf43b](https://github.com/danielscholl/agent-base/commit/43bf43befa39a127cc473f692c8e18f2c90320d8))
+* **middleware:** mock load_config to supply provider settings ([5f63a5d](https://github.com/danielscholl/agent-base/commit/5f63a5d17c12a774a17deb03dbcfd279d21c4279))
+* **middleware:** update trace logger tests to mock provider structure ([e0183f1](https://github.com/danielscholl/agent-base/commit/e0183f17e2e6a3f33bccfa5760f9a9673416c003))
+* **test_integ:** update integration tests to use provider config API ([04bd944](https://github.com/danielscholl/agent-base/commit/04bd944b90d7fe3745f92983bc11dbf15bd725b8))
+* **tests:** align AgentSettings tests with new provider layout ([3dca36d](https://github.com/danielscholl/agent-base/commit/3dca36d44fd41eaa493f7567b113cd9c1f4e697f))
+* **tests:** mock config loading in agent and middleware tests ([7917623](https://github.com/danielscholl/agent-base/commit/7917623c597200120bbca9a9bf70570e689fd473))
+* **tests:** update memory tests to use new nested provider config ([3dca36d](https://github.com/danielscholl/agent-base/commit/3dca36d44fd41eaa493f7567b113cd9c1f4e697f))
+
+
+### Miscellaneous
+
+* **config:** remove legacy configuration module ([5bc1356](https://github.com/danielscholl/agent-base/commit/5bc1356fadd6ae7b607ce60555f701400c84e5ab))
+* prepare codebase for 1.0.0 MVP release ([0db170a](https://github.com/danielscholl/agent-base/commit/0db170a10204ab998bdf0df23ed9bc7ac37c7ffc))
+
 ## [0.2.9](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.8...agent-template-v0.2.9) (2025-11-21)
 
 
