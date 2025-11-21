@@ -165,10 +165,10 @@ class TestAgentSystemPrompt:
         assert "Helpful AI assistant" in created["instructions"]
 
     def test_agent_uses_custom_prompt(
-        self, custom_prompt_config, mock_chat_client, custom_prompt_file
+        self, custom_prompt_settings, mock_chat_client, custom_prompt_file
     ):
         """Test agent gets custom prompt from file specified in config."""
-        Agent(settings=custom_prompt_config, chat_client=mock_chat_client)
+        Agent(settings=custom_prompt_settings, chat_client=mock_chat_client)
 
         # Verify agent was created with custom prompt
         assert len(mock_chat_client.created_agents) == 1
@@ -179,10 +179,10 @@ class TestAgentSystemPrompt:
         assert "test assistant" in created["instructions"]
 
     def test_agent_instructions_have_placeholders_replaced(
-        self, custom_prompt_config, mock_chat_client
+        self, custom_prompt_settings, mock_chat_client
     ):
         """Test placeholders are replaced correctly in agent instructions."""
-        Agent(settings=custom_prompt_config, chat_client=mock_chat_client)
+        Agent(settings=custom_prompt_settings, chat_client=mock_chat_client)
 
         created = mock_chat_client.created_agents[0]
         instructions = created["instructions"]
@@ -217,14 +217,14 @@ class TestAgentSystemPrompt:
         assert "Failed to load system prompt from AGENT_SYSTEM_PROMPT" in caplog.text
 
     def test_multiple_agents_with_different_configs(
-        self, mock_settings, custom_prompt_config, mock_chat_client
+        self, mock_settings, custom_prompt_settings, mock_chat_client
     ):
         """Test multiple agents can have different prompt configurations."""
         # Create agent with default config
         Agent(settings=mock_settings, chat_client=mock_chat_client)
 
         # Create agent with custom config
-        Agent(settings=custom_prompt_config, chat_client=mock_chat_client)
+        Agent(settings=custom_prompt_settings, chat_client=mock_chat_client)
 
         # Verify both were created
         assert len(mock_chat_client.created_agents) == 2
