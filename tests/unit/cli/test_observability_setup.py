@@ -8,41 +8,39 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from agent.config.manager import load_config
 from agent.config.schema import AgentSettings
 
 
 @pytest.fixture
 def mock_settings_otel_disabled():
     """Config with telemetry disabled."""
-    return AgentSettings(
-        llm_provider="openai",
-        openai_api_key="test-key",
-        enable_otel=False,
-        enable_otel_explicit=False,
-    )
+    config = AgentSettings()
+    config.providers.enabled = ["openai"]
+    config.providers.openai.api_key = "test-key"
+    config.telemetry.enabled = False
+    return config
 
 
 @pytest.fixture
 def mock_settings_otel_explicit():
     """Config with telemetry explicitly enabled."""
-    return AgentSettings(
-        llm_provider="openai",
-        openai_api_key="test-key",
-        enable_otel=True,
-        enable_otel_explicit=True,
-    )
+    config = AgentSettings()
+    config.providers.enabled = ["openai"]
+    config.providers.openai.api_key = "test-key"
+    config.telemetry.enabled = True
+    return config
 
 
 @pytest.fixture
 def mock_settings_otel_auto():
     """Config without explicit telemetry setting (for auto-detection)."""
-    return AgentSettings(
-        llm_provider="openai",
-        openai_api_key="test-key",
-        enable_otel=False,
-        enable_otel_explicit=False,
-        otlp_endpoint="http://localhost:4317",
-    )
+    config = AgentSettings()
+    config.providers.enabled = ["openai"]
+    config.providers.openai.api_key = "test-key"
+    config.telemetry.enabled = False
+    config.telemetry.otlp_endpoint = "http://localhost:4317"
+    return config
 
 
 @pytest.mark.unit
@@ -51,7 +49,7 @@ class TestExecutionObservabilitySetup:
     """Tests for observability setup in execution.py (single prompt mode)."""
 
     @pytest.mark.asyncio
-    @patch("agent.cli.execution.AgentConfig.from_combined")
+    @patch("agent.cli.execution.load_config")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.cli.execution.Agent")
     @patch("agent.cli.execution.setup_session_logging")
@@ -83,7 +81,7 @@ class TestExecutionObservabilitySetup:
         )
 
     @pytest.mark.asyncio
-    @patch("agent.cli.execution.AgentConfig.from_combined")
+    @patch("agent.cli.execution.load_config")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent.cli.execution.Agent")
@@ -117,7 +115,7 @@ class TestExecutionObservabilitySetup:
         mock_setup_otel.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("agent.cli.execution.AgentConfig.from_combined")
+    @patch("agent.cli.execution.load_config")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent.cli.execution.Agent")
@@ -151,7 +149,7 @@ class TestExecutionObservabilitySetup:
         mock_setup_otel.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("agent.cli.execution.AgentConfig.from_combined")
+    @patch("agent.cli.execution.load_config")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent.cli.execution.Agent")
@@ -188,7 +186,7 @@ class TestInteractiveObservabilitySetup:
     """Tests for observability setup in interactive.py (chat mode)."""
 
     @pytest.mark.asyncio
-    @patch("agent.cli.interactive.AgentConfig.from_combined")
+    @patch("agent.cli.interactive.load_config")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.cli.interactive.ThreadPersistence")
     @patch("agent.cli.interactive.PromptSession")
@@ -224,7 +222,7 @@ class TestInteractiveObservabilitySetup:
         )
 
     @pytest.mark.asyncio
-    @patch("agent.cli.interactive.AgentConfig.from_combined")
+    @patch("agent.cli.interactive.load_config")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent.cli.interactive.ThreadPersistence")
@@ -262,7 +260,7 @@ class TestInteractiveObservabilitySetup:
         mock_setup_otel.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("agent.cli.interactive.AgentConfig.from_combined")
+    @patch("agent.cli.interactive.load_config")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent.cli.interactive.ThreadPersistence")
@@ -306,7 +304,7 @@ class TestObservabilitySpanCreation:
     """Tests for span creation during execution."""
 
     @pytest.mark.asyncio
-    @patch("agent.cli.execution.AgentConfig.from_combined")
+    @patch("agent.cli.execution.load_config")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent_framework.observability.get_tracer")
     @patch("agent.cli.execution.Agent")
