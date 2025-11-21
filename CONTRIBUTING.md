@@ -15,6 +15,9 @@ uv run agent config init
 
 # 3. Verify
 uv run agent --check
+
+# For environment variable configuration, see:
+# docs/design/configuration.md
 ```
 
 ## Development Workflow

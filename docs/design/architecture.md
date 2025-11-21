@@ -193,10 +193,11 @@ See `tests/README.md` for comprehensive testing guide.
 
 Multi-provider support via `AgentConfig`:
 
-- **Environment-based** - Load from `.env` via `from_env()`
-- **Validation** - Provider-specific validation on `validate()`
+- **JSON-based configuration** - Primary config at `~/.agent/settings.json`
+- **Environment overrides** - Environment variables can override JSON settings
+- **Validation** - Provider-specific validation on startup
 - **Memory settings** - Enable/disable, type selection, history limits
-- **No defaults in code** - All defaults in `.env.example`
+- **Centralized defaults** - All defaults in `config/defaults.py`
 
 **Supported providers:**
 - Local (Docker Desktop models, free, offline)

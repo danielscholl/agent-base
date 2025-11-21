@@ -7,11 +7,10 @@ from typing import TYPE_CHECKING, Any
 
 from dotenv import load_dotenv
 
+from agent.config.constants import DEFAULT_GEMINI_MODEL
+
 if TYPE_CHECKING:
     pass
-
-# Default models for each provider
-DEFAULT_GEMINI_MODEL = "gemini-2.0-flash-exp"
 
 
 def _auto_detect_github_org() -> str | None:

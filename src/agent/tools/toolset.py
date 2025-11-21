@@ -10,6 +10,7 @@ from collections.abc import Callable
 from typing import Any
 
 from agent.config import AgentConfig
+from agent.utils.responses import create_error_response, create_success_response
 
 
 class AgentToolset(ABC):
@@ -83,11 +84,7 @@ class AgentToolset(ABC):
             >>> response
             {'success': True, 'result': 'Hello, World!', 'message': 'Greeting generated'}
         """
-        return {
-            "success": True,
-            "result": result,
-            "message": message,
-        }
+        return create_success_response(result, message)
 
     def _create_error_response(self, error: str, message: str) -> dict:
         """Create standardized error response.
@@ -111,8 +108,4 @@ class AgentToolset(ABC):
             >>> response
             {'success': False, 'error': 'invalid_input', 'message': 'Name cannot be empty'}
         """
-        return {
-            "success": False,
-            "error": error,
-            "message": message,
-        }
+        return create_error_response(error, message)

@@ -85,7 +85,7 @@ agent --help
 
 ### Configuration
 
-Agent uses a configuration file at `~/.agent/settings.json` for managing providers, memory, and observability settings.
+Agent uses a JSON configuration file at `~/.agent/settings.json` for managing providers, memory, and observability settings.
 
 **Configuration Commands:**
 
@@ -105,7 +105,7 @@ agent config provider openai      # Enable/configure OpenAI
 agent config memory               # Switch between in_memory and mem0
 ```
 
-> **Advanced:** For CI/CD and development, see [CONTRIBUTING.md](CONTRIBUTING.md) for environment variable configuration.
+> **Advanced:** For CI/CD, Docker, Kubernetes, and environment variable configuration, see [docs/design/configuration.md](docs/design/configuration.md).
 
 ## Usage
 

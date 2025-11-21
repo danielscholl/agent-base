@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from agent.config import AgentConfig
+from agent.utils.responses import create_error_response, create_success_response
 
 
 class MemoryManager(ABC):
@@ -151,11 +152,7 @@ class MemoryManager(ABC):
         Returns:
             Structured response dict with success=True
         """
-        return {
-            "success": True,
-            "result": result,
-            "message": message,
-        }
+        return create_success_response(result, message)
 
     def _create_error_response(self, error: str, message: str) -> dict:
         """Create standardized error response.
@@ -167,8 +164,4 @@ class MemoryManager(ABC):
         Returns:
             Structured response dict with success=False
         """
-        return {
-            "success": False,
-            "error": error,
-            "message": message,
-        }
+        return create_error_response(error, message)

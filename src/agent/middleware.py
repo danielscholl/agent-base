@@ -512,8 +512,6 @@ async def logging_function_middleware(
                     else:
                         args_data = str(args)
 
-                    import json
-
                     span.set_attribute(
                         OtelAttr.TOOL_ARGUMENTS,
                         json.dumps(args_data) if isinstance(args_data, dict) else args_data,
@@ -534,8 +532,6 @@ async def logging_function_middleware(
 
             # Set tool result if sensitive data enabled
             if span and config.enable_otel and config.enable_sensitive_data:
-                import json
-
                 result_str = json.dumps(result) if isinstance(result, (dict, list)) else str(result)
                 # Truncate to 1000 chars to avoid excessive data
                 span.set_attribute(OtelAttr.TOOL_RESULT, result_str[:1000])

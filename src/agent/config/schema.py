@@ -6,6 +6,17 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from agent.config.constants import (
+    DEFAULT_ANTHROPIC_MODEL,
+    DEFAULT_AZURE_API_VERSION,
+    DEFAULT_GEMINI_MODEL,
+    DEFAULT_GITHUB_ENDPOINT,
+    DEFAULT_GITHUB_MODEL,
+    DEFAULT_LOCAL_BASE_URL,
+    DEFAULT_LOCAL_MODEL,
+    DEFAULT_OPENAI_MODEL,
+)
+
 # Module-level constants for validation
 VALID_PROVIDERS = {"local", "openai", "anthropic", "azure", "foundry", "gemini", "github"}
 VALID_MEMORY_TYPES = {"in_memory", "mem0"}
@@ -16,8 +27,8 @@ class LocalProviderConfig(BaseModel):
 
     enabled: bool = False  # NOTE: Overwritten by sync_enabled_flags() validator.
     # Actual enabled state is determined by ProviderConfig.enabled list.
-    base_url: str = "http://localhost:12434/engines/llama.cpp/v1"
-    model: str = "ai/phi4"
+    base_url: str = DEFAULT_LOCAL_BASE_URL
+    model: str = DEFAULT_LOCAL_MODEL
 
 
 class OpenAIProviderConfig(BaseModel):
@@ -25,7 +36,7 @@ class OpenAIProviderConfig(BaseModel):
 
     enabled: bool = False
     api_key: str | None = None
-    model: str = "gpt-5-mini"
+    model: str = DEFAULT_OPENAI_MODEL
 
 
 class AnthropicProviderConfig(BaseModel):
@@ -33,7 +44,7 @@ class AnthropicProviderConfig(BaseModel):
 
     enabled: bool = False
     api_key: str | None = None
-    model: str = "claude-haiku-4-5-20251001"
+    model: str = DEFAULT_ANTHROPIC_MODEL
 
 
 class AzureOpenAIProviderConfig(BaseModel):
@@ -42,7 +53,7 @@ class AzureOpenAIProviderConfig(BaseModel):
     enabled: bool = False
     endpoint: str | None = None
     deployment: str | None = None
-    api_version: str = "2025-03-01-preview"
+    api_version: str = DEFAULT_AZURE_API_VERSION
     api_key: str | None = None
 
 
@@ -59,7 +70,7 @@ class GeminiProviderConfig(BaseModel):
 
     enabled: bool = False
     api_key: str | None = None
-    model: str = "gemini-2.0-flash-exp"
+    model: str = DEFAULT_GEMINI_MODEL
     use_vertexai: bool = False
     project_id: str | None = None
     location: str | None = None
@@ -70,8 +81,8 @@ class GitHubProviderConfig(BaseModel):
 
     enabled: bool = False
     token: str | None = None
-    model: str = "gpt-4o-mini"
-    endpoint: str = "https://models.github.ai"
+    model: str = DEFAULT_GITHUB_MODEL
+    endpoint: str = DEFAULT_GITHUB_ENDPOINT
     org: str | None = None  # Optional: org name for enterprise rate limits
 
 

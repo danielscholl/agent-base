@@ -1,8 +1,43 @@
 """Default configuration values for agent-base."""
 
-from pathlib import Path
-
+# Import and re-export all constants for backward compatibility
+from .constants import (
+    DEFAULT_ANTHROPIC_MODEL,
+    DEFAULT_AZURE_API_VERSION,
+    DEFAULT_CONFIG_PATH,
+    DEFAULT_DATA_DIR,
+    DEFAULT_GEMINI_MODEL,
+    DEFAULT_GITHUB_ENDPOINT,
+    DEFAULT_GITHUB_MODEL,
+    DEFAULT_LOCAL_BASE_URL,
+    DEFAULT_LOCAL_MODEL,
+    DEFAULT_MEMORY_DIR,
+    DEFAULT_MEMORY_HISTORY_LIMIT,
+    DEFAULT_MEMORY_TYPE,
+    DEFAULT_OPENAI_MODEL,
+    DEFAULT_OTLP_ENDPOINT,
+    DEFAULT_SESSION_DIR,
+)
 from .schema import AgentSettings
+
+__all__ = [
+    "get_default_config",
+    "DEFAULT_CONFIG_PATH",
+    "DEFAULT_DATA_DIR",
+    "DEFAULT_MEMORY_DIR",
+    "DEFAULT_SESSION_DIR",
+    "DEFAULT_LOCAL_BASE_URL",
+    "DEFAULT_LOCAL_MODEL",
+    "DEFAULT_OPENAI_MODEL",
+    "DEFAULT_ANTHROPIC_MODEL",
+    "DEFAULT_AZURE_API_VERSION",
+    "DEFAULT_GEMINI_MODEL",
+    "DEFAULT_GITHUB_MODEL",
+    "DEFAULT_GITHUB_ENDPOINT",
+    "DEFAULT_OTLP_ENDPOINT",
+    "DEFAULT_MEMORY_TYPE",
+    "DEFAULT_MEMORY_HISTORY_LIMIT",
+]
 
 
 def get_default_config() -> AgentSettings:
@@ -27,24 +62,24 @@ def get_default_config() -> AgentSettings:
         providers={  # type: ignore[arg-type]
             "enabled": [],  # No providers by default - explicit config required
             "local": {
-                "base_url": "http://localhost:12434/engines/llama.cpp/v1",
-                "model": "ai/phi4",
+                "base_url": DEFAULT_LOCAL_BASE_URL,
+                "model": DEFAULT_LOCAL_MODEL,
             },
             "openai": {
                 "enabled": False,
                 "api_key": None,
-                "model": "gpt-5-mini",
+                "model": DEFAULT_OPENAI_MODEL,
             },
             "anthropic": {
                 "enabled": False,
                 "api_key": None,
-                "model": "claude-haiku-4-5-20251001",
+                "model": DEFAULT_ANTHROPIC_MODEL,
             },
             "azure": {
                 "enabled": False,
                 "endpoint": None,
                 "deployment": None,
-                "api_version": "2025-03-01-preview",
+                "api_version": DEFAULT_AZURE_API_VERSION,
                 "api_key": None,
             },
             "foundry": {
@@ -55,7 +90,7 @@ def get_default_config() -> AgentSettings:
             "gemini": {
                 "enabled": False,
                 "api_key": None,
-                "model": "gemini-2.0-flash-exp",
+                "model": DEFAULT_GEMINI_MODEL,
                 "use_vertexai": False,
                 "project_id": None,
                 "location": None,
@@ -63,8 +98,8 @@ def get_default_config() -> AgentSettings:
             "github": {
                 "enabled": False,
                 "token": None,
-                "model": "gpt-4o-mini",
-                "endpoint": "https://models.github.ai",
+                "model": DEFAULT_GITHUB_MODEL,
+                "endpoint": DEFAULT_GITHUB_ENDPOINT,
                 "org": None,
             },
         },
@@ -91,27 +126,3 @@ def get_default_config() -> AgentSettings:
             },
         },
     )
-
-
-# Default paths
-DEFAULT_CONFIG_PATH = Path.home() / ".agent" / "settings.json"
-DEFAULT_DATA_DIR = Path.home() / ".agent"
-DEFAULT_MEMORY_DIR = DEFAULT_DATA_DIR / "memory"
-DEFAULT_SESSION_DIR = DEFAULT_DATA_DIR / "sessions"
-
-# Default provider settings
-DEFAULT_LOCAL_BASE_URL = "http://localhost:12434/engines/llama.cpp/v1"
-DEFAULT_LOCAL_MODEL = "ai/phi4"
-DEFAULT_OPENAI_MODEL = "gpt-5-mini"
-DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
-DEFAULT_AZURE_API_VERSION = "2025-03-01-preview"
-DEFAULT_GEMINI_MODEL = "gemini-2.0-flash-exp"
-DEFAULT_GITHUB_MODEL = "gpt-4o-mini"
-DEFAULT_GITHUB_ENDPOINT = "https://models.github.ai"
-
-# Default telemetry settings
-DEFAULT_OTLP_ENDPOINT = "http://localhost:4317"
-
-# Default memory settings
-DEFAULT_MEMORY_TYPE = "in_memory"
-DEFAULT_MEMORY_HISTORY_LIMIT = 20
