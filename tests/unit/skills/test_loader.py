@@ -212,11 +212,11 @@ description: A test skill
         mock_config.skills.plugins = []
 
         loader = SkillLoader(mock_config)
-        toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
+        toolsets, script_wrapper, skill_docs = loader.load_enabled_skills()
 
         assert toolsets == []
         assert script_wrapper is None
-        assert skill_instructions == []
+        assert not skill_docs.has_skills()
 
     def test_load_enabled_skills_none_marker(self, mock_config):
         """Should return empty lists when no bundled or plugin skills configured."""
@@ -226,11 +226,11 @@ description: A test skill
         mock_config.skills.plugins = []
 
         loader = SkillLoader(mock_config)
-        toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
+        toolsets, script_wrapper, skill_docs = loader.load_enabled_skills()
 
         assert toolsets == []
         assert script_wrapper is None
-        assert skill_instructions == []
+        assert not skill_docs.has_skills()
 
 
 class TestScriptNameNormalization:
@@ -510,7 +510,7 @@ class TestLoadEnabledSkills:
         mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
-        toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
+        toolsets, script_wrapper, skill_docs = loader.load_enabled_skills()
 
         # Should load the skill
         assert script_wrapper is None  # No scripts
@@ -536,7 +536,7 @@ class TestLoadEnabledSkills:
         mock_config.skills.user_dir = str(user_dir)
 
         loader = SkillLoader(mock_config)
-        toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
+        toolsets, script_wrapper, skill_docs = loader.load_enabled_skills()
 
         assert script_wrapper is None
 
@@ -559,7 +559,7 @@ class TestLoadEnabledSkills:
         mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
-        toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
+        toolsets, script_wrapper, skill_docs = loader.load_enabled_skills()
 
         # Should load both skills
         assert script_wrapper is None
@@ -585,7 +585,7 @@ class TestLoadEnabledSkills:
         mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
-        toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
+        toolsets, script_wrapper, skill_docs = loader.load_enabled_skills()
 
         # Should create script wrapper
         assert script_wrapper is not None
@@ -616,7 +616,7 @@ class TestLoadEnabledSkills:
         mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
-        toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
+        toolsets, script_wrapper, skill_docs = loader.load_enabled_skills()
 
         # Should load good-skill despite bad-skill failing
         assert script_wrapper is None
@@ -637,12 +637,12 @@ class TestLoadEnabledSkills:
         mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
-        toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
+        toolsets, script_wrapper, skill_docs = loader.load_enabled_skills()
 
         # Should skip the disabled skill completely
         assert script_wrapper is None
         assert toolsets == []
-        assert skill_instructions == []
+        assert not skill_docs.has_skills()
 
     def test_skill_name_matching_hyphen_underscore_equivalence(self, mock_config, tmp_path):
         """Should treat hyphens and underscores as equivalent when checking disabled list."""
@@ -660,9 +660,36 @@ class TestLoadEnabledSkills:
         mock_config.skills.user_dir = None
 
         loader = SkillLoader(mock_config)
-        toolsets, script_wrapper, skill_instructions = loader.load_enabled_skills()
+        toolsets, script_wrapper, skill_docs = loader.load_enabled_skills()
 
         # Should skip the disabled skill completely
         assert script_wrapper is None
         assert toolsets == []
-        assert skill_instructions == []
+        assert not skill_docs.has_skills()
+
+    def test_skill_without_instructions_added_to_docs_index(self, mock_config, tmp_path):
+        """Should add skills to documentation index even without instructions."""
+        bundled_dir = tmp_path / "bundled"
+        bundled_dir.mkdir()
+
+        # Skill with no instructions (empty after frontmatter)
+        skill1 = bundled_dir / "api-skill"
+        skill1.mkdir()
+        (skill1 / "SKILL.md").write_text(
+            "---\nname: api-skill\ndescription: API client skill\n---\n"
+        )
+
+        mock_config.skills.disabled_bundled = []
+        mock_config.skills.bundled_dir = str(bundled_dir)
+        mock_config.skills.plugins = []
+        mock_config.skills.user_dir = None
+
+        loader = SkillLoader(mock_config)
+        toolsets, script_wrapper, skill_docs = loader.load_enabled_skills()
+
+        # Should have the skill in documentation index even without instructions
+        assert skill_docs.has_skills()
+        assert skill_docs.count() == 1
+        metadata = skill_docs.get_all_metadata()
+        assert len(metadata) == 1
+        assert metadata[0]["name"] == "api-skill"

@@ -261,11 +261,10 @@ def show_tool_configuration(console: Console | None = None) -> None:
 
             elif toolset_name == "ScriptToolset":
                 # Skills configuration (only counts enabled skills)
-                if agent.skill_instructions:
-                    skill_count = len(agent.skill_instructions)
-                    token_count = getattr(agent, "skill_instructions_tokens", 0)
+                if hasattr(agent, "skill_docs") and agent.skill_docs.has_skills():
+                    skill_count = agent.skill_docs.count()
                     console.print(
-                        f"└─ [green]◉[/green] skills enabled [dim]({skill_count} skills · {token_count} tokens)[/dim]"
+                        f"└─ [green]◉[/green] skills enabled [dim]({skill_count} skills · progressive disclosure)[/dim]"
                     )
 
             # Tool list (use • bullet for individual tools)
