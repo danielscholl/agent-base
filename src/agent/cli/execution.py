@@ -191,7 +191,19 @@ async def run_single_prompt(
         console.print("\n\n[yellow]Interrupted by user[/yellow]")
         raise typer.Exit(ExitCodes.INTERRUPTED)
     except Exception as e:
-        console.print(f"\n[red]Error:[/red] {e}")
+        # Handle provider API errors and other exceptions
+        from agent.cli.error_handler import format_error
+        from agent.exceptions import AgentError
+
+        if isinstance(e, AgentError):
+            # Our custom errors - format nicely
+            error_message = format_error(e)
+            console.print(f"\n{error_message}\n")
+        else:
+            # Unknown errors - show generic message
+            console.print(f"\n[red]Error:[/red] {e}")
+            logger.exception("Unexpected error in single-prompt mode")
+
         raise typer.Exit(ExitCodes.GENERAL_ERROR)
     finally:
         # Restore connection string if we hid it

@@ -342,7 +342,16 @@ async def agent_run_logging_middleware(
             except Exception as log_err:
                 logger.debug(f"Failed to log trace error: {log_err}")
 
-        raise
+        # Classify and wrap provider exceptions for better error messages
+        from agent.cli.error_handler import classify_provider_error
+
+        wrapped = classify_provider_error(e, config)
+        if wrapped:
+            # Raise wrapped exception with original as cause (preserves stack trace)
+            raise wrapped from e
+        else:
+            # Unknown error, re-raise as-is
+            raise
 
 
 async def agent_observability_middleware(

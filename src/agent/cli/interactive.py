@@ -529,6 +529,22 @@ async def run_chat_mode(
             except KeyboardInterrupt:
                 console.print("\n[yellow]Use Ctrl+D to exit or type 'exit'[/yellow]")
                 continue
+            except Exception as e:
+                # Handle provider API errors and other exceptions
+                from agent.cli.error_handler import format_error
+                from agent.exceptions import AgentError
+
+                if isinstance(e, AgentError):
+                    # Our custom errors - format nicely
+                    error_message = format_error(e)
+                    console.print(f"\n{error_message}\n")
+                else:
+                    # Unknown errors - show generic message
+                    console.print(f"\n[red]Unexpected error:[/red] {e}\n")
+                    logger.exception("Unexpected error in interactive mode")
+
+                # Continue loop - don't crash
+                continue
             except EOFError:
                 # Ctrl+D - exit gracefully
                 exit_start = time.perf_counter()
