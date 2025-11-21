@@ -221,6 +221,24 @@ class FileSystemTools(AgentToolset):
                 message=f"Failed to resolve path: {relative_path}. Error: {str(e)}",
             )
 
+    """
+    {
+      "name": "get_path_info",
+      "description": "Get file/directory metadata within workspace. Returns exists, type, size, permissions, timestamps.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path relative to workspace root",
+            "default": "."
+          }
+        },
+        "required": []
+      }
+    }
+    """
+
     async def get_path_info(
         self, path: Annotated[str, Field(description="Path relative to workspace root")] = "."
     ) -> dict:
@@ -300,6 +318,39 @@ class FileSystemTools(AgentToolset):
             return self._create_error_response(
                 error="os_error", message=f"OS error accessing {path}: {str(e)}"
             )
+
+    """
+    {
+      "name": "list_directory",
+      "description": "List directory contents within workspace with metadata. Supports recursive traversal. Default: 200 entries max, excludes hidden files. Returns entries with type and size.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Directory path relative to workspace",
+            "default": "."
+          },
+          "recursive": {
+            "type": "boolean",
+            "description": "Recursively list subdirectories",
+            "default": false
+          },
+          "max_entries": {
+            "type": "integer",
+            "description": "Maximum entries to return",
+            "default": 200
+          },
+          "include_hidden": {
+            "type": "boolean",
+            "description": "Include hidden files (dotfiles)",
+            "default": false
+          }
+        },
+        "required": []
+      }
+    }
+    """
 
     async def list_directory(
         self,
@@ -445,6 +496,33 @@ class FileSystemTools(AgentToolset):
                 error="os_error", message=f"OS error listing directory {path}: {str(e)}"
             )
 
+    """
+    {
+      "name": "read_file",
+      "description": "Read text file within workspace by line range. Paths relative to workspace root. Default: first 200 lines. Returns content with truncation flag for large files.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path relative to workspace"
+          },
+          "start_line": {
+            "type": "integer",
+            "description": "Starting line number (1-based)",
+            "default": 1
+          },
+          "max_lines": {
+            "type": "integer",
+            "description": "Maximum lines to read",
+            "default": 200
+          }
+        },
+        "required": ["path"]
+      }
+    }
+    """
+
     async def read_file(
         self,
         path: Annotated[str, Field(description="File path relative to workspace")],
@@ -555,6 +633,48 @@ class FileSystemTools(AgentToolset):
             return self._create_error_response(
                 error="os_error", message=f"Error reading file {path}: {str(e)}"
             )
+
+    """
+    {
+      "name": "search_text",
+      "description": "Search text patterns across files in workspace. Supports literal (default) and regex modes. Case-sensitive by default. Max 50 matches. Returns matches with file, line, snippet.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search pattern (literal or regex)"
+          },
+          "path": {
+            "type": "string",
+            "description": "Directory or file to search",
+            "default": "."
+          },
+          "glob": {
+            "type": "string",
+            "description": "File pattern (e.g., '*.py', 'src/**/*.ts')",
+            "default": "**/*"
+          },
+          "max_matches": {
+            "type": "integer",
+            "description": "Maximum matches to return",
+            "default": 50
+          },
+          "use_regex": {
+            "type": "boolean",
+            "description": "Enable regex mode",
+            "default": false
+          },
+          "case_sensitive": {
+            "type": "boolean",
+            "description": "Case-sensitive search",
+            "default": true
+          }
+        },
+        "required": ["query"]
+      }
+    }
+    """
 
     async def search_text(
         self,
@@ -711,6 +831,32 @@ class FileSystemTools(AgentToolset):
             message=f"Found {len(matches)} matches in {files_searched} files",
         )
 
+    """
+    {
+      "name": "write_file",
+      "description": "Write file within workspace with safety checks. Requires filesystem_writes_enabled. Supports create/overwrite/append modes. Returns bytes written and mode used.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path relative to workspace"
+          },
+          "content": {
+            "type": "string",
+            "description": "Content to write"
+          },
+          "mode": {
+            "type": "string",
+            "description": "Write mode: create, overwrite, append",
+            "default": "create"
+          }
+        },
+        "required": ["path", "content"]
+      }
+    }
+    """
+
     async def write_file(
         self,
         path: Annotated[str, Field(description="File path relative to workspace")],
@@ -790,6 +936,36 @@ class FileSystemTools(AgentToolset):
             return self._create_error_response(
                 error="os_error", message=f"Error writing to {path}: {str(e)}"
             )
+
+    """
+    {
+      "name": "apply_text_edit",
+      "description": "Apply exact text replacement in file within workspace. Requires filesystem_writes_enabled and exact match. Use replace_all for multiple occurrences. Returns replacement count and size delta.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path relative to workspace"
+          },
+          "expected_text": {
+            "type": "string",
+            "description": "Exact text to find and replace"
+          },
+          "replacement_text": {
+            "type": "string",
+            "description": "Replacement text"
+          },
+          "replace_all": {
+            "type": "boolean",
+            "description": "Replace all occurrences",
+            "default": false
+          }
+        },
+        "required": ["path", "expected_text", "replacement_text"]
+      }
+    }
+    """
 
     async def apply_text_edit(
         self,
@@ -928,6 +1104,28 @@ class FileSystemTools(AgentToolset):
             return self._create_error_response(
                 error="os_error", message=f"Error writing to {path}: {str(e)}"
             )
+
+    """
+    {
+      "name": "create_directory",
+      "description": "Create directory within workspace with optional parent creation. Requires filesystem_writes_enabled. Idempotent (success if exists). Returns created flag.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Directory path relative to workspace"
+          },
+          "parents": {
+            "type": "boolean",
+            "description": "Create parent directories if needed",
+            "default": true
+          }
+        },
+        "required": ["path"]
+      }
+    }
+    """
 
     async def create_directory(
         self,

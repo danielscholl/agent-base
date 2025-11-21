@@ -269,7 +269,15 @@ def show_tool_configuration(console: Console | None = None) -> None:
 
             # Tool list (use • bullet for individual tools)
             for tool in tools:
-                console.print(f"  [dim]• {tool.__name__}[/dim]")
+                # Get docstring and count tokens
+                from agent.utils.tokens import count_tokens
+
+                docstring = tool.__doc__ or ""
+                # Extract first line only (LLM-facing description)
+                first_line = docstring.strip().split("\n")[0] if docstring.strip() else ""
+                token_count = count_tokens(first_line) if first_line else 0
+
+                console.print(f"  [dim]• {tool.__name__}[/dim] · [dim]{token_count} tokens[/dim]")
 
             # Add blank line after each toolset except the last
             if toolset != agent.toolsets[-1]:

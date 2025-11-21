@@ -23,7 +23,7 @@ class ScriptToolset(AgentToolset):
     Scripts are NOT loaded into context - only metadata is registered.
 
     Example:
-        >>> scripts = {"kalshi-markets": [{"name": "status", "path": Path("...")}]}
+        >>> scripts = {"hello-extended": [{"name": "advanced_greeting", "path": Path("...")}]}
         >>> toolset = ScriptToolset(config, scripts)
         >>> tools = toolset.get_tools()
     """
@@ -57,6 +57,24 @@ class ScriptToolset(AgentToolset):
     def script_count(self) -> int:
         """Get total number of scripts across all skills."""
         return sum(len(scripts) for scripts in self.scripts.values())
+
+    """
+    {
+      "name": "script_list",
+      "description": "List available scripts for skill or all skills. Returns script metadata with names and paths.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skill_name": {
+            "type": ["string", "null"],
+            "description": "Skill name, or None for all skills",
+            "default": null
+          }
+        },
+        "required": []
+      }
+    }
+    """
 
     async def script_list(
         self,
@@ -104,11 +122,32 @@ class ScriptToolset(AgentToolset):
                 error="execution_failed", message=f"Failed to list scripts: {e}"
             )
 
+    """
+    {
+      "name": "script_help",
+      "description": "Get help for skill script by running --help. Use to discover arguments and options before running. Returns help text.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skill_name": {
+            "type": "string",
+            "description": "Skill name (e.g., 'sample-skill')"
+          },
+          "script_name": {
+            "type": "string",
+            "description": "Script name (e.g., 'sample' or 'sample.py')"
+          }
+        },
+        "required": ["skill_name", "script_name"]
+      }
+    }
+    """
+
     async def script_help(
         self,
-        skill_name: Annotated[str, Field(description="Skill name (e.g., 'kalshi-markets')")],
+        skill_name: Annotated[str, Field(description="Skill name (e.g., 'sample-skill')")],
         script_name: Annotated[
-            str, Field(description="Script name (e.g., 'status' or 'status.py')")
+            str, Field(description="Script name (e.g., 'sample' or 'sample.py')")
         ],
     ) -> dict:
         """Get help for skill script by running --help. Use to discover arguments and options before running. Returns help text."""
@@ -162,6 +201,38 @@ class ScriptToolset(AgentToolset):
             return self._create_error_response(
                 error="execution_failed", message=f"Failed to get script help: {e}"
             )
+
+    """
+    {
+      "name": "script_run",
+      "description": "Execute skill script with arguments. Most scripts support --json for structured output. Check --help first. Max 100 args. Returns script output.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skill_name": {
+            "type": "string",
+            "description": "Skill name"
+          },
+          "script_name": {
+            "type": "string",
+            "description": "Script name"
+          },
+          "args": {
+            "type": ["array", "null"],
+            "items": {"type": "string"},
+            "description": "Script arguments",
+            "default": null
+          },
+          "json_output": {
+            "type": "boolean",
+            "description": "Request JSON output",
+            "default": true
+          }
+        },
+        "required": ["skill_name", "script_name"]
+      }
+    }
+    """
 
     async def script_run(
         self,

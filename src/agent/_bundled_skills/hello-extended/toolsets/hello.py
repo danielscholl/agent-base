@@ -33,6 +33,28 @@ class HelloExtended(AgentToolset):
             self.greet_multiple,
         ]
 
+    """
+    {
+      "name": "greet_in_language",
+      "description": "Generate greeting in specified language (en, es, fr, de, ja, zh). Returns culturally appropriate greeting.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name to greet"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code (en, es, fr, de, ja, zh)",
+            "default": "en"
+          }
+        },
+        "required": ["name"]
+      }
+    }
+    """
+
     async def greet_in_language(
         self,
         name: Annotated[str, Field(description="Name to greet")],
@@ -60,6 +82,29 @@ class HelloExtended(AgentToolset):
         return self._create_success_response(
             result=greeting, message=f"Generated greeting in {language}"
         )
+
+    """
+    {
+      "name": "greet_multiple",
+      "description": "Generate greetings for multiple people in same language. Returns list of greeting messages.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of names to greet"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code",
+            "default": "en"
+          }
+        },
+        "required": ["names"]
+      }
+    }
+    """
 
     async def greet_multiple(
         self,

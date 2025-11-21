@@ -109,12 +109,52 @@ class HelloTools(AgentToolset):
         """
         return [self.hello_world, self.greet_user]
 
+    """
+    {
+      "name": "hello_world",
+      "description": "Say hello to someone. Returns greeting message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name to greet",
+            "default": "World"
+          }
+        },
+        "required": []
+      }
+    }
+    """
+
     async def hello_world(
         self, name: Annotated[str, Field(description="Name to greet")] = "World"
     ) -> dict:
         """Say hello to someone. Returns greeting message."""
         greeting = f"Hello, {name}! ◉‿◉"
         return self._create_success_response(result=greeting, message=f"Greeted {name}")
+
+    """
+    {
+      "name": "greet_user",
+      "description": "Greet user in different languages (en, es, fr). Returns localized greeting or error if language unsupported.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "User's name"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code (en, es, fr)",
+            "default": "en"
+          }
+        },
+        "required": ["name"]
+      }
+    }
+    """
 
     async def greet_user(
         self,

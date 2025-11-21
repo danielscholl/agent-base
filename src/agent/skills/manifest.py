@@ -72,6 +72,7 @@ class SkillManifest(BaseModel):
     license: str | None = None
     min_agent_base_version: str | None = None
     max_agent_base_version: str | None = None
+    default_enabled: bool = True  # Default enabled state for bundled skills
     toolsets: list[str] = Field(default_factory=list)
     scripts: list[str] | None = None  # None = auto-discover
     scripts_ignore: list[str] = Field(default_factory=list)

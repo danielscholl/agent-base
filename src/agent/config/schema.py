@@ -142,10 +142,14 @@ class SkillsConfig(BaseModel):
         description="Git-based plugin skills with source configuration",
     )
 
-    # Bundled skills control (opt-out model)
+    # Bundled skills control (three-state: user enabled, user disabled, manifest default)
     disabled_bundled: list[str] = Field(
         default_factory=list,
-        description="List of bundled skill names to disable. Bundled skills are auto-discovered and enabled by default.",
+        description="Bundled skills explicitly disabled by user (overrides default_enabled: true).",
+    )
+    enabled_bundled: list[str] = Field(
+        default_factory=list,
+        description="Bundled skills explicitly enabled by user (overrides default_enabled: false).",
     )
 
     # Directory configuration
