@@ -1,5 +1,58 @@
 # Changelog
 
+## [0.2.9](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.8...agent-template-v0.2.9) (2025-11-21)
+
+
+### Features
+
+* add structured triggers to skills ([9e72a88](https://github.com/danielscholl/agent-base/commit/9e72a8806b6b2049c4966618ed6bbf9f81aa2bf3))
+* **cli:** log error details when settings can't be loaded ([f92be71](https://github.com/danielscholl/agent-base/commit/f92be71ed819e9b5abcc93357c907f91dcf24a82))
+* **docs:** represent triggers as dicts in documentation index ([f92be71](https://github.com/danielscholl/agent-base/commit/f92be71ed819e9b5abcc93357c907f91dcf24a82))
+* **skills:** add progressive skill docs and dynamic context provider ([a8881a1](https://github.com/danielscholl/agent-base/commit/a8881a1adb0eb37c6616d42cd663f58f2b05de64))
+* **skills:** implement explicit triggers for skill matching ([f92be71](https://github.com/danielscholl/agent-base/commit/f92be71ed819e9b5abcc93357c907f91dcf24a82))
+* **skills:** implement progressive disclosure for skill documentation ([ca290d9](https://github.com/danielscholl/agent-base/commit/ca290d93b2112f43848802230b415733889a79a8))
+* **skills:** implement three-state bundled skill enablement ([72a85c0](https://github.com/danielscholl/agent-base/commit/72a85c01ed76b270c467f5029a78e57e0a13887e))
+* **tools:** implement two-tier tool docstring optimization ([27ededb](https://github.com/danielscholl/agent-base/commit/27ededb51de5131240a62c9cd786675cdbcfa3b7))
+* **tools:** implement two-tier tool docstring optimization ADR-0017 ([146f8c4](https://github.com/danielscholl/agent-base/commit/146f8c4800d1fc95dda49aa766caa346b42a6960))
+* **tools:** introduce token-aware tool metadata and listings ([c35d8d8](https://github.com/danielscholl/agent-base/commit/c35d8d8a064227c971a96715b913cacb5308d6ef))
+* **trace:** extend llm trace logging with system_instructions ([23a49e4](https://github.com/danielscholl/agent-base/commit/23a49e456125354de29e181a73889d8ae9ea736e))
+* **trace:** implement trace-level LLM logging with token analysis ([13ee547](https://github.com/danielscholl/agent-base/commit/13ee547ce2e12bcc08721e1ed10d0a033208a9b1))
+* **trace:** implement trace-level LLM request/response logging ([275bcf9](https://github.com/danielscholl/agent-base/commit/275bcf9fb9c0b3e6255a2a9a0f5a19a722afd9cb))
+* **triggers:** add structured triggers for skills and tests ([16e04e7](https://github.com/danielscholl/agent-base/commit/16e04e796afa6620503e0f3391ecd1a333279722))
+
+
+### Bug Fixes
+
+* **logging:** enable trace logging via log_level ([81baeed](https://github.com/danielscholl/agent-base/commit/81baeed494a826757d211a049df44b2d04f4e87d))
+* **logging:** json dump for trace entries uses ensure_ascii=False ([81baeed](https://github.com/danielscholl/agent-base/commit/81baeed494a826757d211a049df44b2d04f4e87d))
+* **middleware:** ensure trace log JSON serialization with default=str ([6aac27c](https://github.com/danielscholl/agent-base/commit/6aac27c7e93fc01b45bb3c3ed5f86ea98ed4db80))
+
+
+### Documentation
+
+* **skills:** document progressive disclosure and skills architecture ([ad7cd95](https://github.com/danielscholl/agent-base/commit/ad7cd95861b56e9c0e8da05ccd3f4f9b9a79dc11))
+* **triggers:** add spec for structured skill triggers ([aeefdbe](https://github.com/danielscholl/agent-base/commit/aeefdbe599d79306fc91fe2de79e5cf638776990))
+
+
+### Code Refactoring
+
+* **agent:** extract model from config in middleware ([4405e66](https://github.com/danielscholl/agent-base/commit/4405e663a97e553effdefe900216b441b290458f))
+* **middleware:** add type hints for trace logger and guard config ([2c9f84a](https://github.com/danielscholl/agent-base/commit/2c9f84a571332156d1da4c96d19f430d5aa72fb0))
+* **middleware:** fix TYPE_CHECKING imports and forward refs ([6bf76b9](https://github.com/danielscholl/agent-base/commit/6bf76b902751d256450eebe944b3687c3d5ea682))
+* **skills:** improve typing and imports in skills loading ([9d9ee55](https://github.com/danielscholl/agent-base/commit/9d9ee55c05f680a7f9b2177e7f83cdefa8b4abfd))
+
+
+### Tests
+
+* **middleware:** add tests for trace logging middleware ([81b36ad](https://github.com/danielscholl/agent-base/commit/81b36adbb96221d6669523f4694ebaeb477d5da0))
+* **middleware:** update anthropic_model to deterministic value in tests ([81baeed](https://github.com/danielscholl/agent-base/commit/81baeed494a826757d211a049df44b2d04f4e87d))
+* **middleware:** update trace logging tests to reflect new message API ([5c6b0cb](https://github.com/danielscholl/agent-base/commit/5c6b0cb378c3f5c4e67a9f46d204f751a22221cd))
+
+
+### Miscellaneous
+
+* remove model token count comments across tool modules ([de183be](https://github.com/danielscholl/agent-base/commit/de183beb0d0d5cec4b8d3254bc9b6cfcae32a38f))
+
 ## [0.2.8](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.7...agent-template-v0.2.8) (2025-11-20)
 
 
