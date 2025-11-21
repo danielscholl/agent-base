@@ -105,8 +105,8 @@ class TestMiddlewareTraceLogging:
             ctx.result.text = "Test response"
             ctx.result.usage_details = None
 
-        with patch("agent.middleware.AgentConfig") as MockConfig:
-            MockConfig.from_env.return_value = mock_settings
+        with patch("agent.middleware.load_config") as MockConfig:
+            MockConfig.return_value = mock_settings
             await agent_run_logging_middleware(context, mock_next)
 
         # Read trace log
@@ -154,8 +154,8 @@ class TestMiddlewareTraceLogging:
         async def mock_next(ctx):
             ctx.result = result
 
-        with patch("agent.middleware.AgentConfig") as MockConfig:
-            MockConfig.from_env.return_value = mock_settings
+        with patch("agent.middleware.load_config") as MockConfig:
+            MockConfig.return_value = mock_settings
             await agent_run_logging_middleware(context, mock_next)
 
         # Read trace log
@@ -203,8 +203,8 @@ class TestMiddlewareTraceLogging:
         async def mock_next(ctx):
             ctx.result = result
 
-        with patch("agent.middleware.AgentConfig") as MockConfig:
-            MockConfig.from_env.return_value = mock_settings
+        with patch("agent.middleware.load_config") as MockConfig:
+            MockConfig.return_value = mock_settings
             await agent_run_logging_middleware(context, mock_next)
 
         # Read trace log
@@ -347,8 +347,8 @@ class TestMiddlewareTraceLogging:
         async def mock_next(ctx):
             ctx.result = result
 
-        with patch("agent.middleware.AgentConfig") as MockConfig:
-            MockConfig.from_env.return_value = mock_settings
+        with patch("agent.middleware.load_config") as MockConfig:
+            MockConfig.return_value = mock_settings
             await agent_run_logging_middleware(context, mock_next)
 
         # Verify messages were converted
@@ -389,8 +389,8 @@ class TestMiddlewareTraceLogging:
         async def mock_next(ctx):
             ctx.result = result
 
-        with patch("agent.middleware.AgentConfig") as MockConfig:
-            MockConfig.from_env.return_value = mock_settings
+        with patch("agent.middleware.load_config") as MockConfig:
+            MockConfig.return_value = mock_settings
             await agent_run_logging_middleware(context, mock_next)
 
         log_entries = trace_file.read_text().strip().split("\n")
@@ -504,8 +504,8 @@ class TestMiddlewareTraceLogging:
         async def mock_next(ctx):
             ctx.result = result
 
-        with patch("agent.middleware.AgentConfig") as MockConfig:
-            MockConfig.from_env.return_value = mock_settings
+        with patch("agent.middleware.load_config") as MockConfig:
+            MockConfig.return_value = mock_settings
             await agent_run_logging_middleware(context, mock_next)
 
         # Verify system instructions and tools captured
@@ -565,8 +565,8 @@ class TestMiddlewareTraceLogging:
         async def mock_next(ctx):
             ctx.result = result
 
-        with patch("agent.middleware.AgentConfig") as MockConfig:
-            MockConfig.from_env.return_value = mock_settings
+        with patch("agent.middleware.load_config") as MockConfig:
+            MockConfig.return_value = mock_settings
             await agent_run_logging_middleware(context, mock_next)
 
         # Verify tokens extracted from thread
@@ -621,8 +621,8 @@ class TestMiddlewareTraceLogging:
         async def mock_next(ctx):
             ctx.result = result
 
-        with patch("agent.middleware.AgentConfig") as MockConfig:
-            MockConfig.from_env.return_value = mock_settings
+        with patch("agent.middleware.load_config") as MockConfig:
+            MockConfig.return_value = mock_settings
             await agent_run_logging_middleware(context, mock_next)
 
         # Verify tokens extracted from content

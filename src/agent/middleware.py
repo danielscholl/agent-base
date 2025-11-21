@@ -127,7 +127,7 @@ async def agent_run_logging_middleware(
 
     # Load config for trace logging if enabled (reused for request and response)
     trace_logger = get_trace_logger()
-    config = AgentConfig.from_env() if trace_logger else None
+    config = load_config() if trace_logger else None
 
     # Emit LLM request event
     llm_event_id = None
