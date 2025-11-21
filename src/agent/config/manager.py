@@ -209,6 +209,10 @@ def merge_with_env(settings: AgentSettings) -> dict[str, Any]:
         env_overrides.setdefault("providers", {}).setdefault("local", {})["base_url"] = os.getenv(
             "LOCAL_BASE_URL"
         )
+    if os.getenv("LOCAL_MODEL"):
+        env_overrides.setdefault("providers", {}).setdefault("local", {})["model"] = os.getenv(
+            "LOCAL_MODEL"
+        )
     if os.getenv("AGENT_MODEL") and llm_provider == "local":
         env_overrides.setdefault("providers", {}).setdefault("local", {})["model"] = os.getenv(
             "AGENT_MODEL"

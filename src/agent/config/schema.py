@@ -423,8 +423,12 @@ class AgentSettings(BaseModel):
                         )
 
             elif provider_name == "local":
-                # Local provider doesn't require API keys
-                pass
+                # Local provider requires base_url
+                if not provider.base_url:
+                    errors.append(
+                        "Local provider enabled but missing base_url. "
+                        "Set LOCAL_BASE_URL environment variable or configure via: agent config enable local"
+                    )
 
             elif provider_name == "github":
                 # GitHub authentication is handled at runtime via get_github_token()

@@ -86,7 +86,8 @@ class TestLocalProviderConfig:
         settings.providers.local.base_url = "http://localhost:12434/engines/llama.cpp/v1"
         settings.providers.local.model = "ai/phi4"
 
-        assert settings.get_model_display_name() == "ai/phi4"
+        # New format includes provider prefix
+        assert settings.get_model_display_name() == "Local/ai/phi4"
 
     def test_local_provider_display_name_custom_model(self):
         """Test get_model_display_name for local provider with custom model."""
@@ -95,7 +96,8 @@ class TestLocalProviderConfig:
         settings.providers.local.base_url = "http://localhost:12434/engines/llama.cpp/v1"
         settings.providers.local.model = "ai/llama3.2"
 
-        assert settings.get_model_display_name() == "ai/llama3.2"
+        # New format includes provider prefix
+        assert settings.get_model_display_name() == "Local/ai/llama3.2"
 
     def test_local_model_override_via_env(self):
         """Test model can be overridden via environment variables."""
