@@ -70,10 +70,6 @@ class Agent:
         """
         self.config = config or AgentConfig.from_env()
 
-        # Initialize skill instructions list (may be populated later)
-        self.skill_instructions: list[str] = []
-        self.skill_instructions_tokens: int = 0  # Token count for context tracking
-
         # Dependency injection for testing
         if chat_client is not None:
             self.chat_client = chat_client
@@ -117,19 +113,10 @@ class Agent:
                             logger.warning(f"Could not auto-detect bundled_dir: {e}")
 
                     skill_loader = SkillLoader(self.config)
-                    skill_toolsets, script_tools, skill_instructions = (
-                        skill_loader.load_enabled_skills()
-                    )
+                    skill_toolsets, script_tools, skill_docs = skill_loader.load_enabled_skills()
 
-                    # Store skill instructions for system prompt injection
-                    self.skill_instructions = skill_instructions
-
-                    # Calculate token count for skill instructions
-                    if skill_instructions:
-                        from agent.utils.tokens import count_tokens
-
-                        total_tokens = sum(count_tokens(s) for s in skill_instructions)
-                        self.skill_instructions_tokens = total_tokens
+                    # Store skill documentation index for context provider
+                    self.skill_docs = skill_docs
 
                     if skill_toolsets:
                         toolsets.extend(skill_toolsets)
@@ -141,10 +128,9 @@ class Agent:
                             f"Loaded script wrapper with {script_tools.script_count} scripts"
                         )
 
-                    if skill_instructions:
+                    if skill_docs.has_skills():
                         logger.info(
-                            f"Collected {len(skill_instructions)} skill instruction blocks "
-                            f"({self.skill_instructions_tokens} tokens)"
+                            f"Loaded {skill_docs.count()} skill(s) for progressive disclosure"
                         )
 
             except Exception as e:
@@ -388,16 +374,10 @@ Be helpful, concise, and clear in your responses."""
         """
         instructions = self._load_system_prompt()
 
-        # Inject skill instructions into system prompt
-        if hasattr(self, "skill_instructions") and self.skill_instructions:
-            skills_section = "\n\n## Available Skills\n\n" + "\n\n".join(self.skill_instructions)
-            instructions += skills_section
-            logger.info(
-                f"Injected {len(self.skill_instructions)} skill instruction blocks into system prompt"
-            )
-
-        # Create context providers for memory
+        # Create context providers for dynamic injection
         context_providers = []
+
+        # Add memory context provider if enabled
         if self.memory_manager:
             from agent.memory import MemoryContextProvider
 
@@ -407,9 +387,22 @@ Be helpful, concise, and clear in your responses."""
             context_providers.append(memory_provider)
             logger.info("Memory context provider enabled")
 
+        # Add skill context provider if skills are loaded
+        if hasattr(self, "skill_docs") and self.skill_docs.has_skills():
+            from agent.skills.context_provider import SkillContextProvider
+
+            skill_provider = SkillContextProvider(
+                skill_docs=self.skill_docs,
+                memory_manager=None,  # Not used in current implementation
+                max_skills=3,
+            )
+            context_providers.append(skill_provider)
+            logger.info(f"Skill context provider enabled with {self.skill_docs.count()} skills")
+
         # IMPORTANT: Pass middleware as a list, not dict
         # Agent Framework automatically categorizes middleware by signature
         # Converting to dict breaks middleware invocation
+        logger.info(f"Creating agent with {len(context_providers)} context providers: {[type(p).__name__ for p in context_providers]}")
         return self.chat_client.create_agent(
             name="Agent",
             instructions=instructions,

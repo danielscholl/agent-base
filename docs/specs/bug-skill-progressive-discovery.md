@@ -10,6 +10,7 @@ All skill documentation (full SKILL.md markdown content after YAML frontmatter) 
 - hello-extended skill alone adds ~1200 tokens of XML documentation
 - Multiple skills compound this overhead linearly
 - Wastes context window space and increases latency/cost
+- LLM lacks awareness of available capabilities when skills don't match triggers
 
 **Example:**
 A skill like `hello-extended` has 47 lines of detailed XML documentation describing tools, triggers, examples, and language mappings. This entire documentation is loaded into the system prompt even for simple requests like "What is 2+2?" that will never use greeting functionality.
@@ -25,13 +26,18 @@ The current architecture loads full skill instructions at agent initialization (
 
 ## Solution Statement
 
-Implement dynamic skill instruction injection using Agent Framework's `ContextProvider` pattern. Only inject skill documentation when the user's request is relevant to that skill's capabilities. This follows the proven pattern established by `MemoryContextProvider` (ADR-0013).
+Implement progressive skill documentation using Agent Framework's `ContextProvider` pattern. Inject skill information on-demand based on user queries and trigger matching, avoiding constant token overhead while preserving discoverability. Maintain separation between install metadata (SkillRegistry) and runtime documentation (SkillDocumentationIndex).
 
-**Approach:**
-1. Create `SkillContextProvider` that analyzes incoming requests
-2. Match requests to relevant skills using trigger keywords
-3. Inject only matched skill instructions via `Context(instructions=...)`
-4. Keep skill registry for quick metadata access
+**Approach (Three-Tier System):**
+1. Create separate `SkillDocumentationIndex` for runtime docs (not persistent registry)
+2. Implement three-tier progressive disclosure:
+   - Breadcrumb (~10 tokens) when skills exist but don't match
+   - Registry (10-15 tokens/skill) when user asks about capabilities
+   - Full docs (hundreds of tokens) when triggers match
+3. Match requests using single-message analysis (no memory dependency)
+4. Use word-boundary matching with error handling for robustness
+5. Support multiple trigger types with fallbacks: keywords, verbs, patterns, skill names
+6. Cap "show all skills" to prevent context overflow
 
 ## Steps to Reproduce
 
@@ -55,7 +61,11 @@ Implement dynamic skill instruction injection using Agent Framework's `ContextPr
 The skills architecture was designed with progressive disclosure in mind (per docs/design/skills.md):
 > "Scripts provide the executable behavior and are loaded only when invoked. This separation keeps context usage low while enabling rich extensibility."
 
-However, **only scripts** follow this pattern. The SKILL.md documentation itself is eagerly loaded:
+However, the implementation conflates two distinct concerns:
+1. **Skill Discovery** - The LLM knowing skills exist (should be minimal, always present)
+2. **Skill Documentation** - Detailed usage instructions (should be progressive)
+
+Currently, **only scripts** follow progressive loading. The SKILL.md documentation is eagerly loaded:
 
 **In src/agent/skills/loader.py:318-320:**
 ```python
@@ -172,89 +182,285 @@ No similar fixes found. This is the first implementation of progressive content 
 
 #### 1. **src/agent/skills/loader.py**
 **What needs to be fixed:**
-- Line 318-320: Currently extracts full `manifest.instructions`
-- Need to also extract `manifest.triggers` for matching
+- Line 318-320: Currently builds static instructions list
+- Need to populate SkillDocumentationIndex instead
 
 **Changes:**
 ```python
-# BEFORE (line 318-320):
-if manifest.instructions:
-    skill_instructions.append(f"# {manifest.name}\n\n{manifest.instructions}")
+# BEFORE (line 318-320 and return):
+skill_instructions = []  # Collected in loop
+for skill in enabled_skills:
+    if manifest.instructions:
+        skill_instructions.append(f"# {manifest.name}\n\n{manifest.instructions}")
+# ...
+return (toolsets, script_tool_wrapper, skill_instructions)
 
 # AFTER:
-# Collect skill registry data (metadata + instructions)
-skill_registry.register(
-    name=canonical_name,
-    description=manifest.description,
-    triggers=manifest.triggers or [],
-    instructions=manifest.instructions or ""
-)
+# Create documentation index once (before loop)
+skill_docs = SkillDocumentationIndex()
+
+# Populate with enabled skills (in loop)
+for skill in enabled_skills:
+    skill_docs.add_skill(
+        name=canonical_name,
+        manifest=manifest
+    )
+
+# Script tool wrapper created as before
+script_tool_wrapper = ScriptToolWrapper(...)
+
+# Return new signature
+return (toolsets, script_tool_wrapper, skill_docs)
 ```
 
-**Impact:** Change return signature to include SkillRegistry instead of just instructions list
+**New Return Signature:**
+```python
+def load_enabled_skills() -> tuple[
+    list[AgentToolset],           # Toolsets
+    Any,                           # Script tool wrapper
+    SkillDocumentationIndex        # Runtime documentation index
+]:
+```
 
-#### 2. **src/agent/skills/registry.py** (existing)
-**What needs to be fixed:**
-- Currently just stores metadata for script discovery
-- Need to add: triggers, instructions for context provider
+#### 2. **src/agent/skills/documentation_index.py** (NEW FILE)
+**Purpose:** In-memory cache for skill documentation and triggers (separate from install registry)
 
-**Changes:**
-- Add `triggers: list[str]` field
-- Add `instructions: str` field
-- Add method: `get_all_metadata() -> list[dict]`
+**Why not SkillRegistry:**
+- SkillRegistry persists install metadata to `~/.agent/skills/registry.json`
+- Mixing runtime docs would bloat the JSON and break CLI expectations
+- Need separation between install state and runtime context
+
+**Implementation:**
+```python
+from dataclasses import dataclass
+from typing import Dict, List, Any, Optional
+
+from agent.skills.manifest import SkillManifest
+
+@dataclass
+class SkillDocumentation:
+    """Runtime documentation for a single skill."""
+    name: str
+    brief_description: str
+    triggers: Optional[Dict[str, List[str]]]  # {keywords: [], verbs: [], patterns: []}
+    instructions: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for context provider."""
+        return {
+            'name': self.name,
+            'brief_description': self.brief_description,
+            'triggers': self.triggers or {},
+            'instructions': self.instructions
+        }
+
+class SkillDocumentationIndex:
+    """In-memory index of skill documentation for context injection.
+
+    Separate from SkillRegistry to avoid mixing persistent install
+    metadata with runtime documentation.
+    """
+
+    def __init__(self):
+        self._skills: Dict[str, SkillDocumentation] = {}
+
+    def add_skill(self, name: str, manifest: SkillManifest) -> None:
+        """Add skill documentation from manifest."""
+        self._skills[name] = SkillDocumentation(
+            name=name,
+            brief_description=manifest.brief_description,
+            triggers=manifest.triggers,
+            instructions=manifest.instructions
+        )
+
+    def get_all_metadata(self) -> List[Dict[str, Any]]:
+        """Get all skill metadata for matching."""
+        return [skill.to_dict() for skill in self._skills.values()]
+
+    def has_skills(self) -> bool:
+        """Check if any skills are loaded."""
+        return bool(self._skills)
+
+    def count(self) -> int:
+        """Get number of loaded skills."""
+        return len(self._skills)
+```
 
 #### 3. **src/agent/skills/context_provider.py** (NEW FILE)
-**Purpose:** Dynamic skill instruction injection
+**Purpose:** Three-tier skill documentation system with progressive disclosure
 
 **Implementation:**
 ```python
 """Skill context provider for dynamic instruction injection."""
 
+import logging
+import re
+from typing import Any, List, Dict, Optional
 from agent_framework import ChatMessage, Context, ContextProvider
-from agent.skills.registry import SkillRegistry
+from agent.skills.documentation_index import SkillDocumentationIndex
+
+logger = logging.getLogger(__name__)
 
 class SkillContextProvider(ContextProvider):
-    """Inject skill instructions dynamically based on request relevance."""
+    """Progressive skill documentation with on-demand registry."""
 
-    def __init__(self, skill_registry: SkillRegistry, max_skills: int = 3):
-        self.skill_registry = skill_registry
+    def __init__(
+        self,
+        skill_docs: SkillDocumentationIndex,
+        memory_manager: Optional[Any] = None,
+        max_skills: int = 3,
+        max_all_skills: int = 10
+    ):
+        self.skill_docs = skill_docs
+        self.memory_manager = memory_manager  # For conversation context
         self.max_skills = max_skills
+        self.max_all_skills = max_all_skills  # Cap for "show all"
 
     async def invoking(self, messages, **kwargs) -> Context:
-        """Inject relevant skill instructions before agent invocation."""
-        # 1. Extract latest user message
-        user_message = self._get_latest_user_message(messages)
-        if not user_message:
+        """Inject skill documentation based on request relevance."""
+        # 1. Extract current user message
+        current_message = self._get_latest_user_message(messages)
+        if not current_message:
             return Context()
 
-        # 2. Match skills based on triggers
-        relevant_skills = self._match_skills(user_message)
+        # 2. Check if user is asking about capabilities
+        if self._wants_skill_info(current_message):
+            return self._inject_skill_registry()
 
-        # 3. Inject matched skill instructions
+        # 3. Check for "show all skills" escape hatch
+        if self._wants_all_skills(current_message):
+            return self._inject_all_skills_capped()
+
+        # 4. Match skills based on current message
+        relevant_skills = self._match_skills_safely(current_message.lower())
+
+        # 5. Build response based on matches
         if relevant_skills:
-            instructions_parts = [
-                f"# {skill['name']}\n{skill['instructions']}"
-                for skill in relevant_skills[:self.max_skills]
-            ]
-            instructions = "\n\n## Available Skills\n\n" + "\n\n".join(instructions_parts)
-            return Context(instructions=instructions)
+            # Inject full documentation for matched skills
+            docs = self._build_skill_documentation(relevant_skills[:self.max_skills])
+            return Context(instructions=docs)
+        elif self.skill_docs.has_skills():
+            # Inject minimal breadcrumb for discoverability (~10 tokens)
+            breadcrumb = f"[{self.skill_docs.count()} skills available]"
+            return Context(instructions=breadcrumb)
+        else:
+            # No skills installed - inject nothing
+            return Context()
 
-        return Context()
+    def _inject_skill_registry(self) -> Context:
+        """Inject skill registry with brief descriptions on demand."""
+        lines = ["## Available Capabilities\n"]
+        for skill in self.skill_docs.get_all_metadata():
+            # Include brief description for discoverability (10-15 tokens per skill)
+            brief = skill['brief_description'][:50]  # Cap at 50 chars
+            lines.append(f"- **{skill['name']}**: {brief}")
+        lines.append("\nAsk about specific skills for full documentation.")
+        return Context(instructions="\n".join(lines))
 
-    def _match_skills(self, message: str) -> list[dict]:
-        """Match skills to message using keyword triggers."""
-        # Simple keyword matching for Phase 1
-        # Phase 2: Can add semantic similarity
+    def _wants_skill_info(self, message: str) -> bool:
+        """Check if user is asking about capabilities."""
+        info_patterns = [
+            r"\bwhat.*(?:can|could).*(?:you|u).*do\b",
+            r"\b(?:show|list).*capabilities\b",
+            r"\bwhat.*skills?\b"
+        ]
         message_lower = message.lower()
-        matched = []
+        return any(re.search(pattern, message_lower) for pattern in info_patterns)
 
-        for skill in self.skill_registry.get_all_metadata():
-            for trigger in skill.get("triggers", []):
-                if trigger.lower() in message_lower:
+    def _wants_all_skills(self, message: str) -> bool:
+        """Check if user wants to see all skill documentation."""
+        all_patterns = [
+            r"\bshow.*all.*skills?\b",
+            r"\blist.*all.*skills?\b",
+            r"\ball.*skill.*(?:documentation|docs)\b"
+        ]
+        message_lower = message.lower()
+        return any(re.search(pattern, message_lower) for pattern in all_patterns)
+
+    def _match_skills_safely(self, context: str) -> list[dict]:
+        """Match skills with word boundaries and error handling."""
+        matched = []
+        seen = set()
+
+        for skill in self.skill_docs.get_all_metadata():
+            skill_id = skill['name']
+            if skill_id in seen:
+                continue
+
+            # Strategy 1: Skill name mentioned (word boundary)
+            skill_name_lower = skill['name'].lower()
+            if re.search(rf"\b{re.escape(skill_name_lower)}\b", context):
+                matched.append(skill)
+                seen.add(skill_id)
+                continue
+
+            # If no triggers, fallback to restrictive description matching
+            triggers = skill.get('triggers', {})
+            if not triggers:
+                # Fallback: only match if skill name appears in context
+                # Don't match generic description words to avoid false positives
+                if re.search(rf"\b{re.escape(skill_name_lower)}\b", context):
                     matched.append(skill)
+                    seen.add(skill_id)
+                continue
+
+            # Strategy 2: Keyword triggers (word boundary)
+            for keyword in triggers.get('keywords', []):
+                if re.search(rf"\b{re.escape(keyword.lower())}\b", context):
+                    matched.append(skill)
+                    seen.add(skill_id)
                     break
 
+            # Strategy 3: Verb triggers (word boundary)
+            for verb in triggers.get('verbs', []):
+                if re.search(rf"\b{re.escape(verb.lower())}\b", context):
+                    matched.append(skill)
+                    seen.add(skill_id)
+                    break
+
+            # Strategy 4: Pattern matching (with error handling)
+            for pattern in triggers.get('patterns', []):
+                try:
+                    if re.search(pattern, context, re.IGNORECASE):
+                        matched.append(skill)
+                        seen.add(skill_id)
+                        break
+                except re.error as e:
+                    logger.warning(f"Invalid regex pattern for {skill_id}: {pattern} - {e}")
+
         return matched
+
+    def _build_skill_documentation(self, skills: list[dict]) -> str:
+        """Build full documentation for matched skills."""
+        docs = ["## Relevant Skill Documentation\n"]
+        for skill in skills:
+            docs.append(f"### {skill['name']}\n")
+            docs.append(skill.get('instructions', ''))
+            docs.append("")
+        return "\n".join(docs)
+
+    def _inject_all_skills_capped(self) -> Context:
+        """Inject skill documentation with cap to avoid context overflow."""
+        all_skills = self.skill_docs.get_all_metadata()
+
+        if len(all_skills) <= self.max_all_skills:
+            # Show all if under cap
+            docs = self._build_skill_documentation(all_skills)
+        else:
+            # Show capped list with note
+            docs = self._build_skill_documentation(all_skills[:self.max_all_skills])
+            docs += f"\n\n*Showing {self.max_all_skills} of {len(all_skills)} skills. "
+            docs += "Ask about specific skills for more details.*"
+
+        return Context(instructions=docs)
+
+    def _get_latest_user_message(self, messages: list) -> str:
+        """Extract the latest user message."""
+        # Messages in ContextProvider are typically just the current turn
+        for msg in reversed(messages):
+            if hasattr(msg, 'role') and msg.role == 'user':
+                return msg.content
+        return ""
 ```
 
 #### 4. **src/agent/agent.py**
@@ -269,9 +475,9 @@ skill_toolsets, script_tools, skill_instructions = skill_loader.load_enabled_ski
 self.skill_instructions = skill_instructions
 
 # AFTER:
-skill_toolsets, script_tools, skill_registry = skill_loader.load_enabled_skills()
-# Store registry instead of static instructions
-self.skill_registry = skill_registry
+skill_toolsets, script_tools, skill_docs = skill_loader.load_enabled_skills()
+# Store documentation index instead of static instructions
+self.skill_docs = skill_docs  # SkillDocumentationIndex instance
 ```
 
 **Lines 389-419 (Agent._create_agent):**
@@ -282,7 +488,7 @@ if hasattr(self, "skill_instructions") and self.skill_instructions:
     instructions += skills_section
 
 # AFTER:
-# No static injection - let SkillContextProvider handle it dynamically
+# Remove ALL static skill injection - handled by SkillContextProvider
 
 # Lines 399-408 (context_providers):
 context_providers = []
@@ -292,25 +498,61 @@ if self.memory_manager:
     context_providers.append(memory_provider)
 
 # ADD:
-if hasattr(self, "skill_registry") and self.skill_registry.has_skills():
+if hasattr(self, "skill_docs") and self.skill_docs.has_skills():
     from agent.skills.context_provider import SkillContextProvider
-    skill_provider = SkillContextProvider(self.skill_registry, max_skills=3)
+    # Note: memory_manager is optional, only used for future conversation context
+    skill_provider = SkillContextProvider(
+        skill_docs=self.skill_docs,
+        memory_manager=None,  # Not used in current implementation
+        max_skills=3
+    )
     context_providers.append(skill_provider)
-    logger.info("Skill context provider enabled")
+    logger.info(f"Skill context provider enabled with {self.skill_docs.count()} skills")
 ```
 
 #### 5. **src/agent/skills/manifest.py**
 **What needs to be fixed:**
-- Add `triggers: list[str]` field to SkillManifest model
+- Add structured `triggers` field to SkillManifest model
+- Add `brief_description` field for registry display
 
 **Changes:**
 ```python
+from typing import Dict, List, Optional
+from pydantic import BaseModel, Field
+
+class SkillTriggers(BaseModel):
+    """Structured triggers for skill matching."""
+    keywords: List[str] = Field(default_factory=list)  # Direct keyword matches
+    verbs: List[str] = Field(default_factory=list)     # Action verbs
+    patterns: List[str] = Field(default_factory=list)  # Regex patterns
+
 class SkillManifest(BaseModel):
     name: str
     description: str
-    triggers: list[str] | None = None  # NEW: For matching
+    brief_description: str | None = None  # NEW: One-line description for registry
+    triggers: SkillTriggers | None = None  # NEW: Structured triggers
     instructions: str = ""
     # ... rest of fields
+
+    def model_post_init(self, __context) -> None:
+        """Auto-generate brief description and add skill name as trigger."""
+        # Auto-generate brief description if not provided
+        if not self.brief_description:
+            # Take first sentence or first 80 chars of description
+            first_sentence = self.description.split('.')[0]
+            self.brief_description = first_sentence[:80]
+
+        # Ensure triggers exists (creates new instance, not mutating default)
+        if self.triggers is None:
+            self.triggers = SkillTriggers()
+
+        # Add skill name as implicit trigger (case-insensitive check)
+        # Creates new list to avoid mutating shared defaults
+        skill_name_lower = self.name.lower()
+        existing_keywords_lower = [kw.lower() for kw in self.triggers.keywords]
+        if skill_name_lower not in existing_keywords_lower:
+            # Create new list with skill name added
+            self.triggers.keywords = self.triggers.keywords + [skill_name_lower]
 ```
 
 ### Files to Test
@@ -320,25 +562,34 @@ class SkillManifest(BaseModel):
 
 **Key Tests:**
 ```python
-def test_injects_relevant_skill_only()
-def test_no_skills_matched_returns_empty_context()
-def test_multiple_skills_matched_respects_max_limit()
-def test_keyword_matching_case_insensitive()
-def test_partial_keyword_matches()
+def test_minimal_breadcrumb_when_no_match()
+def test_injects_documentation_for_matched_skills()
+def test_registry_only_on_user_request()
+def test_escape_hatch_shows_all_skills_with_cap()
+def test_word_boundary_matching_prevents_false_positives()
+def test_invalid_regex_handled_gracefully()
+def test_fallback_to_skill_name_when_no_triggers()
+def test_skill_name_as_implicit_trigger()
+def test_respects_max_skills_limit()
+def test_pattern_based_matching_with_error_handling()
+def test_verb_based_matching_with_boundaries()
 ```
 
 #### **tests/unit/skills/test_loader.py** (MODIFY)
 **Add tests:**
 ```python
-def test_load_enabled_skills_returns_registry()
-def test_skill_registry_contains_triggers_and_instructions()
+def test_load_enabled_skills_returns_documentation_index()
+def test_documentation_index_contains_triggers_and_instructions()
+def test_documentation_index_separate_from_install_registry()
 ```
 
 #### **tests/unit/core/test_agent.py** (MODIFY)
 **Add tests:**
 ```python
+def test_agent_stores_skill_documentation_index()
 def test_agent_creates_skill_context_provider_when_skills_present()
 def test_agent_no_skill_provider_when_no_skills()
+def test_agent_uses_skill_docs_not_skill_registry_for_runtime()
 ```
 
 #### **tests/integration/skills/test_progressive_disclosure.py** (NEW)
@@ -368,18 +619,23 @@ async def test_token_usage_lower_without_skills()
 
 ## Implementation Plan
 
-### Phase 1: Core Progressive Disclosure (MVP)
+### Phase 1: Progressive Documentation with Minimal Breadcrumb (MVP)
 
-Implement basic dynamic injection with keyword matching. This delivers the primary benefit (60-80% token reduction) with minimal complexity.
+Implement progressive skill documentation with minimal breadcrumb for discoverability. This delivers the primary benefit (70-90% token reduction) while preserving skill discoverability through a tiny hint.
 
 **Changes:**
-1. Add `triggers` field to SkillManifest
-2. Update SkillRegistry to store triggers + instructions
-3. Implement SkillContextProvider with keyword matching
-4. Update Agent to use SkillContextProvider instead of static injection
-5. Update SkillLoader return signature
+1. Add structured `triggers` and `brief_description` fields to SkillManifest
+2. Create separate SkillDocumentationIndex for runtime (not persistent registry)
+3. Implement SkillContextProvider with three-tier injection:
+   - Minimal breadcrumb when skills exist but don't match (~10 tokens)
+   - Full registry when user asks about capabilities (10-15 tokens/skill)
+   - Full documentation when triggers match (hundreds of tokens)
+4. Use single-message matching (conversation context requires memory)
+5. Add escape hatches for "show all skills" with cap
+6. Update Agent to use SkillContextProvider with skill_docs
+7. Update SkillLoader to return SkillDocumentationIndex
 
-**Deliverable:** Skills only injected when keywords match
+**Deliverable:** Near-zero token overhead with preserved discoverability
 
 ### Phase 2: Validation & Testing
 
@@ -407,56 +663,69 @@ Improve matching beyond simple keywords for better relevance detection.
 
 ## Step by Step Tasks
 
-### Task 1: Update SkillManifest for Triggers
-- Description: Add `triggers` field to manifest model for keyword matching
+### Task 1: Update SkillManifest for Enhanced Triggers
+- Description: Add structured triggers and brief description to manifest model
 - Files to modify:
   - src/agent/skills/manifest.py (SkillManifest class)
 - Changes:
-  - Add `triggers: list[str] | None = None` field to model
-  - Update manifest parsing to extract triggers from YAML
-  - Add validation: triggers must be non-empty strings if provided
+  - Add `SkillTriggers` model with keywords, verbs, patterns
+  - Add `triggers: SkillTriggers | None = None` field
+  - Add `brief_description: str | None = None` field
+  - Add model_post_init to auto-generate brief description if missing
+  - Add skill name as implicit trigger keyword
+  - Update manifest parsing to extract structured triggers from YAML
 
-### Task 2: Enhance SkillRegistry for Context Provider
-- Description: Store skill metadata (triggers, instructions) for matching
+### Task 2: Create SkillDocumentationIndex
+- Description: Create separate in-memory index for runtime documentation
 - Files to modify:
-  - src/agent/skills/registry.py
+  - src/agent/skills/documentation_index.py (NEW)
 - Changes:
-  - Add `triggers: list[str]` field to registry entries
-  - Add `instructions: str` field to registry entries
+  - Create SkillDocumentationIndex class (not persistent)
+  - Store brief_description, triggers, instructions from manifests
+  - Add method `add_skill(name, manifest)` to populate from loader
   - Add method `get_all_metadata() -> list[dict]` for context provider
-  - Add method `has_skills() -> bool` to check if any skills registered
+  - Add method `has_skills() -> bool` to check if any skills loaded
+  - Keep SkillRegistry unchanged (only for install metadata)
 
-### Task 3: Implement SkillContextProvider
-- Description: Create context provider for dynamic skill instruction injection
+### Task 3: Implement Progressive SkillContextProvider
+- Description: Create context provider with three-tier injection
 - Files to modify:
   - src/agent/skills/context_provider.py (NEW)
 - Changes:
   - Implement ContextProvider with invoking() hook
-  - Add keyword-based skill matching logic
-  - Add max_skills limit (default: 3) to prevent token overflow
+  - Inject minimal breadcrumb when no matches (~10 tokens)
+  - Inject full registry when user asks about capabilities
+  - Match skills using current message only (single-message)
+  - Implement multi-strategy matching with word boundaries:
+    - Direct skill name mentions
+    - Keyword triggers (word boundary)
+    - Verb-based triggers (word boundary)
+    - Pattern matching (regex with error handling)
+  - Add escape hatch for "show all skills" with cap (10 max)
+  - Add max_skills limit (default: 3) for documentation
   - Add logging for matched skills
-  - Follow MemoryContextProvider pattern closely
 
-### Task 4: Update SkillLoader to Return Registry
-- Description: Change loader to return registry instead of instruction list
+### Task 4: Update SkillLoader to Return DocumentationIndex
+- Description: Change loader to return documentation index instead of instruction list
 - Files to modify:
   - src/agent/skills/loader.py
 - Changes:
-  - Line 318-320: Register skills instead of collecting instructions
-  - Change return signature: `tuple[list[AgentToolset], Any, SkillRegistry]`
-  - Remove skill_instructions list building
-  - Add skill metadata to registry during load
+  - Line 318-320: Add skills to SkillDocumentationIndex instead of list
+  - Change return signature: `tuple[list[AgentToolset], Any, SkillDocumentationIndex]`
+  - Create and populate SkillDocumentationIndex during load
+  - Keep SkillRegistry usage unchanged (for install tracking only)
 
 ### Task 5: Update Agent to Use SkillContextProvider
 - Description: Replace static injection with dynamic context provider
 - Files to modify:
   - src/agent/agent.py
 - Changes:
-  - Lines 73-148: Store skill_registry instead of skill_instructions
-  - Remove skill_instructions_tokens tracking (moved to provider)
-  - Lines 391-397: Remove static skill instruction injection
-  - Lines 399-408: Add SkillContextProvider to context_providers list
-  - Add logging for skill context provider initialization
+  - Lines 73-148: Store skill_docs (SkillDocumentationIndex) instead of skill_instructions
+  - Remove skill_instructions and skill_instructions_tokens fields
+  - Lines 391-397: Remove ALL static skill injection code
+  - Lines 399-408: Add SkillContextProvider(skill_docs, memory_manager)
+  - Pass memory_manager to SkillContextProvider for optional conversation context
+  - Log when skill context provider is enabled
 
 ### Task 6: Write Unit Tests for SkillContextProvider
 - Description: Test skill matching and context injection logic
@@ -555,14 +824,21 @@ agent -p "Say bonjour to Alice" 2>&1 | grep "tokens"
 
 ## Acceptance Criteria
 
-- [ ] Skill instructions NOT present in system prompt for irrelevant requests
-- [ ] Skill instructions present ONLY when request matches trigger keywords
-- [ ] Token usage reduced by 60-80% for non-skill requests (measured via trace logs)
-- [ ] All existing skill functionality still works (scripts, toolsets, discovery)
+- [ ] Minimal breadcrumb (~10 tokens) when skills exist but don't match
+- [ ] Full registry (10-15 tokens/skill) ONLY when user asks about capabilities
+- [ ] Full documentation injected ONLY when triggers match
+- [ ] Token usage reduced by 70-90% for non-skill requests
+- [ ] Word-boundary matching prevents false positives ("run" doesn't match "runner")
+- [ ] Invalid regex patterns handled gracefully (logged, not crashed)
+- [ ] Fallback to skill name only when no triggers defined
+- [ ] "Show all skills" capped at 10 skills to prevent overflow
+- [ ] Skill name always works as implicit trigger
+- [ ] SkillDocumentationIndex separate from persistent SkillRegistry
+- [ ] SkillDocumentationIndex exposes count() method for encapsulation
+- [ ] All existing skill functionality preserved (opt-in model maintained)
+- [ ] Tests cover truncation path for "show all skills" cap
 - [ ] SkillContextProvider unit tests pass with 95%+ coverage
-- [ ] Integration tests validate token reduction
 - [ ] No performance degradation (matching adds <5ms per request)
-- [ ] Documentation updated with triggers field and matching behavior
 
 ## Validation Commands
 
@@ -601,28 +877,73 @@ cd src && uv run pytest
 
 ### Design Decisions
 
+**Why Three-Tier Documentation?**
+- Tier 1: Breadcrumb (~10 tokens total) - minimal hint that skills exist
+- Tier 2: Registry (10-15 tokens/skill) - on-demand capability list
+- Tier 3: Full docs (hundreds of tokens) - only when triggers match
+- Balances discoverability with token efficiency
+
 **Why ContextProvider over Middleware?**
 - Middleware only sees input messages, not suitable for context injection
 - ContextProvider is the framework's intended pattern (per ADR-0013)
 - Proven successful with MemoryContextProvider
 
-**Why Keyword Matching for Phase 1?**
-- Simple, fast, predictable behavior
-- No external dependencies (embeddings, models)
-- Covers 80%+ of use cases
-- Can enhance in Phase 2 if needed
+**Why Single-Message Matching?**
+- ContextProvider only receives current turn without memory enabled
+- Conversation context requires memory manager integration
+- Single-message is simpler and works consistently
+- Future: Can enhance with memory for multi-turn context
+
+**Why Multiple Trigger Strategies?**
+- Keywords alone are too brittle for natural language
+- Verbs capture action intent ("translate", "greet", "fetch")
+- Patterns handle complex expressions ("say .* in", "translate to")
+- Skill name as trigger ensures direct references work
 
 **Why max_skills=3 Limit?**
 - Prevents token overflow if many skills match
 - Most requests need 1-2 skills maximum
 - Configurable for future tuning
 
+### Example SKILL.md Format
+
+```yaml
+---
+name: hello-extended
+description: Multi-language greeting tool for personalized messages
+brief_description: Multi-language greetings and translations
+triggers:
+  keywords:
+    - hello
+    - greet
+    - bonjour
+    - hola
+    - greeting
+    - welcome
+  verbs:
+    - greet
+    - welcome
+    - say
+    - translate
+  patterns:
+    - "say .* in .*"
+    - "greet .* in .*"
+    - "translate .* to .*"
+---
+
+# hello-extended
+
+[Full documentation goes here...]
+```
+
 ### Potential Side Effects
 
-**False Negatives (Skill Not Available When Needed):**
-- **Mitigation:** Comprehensive trigger keywords in SKILL.md
-- **Fallback:** Can add "show all skills" config option
-- **Monitoring:** Log when skills matched for debugging
+**False Negatives (Reduced but Not Eliminated):**
+- **Mitigation 1:** Registry always visible ensures LLM knows skill exists
+- **Mitigation 2:** Multiple trigger strategies increase match likelihood
+- **Mitigation 3:** Conversation context captures related discussions
+- **Mitigation 4:** Escape hatch allows user to request all skills
+- **Monitoring:** Log matched skills and confidence for tuning
 
 **Matching Latency:**
 - **Impact:** Minimal (~1-5ms for keyword matching)
@@ -645,6 +966,74 @@ SKILL_MATCHING_MODE=keyword  # keyword|semantic|hybrid
 SKILL_MAX_PER_REQUEST=3
 SKILL_FALLBACK_MODE=none     # none|show_all|ask_user
 ```
+
+## Key Improvements Based on Feedback
+
+This revised spec addresses critical architectural concerns:
+
+1. **Registry Separation**: SkillDocumentationIndex for runtime, SkillRegistry for installs
+   - Prevents bloating persistent registry.json
+   - Maintains clean separation of concerns
+
+2. **Three-Tier System**: Breadcrumb → Registry → Full docs
+   - Breadcrumb (~10 tokens) when skills exist but don't match
+   - Registry (10-15 tokens/skill) only when user asks
+   - Full docs (hundreds of tokens) only when triggers match
+   - Achieves 70-90% token reduction
+
+3. **Single-Message Matching**: No memory dependency
+   - Works consistently regardless of memory configuration
+   - Matches on current turn only for simplicity and reliability
+
+4. **Robust Matching**: Word boundaries and error handling
+   - Prevents false positives ("run" vs "runner")
+   - Handles invalid regex patterns gracefully
+   - Fallback to skill name only when no triggers
+
+5. **Maintained Opt-In Model**: Skills still require explicit enabling
+   - Preserves original activation contract
+   - Prevents unexpected skill activation
+
+6. **Capped Output**: "Show all" limited to prevent context overflow
+   - Max N skills shown at once
+   - User prompted for specific skills beyond cap
+
+## Follow-Up Issues Resolved
+
+All inconsistencies from both follow-up reviews have been addressed:
+
+### Round 1 (Architectural):
+1. **Loader return consistency**: Fixed - Returns `SkillDocumentationIndex` everywhere
+2. **Context-provider tests**: Aligned - Removed conversation-aware tests, single-message only
+3. **Data model gaps**: Added `SkillDocumentation` dataclass with all fields
+4. **Discovery vs invisibility**: Added minimal breadcrumb (~10 tokens) for discoverability
+5. **Registry snippet**: Now includes brief descriptions (10-15 tokens/skill) when shown
+6. **Matching fallback**: Restricted to skill name only, not generic description words
+7. **"Show all" cap**: Documented and tested at 10 skills max
+8. **Signature clarity**: Agent uses `skill_docs` consistently, memory_manager optional
+9. **Schema defaults**: Uses `Field(default_factory=list)`, creates new lists in post_init
+
+### Round 2 (Implementation Consistency):
+1. **Loader snippets**: Updated to use `skill_docs.add_skill()` not `skill_registry.register()`
+2. **Task 3 wording**: Fixed - "minimal breadcrumb" not "always inject registry", single-message not multi-turn
+3. **Matching fallback**: Removed "description" language, only skill name fallback documented
+4. **Test names**: Renamed all "registry" tests to "documentation_index"
+5. **Breadcrumb encapsulation**: Added `count()` method, no direct `_skills` access
+6. **Import clarity**: Added `SkillManifest` import to SkillDocumentationIndex
+7. **Token accuracy**: Updated breadcrumb to ~10 tokens (was 3-5), matches actual implementation
+
+## Open Questions Resolved
+
+Based on the feedback, these design decisions were made:
+
+1. **"Do we want the registry text on every turn?"**
+   - **Decision**: Minimal breadcrumb only (~10 tokens) when skills exist
+   - **Rationale**: Preserves discoverability without token bloat
+
+2. **"Should trigger matching be opt-in per skill?"**
+   - **Decision**: Skills remain opt-in (must be explicitly enabled in config)
+   - **Rationale**: Preserves backward compatibility and original activation model
+   - **Note**: Trigger matching only applies to already-enabled skills
 
 ## Execution
 

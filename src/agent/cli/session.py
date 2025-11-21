@@ -53,7 +53,20 @@ def setup_session_logging(
 
     # Configure logging
     # Support both AGENT_LOG_LEVEL and LOG_LEVEL (backward compatibility)
-    log_level = os.getenv("AGENT_LOG_LEVEL") or os.getenv("LOG_LEVEL") or "INFO"
+    # Fall back to settings.json, then "INFO"
+    log_level = os.getenv("AGENT_LOG_LEVEL") or os.getenv("LOG_LEVEL")
+
+    # If no env var set, try to load from settings.json
+    if not log_level:
+        try:
+            from agent.config.manager import load_config
+
+            settings = load_config()
+            log_level = settings.agent.log_level
+        except Exception:
+            # Fallback to INFO if settings can't be loaded
+            log_level = "INFO"
+
     log_level = log_level.upper()
     numeric_level = getattr(logging, log_level, logging.INFO)
 

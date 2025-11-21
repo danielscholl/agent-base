@@ -232,7 +232,7 @@ class SkillLoader:
 
         return manifest, toolsets, scripts
 
-    def load_enabled_skills(self) -> tuple[list[AgentToolset], Any, list[str]]:
+    def load_enabled_skills(self) -> tuple[list[AgentToolset], Any, "SkillDocumentationIndex"]:
         """Load all enabled skills based on configuration.
 
         This is the main entry point called by Agent.__init__().
@@ -242,7 +242,7 @@ class SkillLoader:
         - Loads plugin skills from config.skills.plugins (only if enabled=true)
 
         Returns:
-            Tuple of (skill_toolsets, script_wrapper_toolset, skill_instructions)
+            Tuple of (skill_toolsets, script_wrapper_toolset, skill_documentation_index)
 
         Raises:
             SkillError: If critical skill loading fails
@@ -296,7 +296,11 @@ class SkillLoader:
         # Load all skills (bundled + plugins)
         all_toolsets = []
         all_scripts = {}
-        skill_instructions = []
+
+        # Create documentation index for runtime context injection
+        from agent.skills.documentation_index import SkillDocumentationIndex
+
+        skill_docs = SkillDocumentationIndex()
 
         for skill_dir in bundled_skill_dirs + plugin_skill_dirs:
             try:
@@ -315,9 +319,9 @@ class SkillLoader:
                     all_scripts[canonical_name] = scripts
                     self._loaded_scripts[canonical_name] = scripts
 
-                # Collect skill instructions for system prompt
-                if manifest.instructions:
-                    skill_instructions.append(f"# {manifest.name}\n\n{manifest.instructions}")
+                # Add skill to documentation index for progressive disclosure
+                # Always add, even if instructions are empty - skill may have triggers/toolsets/scripts
+                skill_docs.add_skill(canonical_name, manifest)
 
                 logger.info(
                     f"Loaded {'bundled' if is_bundled else 'plugin'} skill '{manifest.name}': "
@@ -338,7 +342,7 @@ class SkillLoader:
 
             script_wrapper = ScriptToolset(self.config, all_scripts)
 
-        return all_toolsets, script_wrapper, skill_instructions
+        return all_toolsets, script_wrapper, skill_docs
 
     def validate_dependencies(self, manifest: SkillManifest) -> None:
         """Validate skill dependencies (for future use).

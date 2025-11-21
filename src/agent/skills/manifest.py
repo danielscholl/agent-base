@@ -27,6 +27,14 @@ from pydantic import BaseModel, Field, field_validator
 from agent.skills.errors import SkillManifestError
 
 
+class SkillTriggers(BaseModel):
+    """Structured triggers for skill matching."""
+
+    keywords: list[str] = Field(default_factory=list)  # Direct keyword matches
+    verbs: list[str] = Field(default_factory=list)  # Action verbs
+    patterns: list[str] = Field(default_factory=list)  # Regex patterns
+
+
 class SkillManifest(BaseModel):
     """Pydantic model for SKILL.md YAML front matter.
 
@@ -71,6 +79,34 @@ class SkillManifest(BaseModel):
 
     # Markdown instructions (not in YAML, extracted separately)
     instructions: str = ""
+
+    # Progressive disclosure fields
+    brief_description: str | None = None  # One-line description for registry
+    triggers: SkillTriggers | None = None  # Structured triggers for matching
+
+    def model_post_init(self, __context: Any) -> None:
+        """Auto-generate brief description and add skill name as trigger."""
+        # Auto-generate brief description if not provided
+        if not self.brief_description:
+            # Take first sentence or first 80 chars of description
+            first_sentence = self.description.split(".")[0]
+            self.brief_description = first_sentence[:80]
+
+        # Ensure triggers exists (creates new instance, not mutating default)
+        if self.triggers is None:
+            self.triggers = SkillTriggers()
+
+        # Add skill name as implicit trigger (case-insensitive check)
+        # Creates new list to avoid mutating shared defaults
+        skill_name_lower = self.name.lower()
+        existing_keywords_lower = [kw.lower() for kw in self.triggers.keywords]
+        if skill_name_lower not in existing_keywords_lower:
+            # Create new list with skill name added
+            self.triggers = SkillTriggers(
+                keywords=self.triggers.keywords + [skill_name_lower],
+                verbs=self.triggers.verbs,
+                patterns=self.triggers.patterns,
+            )
 
     @field_validator("name")
     @classmethod
