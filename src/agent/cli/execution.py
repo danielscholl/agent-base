@@ -32,7 +32,7 @@ from agent.cli.utils import (
     hide_connection_string_if_otel_disabled,
     set_model_span_attributes,
 )
-from agent.config import load_config
+from agent.config import load_config_with_env
 from agent.display import DisplayMode, set_execution_context
 
 logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ async def run_single_prompt(
 
         perf_start = time.perf_counter()
 
-        config = load_config()
+        config = load_config_with_env()
         errors = config.validate_enabled_providers()
         if errors:
             for error in errors:

@@ -166,7 +166,7 @@ class TestTelemetryWorkflow:
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.cli.execution.Agent")
-    @patch("agent.cli.execution.load_config")
+    @patch("agent.cli.execution.load_config_with_env")
     @patch("agent.cli.execution.setup_session_logging")
     @patch("agent.cli.execution._execute_query")
     @pytest.mark.asyncio
@@ -210,7 +210,7 @@ class TestTelemetryWorkflow:
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.cli.execution.Agent")
-    @patch("agent.cli.execution.load_config")
+    @patch("agent.cli.execution.load_config_with_env")
     @patch("agent.cli.execution.setup_session_logging")
     @patch("agent.cli.execution._execute_query")
     @pytest.mark.asyncio
@@ -248,7 +248,7 @@ class TestTelemetryWorkflow:
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.cli.interactive.ThreadPersistence")
     @patch("agent.cli.interactive.PromptSession")
-    @patch("agent.cli.interactive.load_config")
+    @patch("agent.cli.interactive.load_config_with_env")
     @patch("agent.cli.interactive.setup_session_logging")
     @pytest.mark.asyncio
     async def test_interactive_auto_detection_workflow(

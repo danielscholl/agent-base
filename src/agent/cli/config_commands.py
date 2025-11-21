@@ -358,7 +358,9 @@ def config_show() -> None:
 
         if llm_provider_env:
             # Load config with environment overrides
-            settings = load_config()
+            from agent.config import load_config_with_env
+
+            settings = load_config_with_env()
 
             # Check if provider was successfully enabled
             if settings.providers.enabled:

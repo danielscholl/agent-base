@@ -25,7 +25,7 @@ from rich.prompt import Confirm
 from agent.agent import Agent
 from agent.cli.constants import ExitCodes
 from agent.cli.utils import get_console
-from agent.config import load_config
+from agent.config import load_config_with_env
 from agent.config.schema import AgentSettings
 
 logger = logging.getLogger(__name__)
@@ -287,7 +287,7 @@ def run_health_check(console: Console | None = None) -> None:
 
     try:
         # Configuration validation
-        config = load_config()
+        config = load_config_with_env()
         errors = config.validate_enabled_providers()
         if errors:
             for error in errors:

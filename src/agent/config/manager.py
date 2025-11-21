@@ -26,7 +26,50 @@ def get_config_path() -> Path:
 
 
 def load_config(config_path: Path | None = None) -> AgentSettings:
-    """Load configuration from JSON file with environment variable overrides.
+    """Load configuration from JSON file.
+
+    Args:
+        config_path: Optional path to config file. Defaults to ~/.agent/settings.json
+
+    Returns:
+        AgentSettings instance loaded from file, or default settings if file doesn't exist
+
+    Raises:
+        ConfigurationError: If file exists but is invalid JSON or fails validation
+
+    Note:
+        This function loads configuration from file only. For environment variable
+        merging, use load_config_with_env() or manually apply merge_with_env().
+
+    Example:
+        >>> settings = load_config()
+        >>> settings.providers.enabled
+        ['local']
+    """
+    if config_path is None:
+        config_path = get_config_path()
+
+    # Return defaults if file doesn't exist
+    if not config_path.exists():
+        return AgentSettings()
+
+    try:
+        with open(config_path) as f:
+            data = json.load(f)
+
+        # Validate and load into Pydantic model
+        return AgentSettings(**data)
+
+    except json.JSONDecodeError as e:
+        raise ConfigurationError(f"Invalid JSON in configuration file {config_path}: {e}") from e
+    except ValidationError as e:
+        raise ConfigurationError(f"Configuration validation failed for {config_path}:\n{e}") from e
+    except Exception as e:
+        raise ConfigurationError(f"Failed to load configuration from {config_path}: {e}") from e
+
+
+def load_config_with_env(config_path: Path | None = None) -> AgentSettings:
+    """Load configuration from JSON file and merge with environment variables.
 
     Merges configuration from three sources (in precedence order):
     1. Environment variables (highest priority)
@@ -43,32 +86,12 @@ def load_config(config_path: Path | None = None) -> AgentSettings:
         ConfigurationError: If file exists but is invalid JSON or fails validation
 
     Example:
-        >>> settings = load_config()
+        >>> settings = load_config_with_env()
         >>> settings.providers.enabled  # From file or env (LLM_PROVIDER)
         ['openai']
     """
-    if config_path is None:
-        config_path = get_config_path()
-
-    # Start with base settings (from file or defaults)
-    if config_path.exists():
-        try:
-            with open(config_path) as f:
-                data = json.load(f)
-            settings = AgentSettings(**data)
-        except json.JSONDecodeError as e:
-            raise ConfigurationError(
-                f"Invalid JSON in configuration file {config_path}: {e}"
-            ) from e
-        except ValidationError as e:
-            raise ConfigurationError(
-                f"Configuration validation failed for {config_path}:\n{e}"
-            ) from e
-        except Exception as e:
-            raise ConfigurationError(f"Failed to load configuration from {config_path}: {e}") from e
-    else:
-        # No config file - start with defaults
-        settings = AgentSettings()
+    # Load base configuration
+    settings = load_config(config_path)
 
     # Apply environment variable overrides
     env_overrides = merge_with_env(settings)

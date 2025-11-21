@@ -48,7 +48,7 @@ class TestExecutionObservabilitySetup:
     """Tests for observability setup in execution.py (single prompt mode)."""
 
     @pytest.mark.asyncio
-    @patch("agent.cli.execution.load_config")
+    @patch("agent.cli.execution.load_config_with_env")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.cli.execution.Agent")
     @patch("agent.cli.execution.setup_session_logging")
@@ -80,7 +80,7 @@ class TestExecutionObservabilitySetup:
         )
 
     @pytest.mark.asyncio
-    @patch("agent.cli.execution.load_config")
+    @patch("agent.cli.execution.load_config_with_env")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent.cli.execution.Agent")
@@ -114,7 +114,7 @@ class TestExecutionObservabilitySetup:
         mock_setup_otel.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("agent.cli.execution.load_config")
+    @patch("agent.cli.execution.load_config_with_env")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent.cli.execution.Agent")
@@ -148,7 +148,7 @@ class TestExecutionObservabilitySetup:
         mock_setup_otel.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("agent.cli.execution.load_config")
+    @patch("agent.cli.execution.load_config_with_env")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent.cli.execution.Agent")
@@ -185,7 +185,7 @@ class TestInteractiveObservabilitySetup:
     """Tests for observability setup in interactive.py (chat mode)."""
 
     @pytest.mark.asyncio
-    @patch("agent.cli.interactive.load_config")
+    @patch("agent.cli.interactive.load_config_with_env")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.cli.interactive.ThreadPersistence")
     @patch("agent.cli.interactive.PromptSession")
@@ -221,7 +221,7 @@ class TestInteractiveObservabilitySetup:
         )
 
     @pytest.mark.asyncio
-    @patch("agent.cli.interactive.load_config")
+    @patch("agent.cli.interactive.load_config_with_env")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent.cli.interactive.ThreadPersistence")
@@ -259,7 +259,7 @@ class TestInteractiveObservabilitySetup:
         mock_setup_otel.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("agent.cli.interactive.load_config")
+    @patch("agent.cli.interactive.load_config_with_env")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent.observability.check_telemetry_endpoint")
     @patch("agent.cli.interactive.ThreadPersistence")
@@ -303,7 +303,7 @@ class TestObservabilitySpanCreation:
     """Tests for span creation during execution."""
 
     @pytest.mark.asyncio
-    @patch("agent.cli.execution.load_config")
+    @patch("agent.cli.execution.load_config_with_env")
     @patch("agent_framework.observability.setup_observability")
     @patch("agent_framework.observability.get_tracer")
     @patch("agent.cli.execution.Agent")
