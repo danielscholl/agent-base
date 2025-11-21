@@ -9,6 +9,16 @@ from agent.memory import InMemoryStore, MemoryManager
 from agent.memory.context_provider import MemoryContextProvider
 
 
+def _create_test_config(memory_enabled=True, memory_type="in_memory"):
+    """Helper to create test config with proper API."""
+    config = AgentSettings()
+    config.providers.enabled = ["openai"]
+    config.providers.openai.api_key = "test"
+    config.memory.enabled = memory_enabled
+    config.memory.type = memory_type
+    return config
+
+
 @pytest.mark.unit
 @pytest.mark.memory
 @pytest.mark.agent
@@ -17,11 +27,7 @@ class TestAgentMemoryIntegration:
 
     def test_agent_with_memory_disabled_has_no_manager(self, mock_settings, mock_chat_client):
         """Test Agent without memory enabled has no memory manager."""
-        config = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=False,
-        )
+        config = _create_test_config(memory_enabled=False)
 
         agent = Agent(settings=config, chat_client=mock_chat_client)
 
@@ -29,12 +35,7 @@ class TestAgentMemoryIntegration:
 
     def test_agent_with_memory_enabled_creates_manager(self, mock_chat_client):
         """Test Agent with memory enabled creates memory manager."""
-        config = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,
-            memory_type="in_memory",
-        )
+        config = _create_test_config(memory_enabled=True, memory_type="in_memory")
 
         agent = Agent(settings=config, chat_client=mock_chat_client)
 
@@ -55,12 +56,7 @@ class TestAgentMemoryIntegration:
 
     def test_agent_memory_manager_uses_config(self, mock_chat_client):
         """Test Agent's memory manager uses the config."""
-        config = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,
-            memory_type="in_memory",
-        )
+        config = _create_test_config(memory_enabled=True, memory_type="in_memory")
 
         agent = Agent(settings=config, chat_client=mock_chat_client)
 
@@ -68,12 +64,7 @@ class TestAgentMemoryIntegration:
 
     def test_agent_with_memory_enabled_and_custom_type(self, mock_chat_client):
         """Test Agent with memory enabled and custom type."""
-        config = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,
-            memory_type="in_memory",  # Currently only in_memory is supported
-        )
+        config = _create_test_config(memory_enabled=True, memory_type="in_memory")
 
         agent = Agent(settings=config, chat_client=mock_chat_client)
 
@@ -82,7 +73,9 @@ class TestAgentMemoryIntegration:
 
     def test_agent_with_memory_config_defaults_enabled(self, mock_chat_client):
         """Test Agent defaults to memory enabled for conversation context."""
-        config = AgentSettings(llm_provider="openai", openai_api_key="test")
+        config = AgentSettings()
+        config.providers.enabled = ["openai"]
+        config.providers.openai.api_key = "test"
 
         agent = Agent(settings=config, chat_client=mock_chat_client)
 
@@ -90,11 +83,7 @@ class TestAgentMemoryIntegration:
 
     def test_agent_memory_manager_priority(self, mock_chat_client, memory_store):
         """Test injected memory manager takes priority over config."""
-        config = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,  # Config says enabled
-        )
+        config = _create_test_config(memory_enabled=True)
 
         # But we inject a specific manager
         agent = Agent(settings=config, chat_client=mock_chat_client, memory_manager=memory_store)
@@ -104,11 +93,7 @@ class TestAgentMemoryIntegration:
 
     def test_agent_memory_manager_is_none_when_explicitly_injected(self, mock_chat_client):
         """Test Agent memory manager can be explicitly set to None."""
-        config = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,  # Config says enabled
-        )
+        config = _create_test_config(memory_enabled=True)
 
         # But we explicitly pass None
         agent = Agent(settings=config, chat_client=mock_chat_client, memory_manager=None)
@@ -120,11 +105,7 @@ class TestAgentMemoryIntegration:
     @pytest.mark.asyncio
     async def test_agent_with_memory_can_add_messages(self, mock_chat_client):
         """Test Agent with memory can add messages."""
-        config = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,
-        )
+        config = _create_test_config(memory_enabled=True)
 
         agent = Agent(settings=config, chat_client=mock_chat_client)
 
@@ -138,11 +119,7 @@ class TestAgentMemoryIntegration:
     @pytest.mark.asyncio
     async def test_agent_with_memory_can_search_messages(self, mock_chat_client):
         """Test Agent with memory can search messages."""
-        config = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,
-        )
+        config = _create_test_config(memory_enabled=True)
 
         agent = Agent(settings=config, chat_client=mock_chat_client)
 
@@ -156,11 +133,7 @@ class TestAgentMemoryIntegration:
     @pytest.mark.asyncio
     async def test_agent_with_memory_can_clear_messages(self, mock_chat_client):
         """Test Agent with memory can clear messages."""
-        config = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,
-        )
+        config = _create_test_config(memory_enabled=True)
 
         agent = Agent(settings=config, chat_client=mock_chat_client)
 
@@ -173,16 +146,8 @@ class TestAgentMemoryIntegration:
 
     def test_multiple_agents_have_separate_memory_managers(self, mock_chat_client):
         """Test multiple agents have separate memory managers."""
-        config1 = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,
-        )
-        config2 = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,
-        )
+        config1 = _create_test_config(memory_enabled=True)
+        config2 = _create_test_config(memory_enabled=True)
 
         agent1 = Agent(settings=config1, chat_client=mock_chat_client)
         agent2 = Agent(settings=config2, chat_client=mock_chat_client)
@@ -193,11 +158,7 @@ class TestAgentMemoryIntegration:
     @pytest.mark.asyncio
     async def test_multiple_agents_have_independent_memory(self, mock_chat_client):
         """Test multiple agents have independent memory storage."""
-        config = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,
-        )
+        config = _create_test_config(memory_enabled=True)
 
         agent1 = Agent(settings=config, chat_client=mock_chat_client)
         agent2 = Agent(settings=config, chat_client=mock_chat_client)
@@ -211,7 +172,9 @@ class TestAgentMemoryIntegration:
 
     def test_agent_has_memory_manager_attribute(self, mock_chat_client):
         """Test Agent has memory_manager attribute."""
-        config = AgentSettings(llm_provider="openai", openai_api_key="test")
+        config = AgentSettings()
+        config.providers.enabled = ["openai"]
+        config.providers.openai.api_key = "test"
 
         agent = Agent(settings=config, chat_client=mock_chat_client)
 
@@ -219,11 +182,7 @@ class TestAgentMemoryIntegration:
 
     def test_agent_memory_manager_type_annotation(self, mock_chat_client):
         """Test Agent memory_manager accepts Any type."""
-        config = AgentSettings(
-            llm_provider="openai",
-            openai_api_key="test",
-            memory_enabled=True,
-        )
+        config = _create_test_config(memory_enabled=True)
 
         # Create agent - should work with Any type for memory_manager
         agent = Agent(settings=config, chat_client=mock_chat_client)
