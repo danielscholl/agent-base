@@ -6,7 +6,6 @@ from unittest.mock import patch
 import pytest
 
 from agent.config.manager import load_config
-from agent.config.schema import AgentSettings
 
 
 def config_from_env():

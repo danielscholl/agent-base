@@ -10,7 +10,6 @@ skills configuration redesign. Skills are now configured via:
 """
 
 import os
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest

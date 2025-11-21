@@ -165,7 +165,9 @@ class TestHealthCheckLogging:
         """Test that Azure AI Foundry provider also gets Azure-specific error messages."""
         config = AgentSettings()
         config.providers.enabled = ["foundry"]
-        config.providers.foundry.project_endpoint = "https://test.services.ai.azure.com/api/projects/test"
+        config.providers.foundry.project_endpoint = (
+            "https://test.services.ai.azure.com/api/projects/test"
+        )
         config.providers.foundry.model_deployment = "test-model"
 
         with patch("agent.cli.health.Agent") as MockAgent:
@@ -206,7 +208,10 @@ class TestProviderConnectivityOptimization:
     async def test_active_provider_always_tested(self):
         """Test that active provider is always tested even if not in enabled list."""
         config = AgentSettings()
-        config.providers.enabled = ["local", "openai"]  # Note: need openai enabled for it to be active
+        config.providers.enabled = [
+            "local",
+            "openai",
+        ]  # Note: need openai enabled for it to be active
         config.providers.openai.api_key = "test-key"
         config.providers.openai.model = "gpt-5-mini"
 

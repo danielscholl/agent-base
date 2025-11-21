@@ -261,7 +261,9 @@ Model: {{MODEL}}
         assert "Test content" in prompt
         assert "OpenAI/gpt-5-mini" in prompt  # Placeholder replaced
 
-    def test_user_default_load_exception_handling(self, mock_settings, tmp_path, caplog, monkeypatch):
+    def test_user_default_load_exception_handling(
+        self, mock_settings, tmp_path, caplog, monkeypatch
+    ):
         """Test exception handling when loading user default system prompt fails."""
         # Set up agent_data_dir but make file.read_text() raise an error
         mock_settings.agent.data_dir = str(tmp_path)
@@ -293,14 +295,18 @@ Model: {{MODEL}}
 class TestConfigValidation:
     """Test configuration validation for system prompt file."""
 
-    @pytest.mark.skip(reason="Legacy .validate() method removed - Pydantic handles validation automatically")
+    @pytest.mark.skip(
+        reason="Legacy .validate() method removed - Pydantic handles validation automatically"
+    )
     def test_validate_existing_prompt_file(self, mock_settings, custom_prompt_file):
         """Test validation passes for existing prompt file."""
         mock_settings.agent.system_prompt_file = str(custom_prompt_file)
         # Should not raise
         mock_settings.validate()
 
-    @pytest.mark.skip(reason="Legacy .validate() method removed - Pydantic handles validation automatically")
+    @pytest.mark.skip(
+        reason="Legacy .validate() method removed - Pydantic handles validation automatically"
+    )
     def test_validate_missing_prompt_file_raises_error(self, mock_settings):
         """Test validation fails for missing prompt file."""
         mock_settings.agent.system_prompt_file = "/nonexistent/prompt.md"
@@ -308,14 +314,18 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="System prompt file not found"):
             mock_settings.validate()
 
-    @pytest.mark.skip(reason="Legacy .validate() method removed - Pydantic handles validation automatically")
+    @pytest.mark.skip(
+        reason="Legacy .validate() method removed - Pydantic handles validation automatically"
+    )
     def test_validate_none_prompt_file_passes(self, mock_settings):
         """Test validation passes when system_prompt_file is None."""
         mock_settings.agent.system_prompt_file = None
         # Should not raise
         mock_settings.validate()
 
-    @pytest.mark.skip(reason="Legacy .validate() method removed - Pydantic handles validation automatically")
+    @pytest.mark.skip(
+        reason="Legacy .validate() method removed - Pydantic handles validation automatically"
+    )
     def test_validate_with_env_var_expansion(self, mock_settings, tmp_path, monkeypatch):
         """Test validation expands environment variables before checking existence."""
         # Create a test prompt file

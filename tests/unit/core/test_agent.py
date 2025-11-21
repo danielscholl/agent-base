@@ -60,7 +60,9 @@ class TestAgent:
         tools1 = HelloTools(mock_settings)
         tools2 = HelloTools(mock_settings)
 
-        agent = Agent(settings=mock_settings, chat_client=mock_chat_client, toolsets=[tools1, tools2])
+        agent = Agent(
+            settings=mock_settings, chat_client=mock_chat_client, toolsets=[tools1, tools2]
+        )
 
         assert len(agent.toolsets) == 2
         # Should have 4 tools (2 from each HelloTools)

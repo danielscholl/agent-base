@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from agent.config import load_config, merge_with_env
+from agent.config import merge_with_env
 from agent.config.schema import AgentSettings
 
 
@@ -18,7 +18,7 @@ class TestAgentConfig:
     def test_default_settings_empty_providers(self):
         """Test default AgentSettings has empty providers list."""
         settings = AgentSettings()
-        
+
         # Default has no providers enabled
         assert settings.providers.enabled == []
 
@@ -63,13 +63,16 @@ class TestAgentConfig:
             # merge_with_env returns nested dict structure
             assert "providers" in env_overrides
             assert "foundry" in env_overrides["providers"]
-            assert env_overrides["providers"]["foundry"]["project_endpoint"] == "https://test.ai.azure.com/api/projects/test"
+            assert (
+                env_overrides["providers"]["foundry"]["project_endpoint"]
+                == "https://test.ai.azure.com/api/projects/test"
+            )
             assert env_overrides["providers"]["foundry"]["model_deployment"] == "gpt-4o"
 
     def test_default_data_directory(self):
         """Test default agent data directory."""
         settings = AgentSettings()
-        
+
         expected_dir = Path.home() / ".agent"
         assert settings.agent_data_dir == expected_dir
 

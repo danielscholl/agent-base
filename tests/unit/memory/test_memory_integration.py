@@ -43,7 +43,9 @@ class TestAgentMemoryIntegration:
         assert isinstance(agent.memory_manager, MemoryManager)
         assert isinstance(agent.memory_manager, InMemoryStore)
 
-    def test_agent_with_injected_memory_manager(self, mock_settings, mock_chat_client, memory_store):
+    def test_agent_with_injected_memory_manager(
+        self, mock_settings, mock_chat_client, memory_store
+    ):
         """Test Agent with injected memory manager."""
         agent = Agent(
             settings=mock_settings,

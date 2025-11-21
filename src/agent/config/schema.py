@@ -517,6 +517,7 @@ class AgentSettings(BaseModel):
 
         # Fall back to environment variable
         import os
+
         return os.getenv("AGENT_SYSTEM_PROMPT")
 
     def get_model_display_name(self) -> str:

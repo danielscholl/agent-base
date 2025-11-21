@@ -41,7 +41,9 @@ def mock_foundry_settings():
     """Create mock Azure AI Foundry configuration."""
     settings = AgentSettings()
     settings.providers.enabled = ["foundry"]
-    settings.providers.foundry.project_endpoint = "https://test-project.services.ai.azure.com/api/projects/test"
+    settings.providers.foundry.project_endpoint = (
+        "https://test-project.services.ai.azure.com/api/projects/test"
+    )
     settings.providers.foundry.model_deployment = "gpt-4o"
     return settings
 

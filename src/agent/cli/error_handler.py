@@ -103,7 +103,9 @@ def classify_anthropic_error(
     return None
 
 
-def classify_openai_error(error: Exception, config: AgentSettings | None = None) -> AgentError | None:
+def classify_openai_error(
+    error: Exception, config: AgentSettings | None = None
+) -> AgentError | None:
     """Classify OpenAI SDK exceptions into our exception types.
 
     Args:
@@ -179,7 +181,9 @@ def classify_openai_error(error: Exception, config: AgentSettings | None = None)
     return None
 
 
-def classify_gemini_error(error: Exception, config: AgentSettings | None = None) -> AgentError | None:
+def classify_gemini_error(
+    error: Exception, config: AgentSettings | None = None
+) -> AgentError | None:
     """Classify Google Gemini exceptions into our exception types.
 
     Args:

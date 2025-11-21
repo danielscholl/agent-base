@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent.config.manager import load_config
 from agent.config.schema import AgentSettings
 
 

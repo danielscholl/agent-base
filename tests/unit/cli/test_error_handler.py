@@ -5,7 +5,7 @@ It ensures that cryptic SDK exceptions are properly converted into user-friendly
 error messages with actionable troubleshooting steps.
 """
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
@@ -29,7 +29,6 @@ from agent.exceptions import (
     ProviderRateLimitError,
     ProviderTimeoutError,
 )
-
 
 # ============================================================================
 # Test Fixtures

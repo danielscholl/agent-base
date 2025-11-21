@@ -31,7 +31,9 @@ from agent.config.schema import AgentSettings
 logger = logging.getLogger(__name__)
 
 
-async def _test_provider_connectivity_async(provider: str, config: AgentSettings) -> tuple[bool, str]:
+async def _test_provider_connectivity_async(
+    provider: str, config: AgentSettings
+) -> tuple[bool, str]:
     """Test connectivity to a specific LLM provider asynchronously.
 
     Args:

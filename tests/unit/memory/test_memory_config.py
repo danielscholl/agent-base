@@ -290,7 +290,10 @@ class TestMemoryConfiguration:
 
             if "memory" in env_overrides:
                 settings.memory.type = env_overrides["memory"]["type"]
-                if "mem0" in env_overrides["memory"] and "api_key" in env_overrides["memory"]["mem0"]:
+                if (
+                    "mem0" in env_overrides["memory"]
+                    and "api_key" in env_overrides["memory"]["mem0"]
+                ):
                     settings.memory.mem0.api_key = env_overrides["memory"]["mem0"]["api_key"]
 
             # Should pass - will fall back to local mode when org_id missing
@@ -325,7 +328,10 @@ class TestMemoryConfiguration:
 
             if "memory" in env_overrides:
                 settings.memory.type = env_overrides["memory"]["type"]
-                if "mem0" in env_overrides["memory"] and "user_id" in env_overrides["memory"]["mem0"]:
+                if (
+                    "mem0" in env_overrides["memory"]
+                    and "user_id" in env_overrides["memory"]["mem0"]
+                ):
                     settings.memory.mem0.user_id = env_overrides["memory"]["mem0"]["user_id"]
 
             # MEM0_USER_ID should take precedence over $USER

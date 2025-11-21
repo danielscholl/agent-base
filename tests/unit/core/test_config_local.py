@@ -28,7 +28,10 @@ class TestLocalProviderConfig:
             # Check that local base_url was read from environment
             assert "providers" in env_overrides
             assert "local" in env_overrides["providers"]
-            assert env_overrides["providers"]["local"]["base_url"] == "http://localhost:12434/engines/llama.cpp/v1"
+            assert (
+                env_overrides["providers"]["local"]["base_url"]
+                == "http://localhost:12434/engines/llama.cpp/v1"
+            )
 
     def test_local_provider_defaults(self):
         """Test local provider uses default values."""

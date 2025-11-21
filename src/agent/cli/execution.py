@@ -33,7 +33,6 @@ from agent.cli.utils import (
     set_model_span_attributes,
 )
 from agent.config import load_config
-from agent.config.schema import AgentSettings
 from agent.display import DisplayMode, set_execution_context
 
 logger = logging.getLogger(__name__)

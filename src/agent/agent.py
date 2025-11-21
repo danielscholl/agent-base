@@ -104,11 +104,11 @@ class Agent:
                 if self.settings.skills.bundled_dir is None:
                     # Use importlib.resources to find bundled skills in package
                     try:
-                        bundled_skills_path = resources.files("agent").joinpath(
-                            "_bundled_skills"
-                        )
+                        bundled_skills_path = resources.files("agent").joinpath("_bundled_skills")
                         self.settings.skills.bundled_dir = str(bundled_skills_path)
-                        logger.debug(f"Auto-detected bundled_dir: {self.settings.skills.bundled_dir}")
+                        logger.debug(
+                            f"Auto-detected bundled_dir: {self.settings.skills.bundled_dir}"
+                        )
                     except (ModuleNotFoundError, AttributeError, TypeError) as e:
                         logger.warning(f"Could not auto-detect bundled_dir: {e}")
 
@@ -126,14 +126,10 @@ class Agent:
 
                 if script_tools:
                     toolsets.append(script_tools)
-                    logger.info(
-                        f"Loaded script wrapper with {script_tools.script_count} scripts"
-                    )
+                    logger.info(f"Loaded script wrapper with {script_tools.script_count} scripts")
 
                 if skill_docs.has_skills():
-                    logger.info(
-                        f"Loaded {skill_docs.count()} skill(s) for progressive disclosure"
-                    )
+                    logger.info(f"Loaded {skill_docs.count()} skill(s) for progressive disclosure")
 
             except Exception as e:
                 logger.error(f"Failed to load skills: {e}", exc_info=True)
