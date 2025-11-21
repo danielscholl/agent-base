@@ -86,13 +86,18 @@ class TestAgent:
         assert len(chunks) == 3  # "Hello", "from", "mock!"
         assert "".join(chunks) == "Hello from mock! "
 
-    def test_agent_config_defaults_to_from_env(self, mock_chat_client):
+    def test_agent_config_defaults_to_from_env(self, mock_chat_client, mock_settings):
         """Test Agent loads config from env if not provided."""
-        # This will use environment variables
-        agent = Agent(chat_client=mock_chat_client)
+        from unittest.mock import patch
 
-        assert agent.config is not None
-        assert isinstance(agent.config, AgentSettings)
+        # Mock load_config to return valid settings
+        with patch("agent.agent.load_config") as mock_load:
+            mock_load.return_value = mock_settings
+            agent = Agent(chat_client=mock_chat_client)
+
+            assert agent.config is not None
+            assert isinstance(agent.config, AgentSettings)
+            mock_load.assert_called_once()
 
     def test_create_chat_client_raises_for_unknown_provider(self):
         """Test _create_chat_client raises ValueError for unknown provider."""

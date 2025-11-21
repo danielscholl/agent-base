@@ -233,10 +233,18 @@ class TestMiddlewareTraceLogging:
     async def test_middleware_logs_error(self, tmp_path: Path):
         """Test middleware logs error when LLM call fails."""
         import json
+        from unittest.mock import patch
 
         trace_file = tmp_path / "trace.log"
         logger = TraceLogger(trace_file=trace_file)
         set_trace_logger(logger)
+
+        # Mock config with proper provider structure
+        mock_settings = Mock()
+        mock_settings.llm_provider = "openai"
+        mock_settings.openai_model = "gpt-4o-mini"
+        mock_settings.providers = Mock()
+        mock_settings.providers.enabled = ["openai"]
 
         context = Mock(spec=["messages"])
         context.messages = []
@@ -245,8 +253,10 @@ class TestMiddlewareTraceLogging:
             raise ValueError("API rate limit exceeded")
 
         # Should raise the exception
-        with pytest.raises(ValueError, match="API rate limit exceeded"):
-            await agent_run_logging_middleware(context, mock_next_that_fails)
+        with patch("agent.middleware.load_config") as MockConfig:
+            MockConfig.return_value = mock_settings
+            with pytest.raises(ValueError, match="API rate limit exceeded"):
+                await agent_run_logging_middleware(context, mock_next_that_fails)
 
         # Verify error was logged
         log_entries = trace_file.read_text().strip().split("\n")
