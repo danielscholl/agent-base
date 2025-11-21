@@ -42,10 +42,11 @@ class TestConfigurationIntegration:
         # Set environment variable to override
         with patch.dict(os.environ, {"OPENAI_API_KEY": "env-key-override"}, clear=False):
             loaded_settings = load_config(config_path)
-            merged_settings = merge_with_env(loaded_settings)
+            env_overrides = merge_with_env(loaded_settings)
 
         # Env overrides file when explicitly merged
-        assert merged_settings.openai_api_key == "env-key-override"
+        # merge_with_env returns dict of overrides
+        assert env_overrides["providers"]["openai"]["api_key"] == "env-key-override"
 
     def test_multiple_providers_enabled(self, tmp_path):
         """Test enabling multiple providers."""
@@ -112,9 +113,10 @@ class TestConfigurationIntegration:
         ):
             settings = AgentSettings()
             settings.providers.enabled = ["anthropic"]
-            merged = merge_with_env(settings)
+            env_overrides = merge_with_env(settings)
 
-        assert merged.anthropic_api_key == "sk-ant-test"
+        # merge_with_env returns dict of overrides
+        assert env_overrides["providers"]["anthropic"]["api_key"] == "sk-ant-test"
 
     def test_telemetry_config_integration(self, tmp_path):
         """Test telemetry configuration."""
@@ -183,11 +185,12 @@ class TestConfigPrecedence:
             clear=False,
         ):
             loaded_settings = load_config(config_path)
-            merged_settings = merge_with_env(loaded_settings)
+            env_overrides = merge_with_env(loaded_settings)
 
         # Env used to override file value when merged
         assert loaded_settings.openai_api_key == "file-key"  # File value without merge
-        assert merged_settings.openai_api_key == "env-override-key"  # Env overrides after merge
+        # merge_with_env returns dict of overrides
+        assert env_overrides["providers"]["openai"]["api_key"] == "env-override-key"  # Env overrides after merge
 
     def test_file_values_persist(self, tmp_path):
         """Test that file values are preserved in configuration."""
