@@ -128,7 +128,7 @@ class TestObservabilityIntegration:
         mock_client = MockChatClient(response="Test response")
 
         # Create agent
-        agent = Agent(config=config, chat_client=mock_client)
+        agent = Agent(settings=config, chat_client=mock_client)
 
         # Execute
         response = await agent.run("test prompt")
@@ -151,7 +151,7 @@ class TestObservabilityIntegration:
         mock_client = MockChatClient(response="Test response")
 
         # Create agent
-        agent = Agent(config=config, chat_client=mock_client)
+        agent = Agent(settings=config, chat_client=mock_client)
 
         # Execute
         response = await agent.run("test prompt")

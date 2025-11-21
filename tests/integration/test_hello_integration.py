@@ -25,7 +25,7 @@ async def test_agent_with_hello_tools():
 
     # Create agent with HelloTools
     toolsets = [HelloTools(config)]
-    agent = Agent(config=config, chat_client=mock_client, toolsets=toolsets)
+    agent = Agent(settings=config, chat_client=mock_client, toolsets=toolsets)
 
     # Verify tools registered
     assert len(agent.tools) == 2
@@ -46,7 +46,7 @@ async def test_agent_run_stream_integration():
     )
 
     mock_client = MockChatClient(response="Hello World")
-    agent = Agent(config=config, chat_client=mock_client)
+    agent = Agent(settings=config, chat_client=mock_client)
 
     # Collect streamed chunks
     chunks = []
@@ -90,7 +90,7 @@ async def test_agent_with_multiple_provider_configs():
         llm_provider="openai",
         openai_api_key="test-key",
     )
-    agent_openai = Agent(config=openai_config, chat_client=mock_client)
+    agent_openai = Agent(settings=openai_config, chat_client=mock_client)
     assert agent_openai.config.llm_provider == "openai"
 
     # Anthropic config
@@ -98,7 +98,7 @@ async def test_agent_with_multiple_provider_configs():
         llm_provider="anthropic",
         anthropic_api_key="test-key",
     )
-    agent_anthropic = Agent(config=anthropic_config, chat_client=mock_client)
+    agent_anthropic = Agent(settings=anthropic_config, chat_client=mock_client)
     assert agent_anthropic.config.llm_provider == "anthropic"
 
     # Azure OpenAI config
@@ -107,7 +107,7 @@ async def test_agent_with_multiple_provider_configs():
         azure_openai_endpoint="https://test.openai.azure.com",
         azure_openai_deployment="gpt-5-codex",
     )
-    agent_azure_openai = Agent(config=azure_openai_config, chat_client=mock_client)
+    agent_azure_openai = Agent(settings=azure_openai_config, chat_client=mock_client)
     assert agent_azure_openai.config.llm_provider == "azure"
 
     # Azure AI Foundry config
@@ -116,7 +116,7 @@ async def test_agent_with_multiple_provider_configs():
         azure_project_endpoint="https://test.ai.azure.com",
         azure_model_deployment="gpt-4o",
     )
-    agent_azure = Agent(config=azure_config, chat_client=mock_client)
+    agent_azure = Agent(settings=azure_config, chat_client=mock_client)
     assert agent_azure.config.llm_provider == "foundry"
 
 
@@ -136,7 +136,7 @@ async def test_full_stack_config_to_agent_to_tools():
 
     # 3. Create agent with tools
     mock_client = MockChatClient(response="Complete!")
-    agent = Agent(config=config, chat_client=mock_client, toolsets=[hello_tools])
+    agent = Agent(settings=config, chat_client=mock_client, toolsets=[hello_tools])
 
     # 4. Verify full integration
     assert agent.config == config
@@ -193,7 +193,7 @@ async def test_provider_switching_with_mock():
 
     for provider_name, config in providers:
         # Create agent with mocked client
-        agent = Agent(config=config, chat_client=mock_client)
+        agent = Agent(settings=config, chat_client=mock_client)
 
         # Execute
         response = await agent.run("test")

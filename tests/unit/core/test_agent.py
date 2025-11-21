@@ -97,7 +97,7 @@ class TestAgent:
         config = AgentSettings(llm_provider="invalid_provider", openai_api_key="test")
 
         with pytest.raises(ValueError, match="Unknown provider: invalid_provider"):
-            Agent(config=config)
+            Agent(settings=config)
 
     def test_agent_has_agent_attribute(self, agent_instance):
         """Test Agent has agent attribute after initialization."""
@@ -168,7 +168,7 @@ class TestAgentSystemPrompt:
         self, custom_prompt_config, mock_chat_client, custom_prompt_file
     ):
         """Test agent gets custom prompt from file specified in config."""
-        Agent(config=custom_prompt_config, chat_client=mock_chat_client)
+        Agent(settings=custom_prompt_config, chat_client=mock_chat_client)
 
         # Verify agent was created with custom prompt
         assert len(mock_chat_client.created_agents) == 1
@@ -182,7 +182,7 @@ class TestAgentSystemPrompt:
         self, custom_prompt_config, mock_chat_client
     ):
         """Test placeholders are replaced correctly in agent instructions."""
-        Agent(config=custom_prompt_config, chat_client=mock_chat_client)
+        Agent(settings=custom_prompt_config, chat_client=mock_chat_client)
 
         created = mock_chat_client.created_agents[0]
         instructions = created["instructions"]
@@ -224,7 +224,7 @@ class TestAgentSystemPrompt:
         Agent(settings=mock_settings, chat_client=mock_chat_client)
 
         # Create agent with custom config
-        Agent(config=custom_prompt_config, chat_client=mock_chat_client)
+        Agent(settings=custom_prompt_config, chat_client=mock_chat_client)
 
         # Verify both were created
         assert len(mock_chat_client.created_agents) == 2

@@ -354,7 +354,7 @@ async def run_chat_mode(
         # If resuming session, we need agent immediately to restore context
         if resume_session:
             agent_start = time.perf_counter()
-            agent = Agent(config=config)
+            agent = Agent(settings=config)
             logger.info(
                 f"[PERF] Agent created for resume: {(time.perf_counter() - agent_start)*1000:.1f}ms"
             )
@@ -466,7 +466,7 @@ async def run_chat_mode(
                     # Create agent if needed (lazy init)
                     if agent is None:
                         init_start = time.perf_counter()
-                        agent = Agent(config=config)
+                        agent = Agent(settings=config)
                         logger.info(
                             f"[PERF] Agent lazy init for /clear: {(time.perf_counter() - init_start)*1000:.1f}ms"
                         )
@@ -476,7 +476,7 @@ async def run_chat_mode(
                     # Create agent if needed (lazy init)
                     if agent is None:
                         init_start = time.perf_counter()
-                        agent = Agent(config=config)
+                        agent = Agent(settings=config)
                         logger.info(
                             f"[PERF] Agent lazy init for /continue: {(time.perf_counter() - init_start)*1000:.1f}ms"
                         )
@@ -505,9 +505,9 @@ async def run_chat_mode(
                     init_start = time.perf_counter()
                     if not quiet:
                         with console.status("[bold blue]Initializing...", spinner="dots"):
-                            agent = Agent(config=config)
+                            agent = Agent(settings=config)
                     else:
-                        agent = Agent(config=config)
+                        agent = Agent(settings=config)
                     logger.info(
                         f"[PERF] Agent lazy init: {(time.perf_counter() - init_start)*1000:.1f}ms"
                     )

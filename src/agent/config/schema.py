@@ -710,3 +710,38 @@ class AgentSettings(BaseModel):
     def mem0_org_id(self) -> str | None:
         """Legacy: Get Mem0 organization ID."""
         return self.memory.mem0.org_id
+
+    @property
+    def memory_dir(self) -> Path:
+        """Legacy: Get memory directory path."""
+        return self.agent_data_dir / "memory"
+
+    @property
+    def enabled_providers(self) -> list[str]:
+        """Legacy: Get list of enabled providers."""
+        return self.providers.enabled
+
+    @property
+    def enable_otel(self) -> bool:
+        """Legacy: Get telemetry enabled flag."""
+        return self.telemetry.enabled
+
+    @property
+    def enable_otel_explicit(self) -> bool:
+        """Legacy: Check if telemetry was explicitly enabled (not auto-detected)."""
+        return self.telemetry.enabled
+
+    @property
+    def otlp_endpoint(self) -> str:
+        """Legacy: Get OTLP endpoint."""
+        return self.telemetry.otlp_endpoint
+
+    @property
+    def applicationinsights_connection_string(self) -> str | None:
+        """Legacy: Get Application Insights connection string."""
+        return self.telemetry.applicationinsights_connection_string
+
+    @property
+    def enable_sensitive_data(self) -> bool:
+        """Legacy: Get enable sensitive data flag."""
+        return self.telemetry.enable_sensitive_data

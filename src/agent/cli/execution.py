@@ -133,7 +133,7 @@ async def run_single_prompt(
         logger.info(f"[PERF] Logging setup: {(time.perf_counter() - perf_start)*1000:.1f}ms")
 
         agent_start = time.perf_counter()
-        agent = Agent(config=config)
+        agent = Agent(settings=config)
         logger.info(f"[PERF] Agent created: {(time.perf_counter() - agent_start)*1000:.1f}ms")
 
         # Setup execution context for visualization

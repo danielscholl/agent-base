@@ -60,7 +60,7 @@ def openai_agent():
         openai_model="gpt-4o-mini",  # Cheaper model for testing
     )
 
-    return Agent(config=config)
+    return Agent(settings=config)
 
 
 @pytest.fixture
@@ -78,7 +78,7 @@ def anthropic_agent():
         anthropic_model="claude-haiku-4-5-20251001",  # Cheapest model tier
     )
 
-    return Agent(config=config)
+    return Agent(settings=config)
 
 
 @pytest.fixture
@@ -96,7 +96,7 @@ def azure_agent():
         azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o"),
     )
 
-    return Agent(config=config)
+    return Agent(settings=config)
 
 
 # ============================================================================

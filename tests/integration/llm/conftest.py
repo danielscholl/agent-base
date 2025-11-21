@@ -36,7 +36,7 @@ def openai_agent():
         openai_model=os.getenv("OPENAI_MODEL", "gpt-5-mini"),
     )
 
-    return Agent(config=config)
+    return Agent(settings=config)
 
 
 @pytest.fixture
@@ -61,7 +61,7 @@ def anthropic_agent():
         anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
     )
 
-    return Agent(config=config)
+    return Agent(settings=config)
 
 
 @pytest.fixture
@@ -89,7 +89,7 @@ def azure_openai_agent():
         or os.getenv("AZURE_OPENAI_VERSION", "2025-03-01-preview"),
     )
 
-    return Agent(config=config)
+    return Agent(settings=config)
 
 
 @pytest.fixture
@@ -121,7 +121,7 @@ def foundry_agent():
         azure_model_deployment=os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-5-mini"),
     )
 
-    return Agent(config=config)
+    return Agent(settings=config)
 
 
 @pytest.fixture
@@ -148,7 +148,7 @@ def gemini_agent():
         gemini_model=os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
     )
 
-    return Agent(config=config)
+    return Agent(settings=config)
 
 
 @pytest.fixture
@@ -185,7 +185,7 @@ def local_agent():
         local_model=os.getenv("LOCAL_MODEL", "ai/phi4"),
     )
 
-    return Agent(config=config)
+    return Agent(settings=config)
 
 
 @pytest.fixture(autouse=True)

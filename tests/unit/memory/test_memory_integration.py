@@ -23,7 +23,7 @@ class TestAgentMemoryIntegration:
             memory_enabled=False,
         )
 
-        agent = Agent(config=config, chat_client=mock_chat_client)
+        agent = Agent(settings=config, chat_client=mock_chat_client)
 
         assert agent.memory_manager is None
 
@@ -36,7 +36,7 @@ class TestAgentMemoryIntegration:
             memory_type="in_memory",
         )
 
-        agent = Agent(config=config, chat_client=mock_chat_client)
+        agent = Agent(settings=config, chat_client=mock_chat_client)
 
         assert agent.memory_manager is not None
         assert isinstance(agent.memory_manager, MemoryManager)
@@ -62,7 +62,7 @@ class TestAgentMemoryIntegration:
             memory_type="in_memory",
         )
 
-        agent = Agent(config=config, chat_client=mock_chat_client)
+        agent = Agent(settings=config, chat_client=mock_chat_client)
 
         assert agent.memory_manager.config == config
 
@@ -75,7 +75,7 @@ class TestAgentMemoryIntegration:
             memory_type="in_memory",  # Currently only in_memory is supported
         )
 
-        agent = Agent(config=config, chat_client=mock_chat_client)
+        agent = Agent(settings=config, chat_client=mock_chat_client)
 
         assert agent.memory_manager is not None
         assert isinstance(agent.memory_manager, InMemoryStore)
@@ -84,7 +84,7 @@ class TestAgentMemoryIntegration:
         """Test Agent defaults to memory enabled for conversation context."""
         config = AgentSettings(llm_provider="openai", openai_api_key="test")
 
-        agent = Agent(config=config, chat_client=mock_chat_client)
+        agent = Agent(settings=config, chat_client=mock_chat_client)
 
         assert agent.memory_manager is not None
 
@@ -97,7 +97,7 @@ class TestAgentMemoryIntegration:
         )
 
         # But we inject a specific manager
-        agent = Agent(config=config, chat_client=mock_chat_client, memory_manager=memory_store)
+        agent = Agent(settings=config, chat_client=mock_chat_client, memory_manager=memory_store)
 
         # Should use the injected one
         assert agent.memory_manager is memory_store
@@ -111,7 +111,7 @@ class TestAgentMemoryIntegration:
         )
 
         # But we explicitly pass None
-        agent = Agent(config=config, chat_client=mock_chat_client, memory_manager=None)
+        agent = Agent(settings=config, chat_client=mock_chat_client, memory_manager=None)
 
         # Should create one from config since memory_enabled is True
         assert agent.memory_manager is not None
@@ -126,7 +126,7 @@ class TestAgentMemoryIntegration:
             memory_enabled=True,
         )
 
-        agent = Agent(config=config, chat_client=mock_chat_client)
+        agent = Agent(settings=config, chat_client=mock_chat_client)
 
         # Add messages to memory
         messages = [{"role": "user", "content": "Test message"}]
@@ -144,7 +144,7 @@ class TestAgentMemoryIntegration:
             memory_enabled=True,
         )
 
-        agent = Agent(config=config, chat_client=mock_chat_client)
+        agent = Agent(settings=config, chat_client=mock_chat_client)
 
         # Add and search
         await agent.memory_manager.add([{"role": "user", "content": "Alice likes Python"}])
@@ -162,7 +162,7 @@ class TestAgentMemoryIntegration:
             memory_enabled=True,
         )
 
-        agent = Agent(config=config, chat_client=mock_chat_client)
+        agent = Agent(settings=config, chat_client=mock_chat_client)
 
         # Add and clear
         await agent.memory_manager.add([{"role": "user", "content": "Test"}])
@@ -184,8 +184,8 @@ class TestAgentMemoryIntegration:
             memory_enabled=True,
         )
 
-        agent1 = Agent(config=config1, chat_client=mock_chat_client)
-        agent2 = Agent(config=config2, chat_client=mock_chat_client)
+        agent1 = Agent(settings=config1, chat_client=mock_chat_client)
+        agent2 = Agent(settings=config2, chat_client=mock_chat_client)
 
         # Should have different memory manager instances
         assert agent1.memory_manager is not agent2.memory_manager
@@ -199,8 +199,8 @@ class TestAgentMemoryIntegration:
             memory_enabled=True,
         )
 
-        agent1 = Agent(config=config, chat_client=mock_chat_client)
-        agent2 = Agent(config=config, chat_client=mock_chat_client)
+        agent1 = Agent(settings=config, chat_client=mock_chat_client)
+        agent2 = Agent(settings=config, chat_client=mock_chat_client)
 
         # Add to agent1 memory
         await agent1.memory_manager.add([{"role": "user", "content": "Agent 1 message"}])
@@ -213,7 +213,7 @@ class TestAgentMemoryIntegration:
         """Test Agent has memory_manager attribute."""
         config = AgentSettings(llm_provider="openai", openai_api_key="test")
 
-        agent = Agent(config=config, chat_client=mock_chat_client)
+        agent = Agent(settings=config, chat_client=mock_chat_client)
 
         assert hasattr(agent, "memory_manager")
 
@@ -226,7 +226,7 @@ class TestAgentMemoryIntegration:
         )
 
         # Create agent - should work with Any type for memory_manager
-        agent = Agent(config=config, chat_client=mock_chat_client)
+        agent = Agent(settings=config, chat_client=mock_chat_client)
 
         # Memory manager should be created
         assert agent.memory_manager is not None
