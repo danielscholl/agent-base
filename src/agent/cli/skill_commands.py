@@ -145,16 +145,30 @@ def manage_skills() -> None:
 
         if bundled_path.exists():
             from agent.skills.loader import SkillLoader
+            from agent.skills.manifest import parse_skill_manifest
 
             loader = SkillLoader(_MockConfig())
             bundled_skills = loader.scan_skill_directory(bundled_path)
 
             disabled_bundled = {normalize_skill_name(s) for s in settings.skills.disabled_bundled}
+            enabled_bundled = {normalize_skill_name(s) for s in settings.skills.enabled_bundled}
 
             for skill_dir in bundled_skills:
                 skill_name = skill_dir.name
                 canonical = normalize_skill_name(skill_name)
-                enabled = canonical not in disabled_bundled
+
+                # Three-state logic: user override > manifest default
+                try:
+                    manifest = parse_skill_manifest(skill_dir)
+                    if canonical in enabled_bundled:
+                        enabled = True
+                    elif canonical in disabled_bundled:
+                        enabled = False
+                    else:
+                        enabled = manifest.default_enabled
+                except Exception:
+                    enabled = True  # Fallback
+
                 all_skills.append(
                     {
                         "name": skill_name,
@@ -289,6 +303,7 @@ def show_skills() -> None:
         if bundled_skills:
             console.print("[bold]Bundled:[/bold]")
             disabled_bundled = {normalize_skill_name(s) for s in settings.skills.disabled_bundled}
+            enabled_bundled = {normalize_skill_name(s) for s in settings.skills.enabled_bundled}
 
             for skill_dir in bundled_skills:
                 from agent.skills.manifest import parse_skill_manifest
@@ -296,16 +311,25 @@ def show_skills() -> None:
 
                 skill_name = skill_dir.name
                 canonical = normalize_skill_name(skill_name)
-                enabled = canonical not in disabled_bundled
 
-                # Calculate token count for this skill's instructions
+                # Calculate token count and determine enabled state
                 try:
                     manifest = parse_skill_manifest(skill_dir)
                     token_count = (
                         count_tokens(manifest.instructions) if manifest.instructions else 0
                     )
+
+                    # Three-state logic: user override > manifest default
+                    if canonical in enabled_bundled:
+                        enabled = True  # User explicitly enabled
+                    elif canonical in disabled_bundled:
+                        enabled = False  # User explicitly disabled
+                    else:
+                        enabled = manifest.default_enabled  # Manifest default
+
                 except Exception:
                     token_count = 0
+                    enabled = True  # Fallback to enabled if can't parse
 
                 status_icon = "[green]◉[/green]" if enabled else "[dim]○[/dim]"
                 location = str(skill_dir.relative_to(bundled_path.parent))
@@ -707,22 +731,44 @@ def enable_skill(name: str | None = None) -> None:
             console.print(f"[green]✓[/green] Enabled plugin skill: {name}")
             console.print("Restart agent to load skill.")
         else:
-            # Must be a bundled skill - remove from disabled list
-            if canonical_name in [
-                normalize_skill_name(s) for s in settings.skills.disabled_bundled
-            ]:
+            # Bundled skill - check manifest for default_enabled
+            bundled_dir = settings.skills.bundled_dir
+            if bundled_dir is None:
+                _, bundled_dir = _get_repo_paths()
+
+            # Find and parse manifest to check default_enabled
+            bundled_path = Path(bundled_dir)
+            from agent.skills.loader import SkillLoader
+            from agent.skills.manifest import parse_skill_manifest
+
+            loader = SkillLoader(_MockConfig())
+            skill_dirs = loader.scan_skill_directory(bundled_path)
+            found_skill_dir = next(
+                (d for d in skill_dirs if normalize_skill_name(d.name) == canonical_name), None
+            )
+
+            if found_skill_dir is not None:
+                manifest = parse_skill_manifest(found_skill_dir)
+
+                # Remove from disabled_bundled (if present)
                 settings.skills.disabled_bundled = [
                     s
                     for s in settings.skills.disabled_bundled
                     if normalize_skill_name(s) != canonical_name
                 ]
+
+                # If skill defaults to disabled, add to enabled_bundled
+                if not manifest.default_enabled:
+                    if canonical_name not in [
+                        normalize_skill_name(s) for s in settings.skills.enabled_bundled
+                    ]:
+                        settings.skills.enabled_bundled.append(canonical_name)
+
                 save_config(settings)
                 console.print(f"[green]✓[/green] Enabled bundled skill: {name}")
                 console.print("Restart agent to load skill.")
             else:
-                console.print(
-                    f"[yellow]Bundled skill '{name}' is already enabled (not in disabled list)[/yellow]"
-                )
+                console.print(f"[red]Bundled skill '{name}' not found[/red]")
 
         console.print()
 
@@ -822,15 +868,43 @@ def disable_skill(name: str | None = None) -> None:
             save_config(settings)
             console.print(f"[green]✓[/green] Disabled plugin skill: {name}")
         else:
-            # Must be a bundled skill - add to disabled list
-            if canonical_name not in [
-                normalize_skill_name(s) for s in settings.skills.disabled_bundled
-            ]:
-                settings.skills.disabled_bundled.append(canonical_name)
+            # Bundled skill - check manifest for default_enabled
+            bundled_dir = settings.skills.bundled_dir
+            if bundled_dir is None:
+                _, bundled_dir = _get_repo_paths()
+
+            # Find and parse manifest to check default_enabled
+            bundled_path = Path(bundled_dir)
+            from agent.skills.loader import SkillLoader
+            from agent.skills.manifest import parse_skill_manifest
+
+            loader = SkillLoader(_MockConfig())
+            skill_dirs = loader.scan_skill_directory(bundled_path)
+            found_skill_dir = next(
+                (d for d in skill_dirs if normalize_skill_name(d.name) == canonical_name), None
+            )
+
+            if found_skill_dir is not None:
+                manifest = parse_skill_manifest(found_skill_dir)
+
+                # Remove from enabled_bundled (if present)
+                settings.skills.enabled_bundled = [
+                    s
+                    for s in settings.skills.enabled_bundled
+                    if normalize_skill_name(s) != canonical_name
+                ]
+
+                # If skill defaults to enabled, add to disabled_bundled
+                if manifest.default_enabled:
+                    if canonical_name not in [
+                        normalize_skill_name(s) for s in settings.skills.disabled_bundled
+                    ]:
+                        settings.skills.disabled_bundled.append(canonical_name)
+
                 save_config(settings)
                 console.print(f"[green]✓[/green] Disabled bundled skill: {name}")
             else:
-                console.print(f"[yellow]Bundled skill '{name}' is already disabled[/yellow]")
+                console.print(f"[red]Bundled skill '{name}' not found[/red]")
 
         console.print()
 

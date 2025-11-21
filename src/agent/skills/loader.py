@@ -253,11 +253,19 @@ class SkillLoader:
         # Get skills config
         skills_config = self.config.skills
 
-        # Get disabled bundled skills list
+        # Get user overrides for bundled skills (three-state logic)
         disabled_bundled = getattr(skills_config, "disabled_bundled", [])
+        enabled_bundled = getattr(skills_config, "enabled_bundled", [])
 
-        # Get canonical names for disabled skills (normalize for matching)
+        # Ensure lists (handle Mock objects in tests)
+        if not isinstance(disabled_bundled, list):
+            disabled_bundled = []
+        if not isinstance(enabled_bundled, list):
+            enabled_bundled = []
+
+        # Normalize for matching
         disabled_canonical = {normalize_skill_name(name) for name in disabled_bundled}
+        enabled_canonical = {normalize_skill_name(name) for name in enabled_bundled}
 
         # Collect all skill directories to scan
         bundled_skill_dirs = []
@@ -310,11 +318,24 @@ class SkillLoader:
                 manifest, toolsets, scripts = self.load_skill(skill_dir)
                 canonical_name = normalize_skill_name(manifest.name)
 
-                # Check if bundled skill is disabled
+                # Three-state logic for bundled skills (plugins always enabled if in config)
                 is_bundled = skill_dir in bundled_skill_dirs
-                if is_bundled and canonical_name in disabled_canonical:
-                    logger.info(f"Skipping disabled bundled skill: {manifest.name}")
-                    continue
+                if is_bundled:
+                    # User explicitly enabled (overrides default_enabled: false)
+                    if canonical_name in enabled_canonical:
+                        should_load = True
+                    # User explicitly disabled (overrides default_enabled: true)
+                    elif canonical_name in disabled_canonical:
+                        should_load = False
+                    # No user override - use manifest default
+                    else:
+                        should_load = manifest.default_enabled
+
+                    if not should_load:
+                        logger.info(
+                            f"Skipping bundled skill '{manifest.name}' (default_enabled={manifest.default_enabled})"
+                        )
+                        continue
 
                 # Load the skill
                 all_toolsets.extend(toolsets)

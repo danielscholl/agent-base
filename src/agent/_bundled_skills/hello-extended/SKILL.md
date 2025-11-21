@@ -1,6 +1,7 @@
 ---
 name: hello-extended
 description: Multi-language greetings in 6 languages. Use for non-English greetings or multiple people.
+default_enabled: false
 toolsets:
   - toolsets.hello:HelloExtended
 ---
