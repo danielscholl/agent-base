@@ -407,3 +407,93 @@ async def test_hybrid_fallback_no_triggers_uses_registry():
     assert "skill2" in result.instructions
     # Should NOT be just a breadcrumb
     assert result.instructions != "[2 skills available]"
+
+
+@pytest.mark.unit
+@pytest.mark.skills
+@pytest.mark.asyncio
+async def test_web_skill_triggers():
+    """Test that web skill matches on various triggers."""
+    docs = SkillDocumentationIndex()
+
+    manifest = SkillManifest(
+        name="web",
+        description="Web search and page fetching with Brave API",
+        brief_description="Web search and page fetching",
+        triggers=SkillTriggers(
+            keywords=["web", "search", "internet", "online", "fetch", "url"],
+            verbs=["search", "fetch", "get", "find"],
+            patterns=[r"https?://", r"www\.", r"search.*for", r"find.*information"],
+        ),
+        instructions="# web\n\nWeb search and content fetching.",
+    )
+    docs.add_skill("web", manifest)
+
+    provider = SkillContextProvider(docs, max_skills=3)
+
+    # Test keyword matching
+    messages = [MockMessage("user", "search the internet for python tutorials")]
+    result = await provider.invoking(messages)
+    assert "web" in result.instructions
+
+    # Test verb matching
+    messages = [MockMessage("user", "fetch the latest news")]
+    result = await provider.invoking(messages)
+    assert "web" in result.instructions
+
+    # Test URL pattern matching
+    messages = [MockMessage("user", "get https://example.com")]
+    result = await provider.invoking(messages)
+    assert "web" in result.instructions
+
+    # Test pattern matching for "search for"
+    messages = [MockMessage("user", "can you search for AI news")]
+    result = await provider.invoking(messages)
+    assert "web" in result.instructions
+
+
+@pytest.mark.unit
+@pytest.mark.skills
+@pytest.mark.asyncio
+async def test_hello_extended_triggers():
+    """Test that hello-extended skill matches on greeting triggers."""
+    docs = SkillDocumentationIndex()
+
+    manifest = SkillManifest(
+        name="hello-extended",
+        description="Multi-language greetings",
+        brief_description="Multi-language greetings (es, fr, de, ja, zh)",
+        triggers=SkillTriggers(
+            keywords=["hello-extended", "greet", "greeting", "bonjour", "hola"],
+            verbs=["greet", "welcome", "say"],
+            patterns=[
+                r"say .* in (?:french|spanish|german)",
+                r"greet .* in (?:es|fr|de)",
+                r"\b(?:bonjour|hola|hallo)\b",
+            ],
+        ),
+        instructions="# hello-extended\n\nMulti-language greeting functionality.",
+    )
+    docs.add_skill("hello-extended", manifest)
+
+    provider = SkillContextProvider(docs, max_skills=3)
+
+    # Test keyword matching with foreign greeting
+    messages = [MockMessage("user", "say bonjour to Alice")]
+    result = await provider.invoking(messages)
+    assert "hello-extended" in result.instructions
+
+    # Test pattern matching for "say X in Y"
+    messages = [MockMessage("user", "say hello in french")]
+    result = await provider.invoking(messages)
+    assert "hello-extended" in result.instructions
+
+    # Test pattern matching for "greet X in Y"
+    messages = [MockMessage("user", "greet Bob in spanish")]
+    result = await provider.invoking(messages)
+    assert "hello-extended" in result.instructions
+
+    # Test foreign word matching (hola)
+    messages = [MockMessage("user", "use hola for greeting")]
+    result = await provider.invoking(messages)
+    assert "hello-extended" in result.instructions

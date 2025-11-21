@@ -2,6 +2,15 @@
 name: hello-extended
 description: Multi-language greetings in 6 languages. Use for non-English greetings or multiple people.
 default_enabled: false
+brief_description: "Multi-language greetings (es, fr, de, ja, zh)"
+triggers:
+  keywords: [hello-extended, greet, greeting, hello, bonjour, hola, hallo, konnichiwa, nihao, french, spanish, german, japanese, chinese, multilingual, language]
+  verbs: [greet, welcome, say, speak]
+  patterns:
+    - "say .* in (?:french|spanish|german|japanese|chinese)"
+    - "greet .* in (?:es|fr|de|ja|zh)"
+    - "\\b(?:bonjour|hola|hallo)\\b"
+    - "translate.*greeting"
 toolsets:
   - toolsets.hello:HelloExtended
 ---
