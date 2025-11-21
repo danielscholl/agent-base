@@ -68,6 +68,10 @@ def provider(skill_docs):
     return SkillContextProvider(skill_docs, max_skills=3, max_all_skills=10)
 
 
+@pytest.mark.unit
+@pytest.mark.skills
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_minimal_breadcrumb_when_no_match(provider):
     """Test that minimal breadcrumb is injected when skills exist but don't match."""
@@ -80,6 +84,8 @@ async def test_minimal_breadcrumb_when_no_match(provider):
     assert "[3 skills available]" in result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_injects_documentation_for_matched_skills(provider):
     """Test that full documentation is injected when skills match."""
@@ -97,6 +103,8 @@ async def test_injects_documentation_for_matched_skills(provider):
     )
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_registry_only_on_user_request(provider):
     """Test that skill registry is shown when user asks about capabilities."""
@@ -112,6 +120,8 @@ async def test_registry_only_on_user_request(provider):
     assert "weather" in result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_escape_hatch_shows_all_skills_with_cap(provider):
     """Test that 'show all skills' escape hatch works with cap."""
@@ -128,6 +138,8 @@ async def test_escape_hatch_shows_all_skills_with_cap(provider):
     assert "weather" in result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_escape_hatch_truncates_when_over_cap():
     """Test that 'show all skills' is capped to prevent overflow."""
@@ -152,6 +164,8 @@ async def test_escape_hatch_truncates_when_over_cap():
     assert "Showing 10 of 15 skills" in result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_word_boundary_matching_prevents_false_positives(provider):
     """Test that word boundaries prevent false positives (e.g., 'run' vs 'runner')."""
@@ -164,6 +178,8 @@ async def test_word_boundary_matching_prevents_false_positives(provider):
     assert result.instructions == "[3 skills available]"
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_invalid_regex_handled_gracefully():
     """Test that invalid regex patterns are handled gracefully."""
@@ -187,6 +203,8 @@ async def test_invalid_regex_handled_gracefully():
     assert result.instructions == "[1 skills available]"
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_fallback_to_skill_name_when_no_triggers(provider):
     """Test that skill name works as fallback when no custom triggers defined."""
@@ -200,6 +218,8 @@ async def test_fallback_to_skill_name_when_no_triggers(provider):
     assert "weather" in result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_skill_name_as_implicit_trigger(provider):
     """Test that skill name always works as implicit trigger."""
@@ -213,6 +233,8 @@ async def test_skill_name_as_implicit_trigger(provider):
     assert "calculator" in result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_respects_max_skills_limit():
     """Test that max_skills limit is respected when multiple skills match."""
@@ -239,6 +261,8 @@ async def test_respects_max_skills_limit():
     assert skill_count <= 2
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_pattern_based_matching_with_error_handling(provider):
     """Test that pattern-based matching works correctly."""
@@ -251,6 +275,8 @@ async def test_pattern_based_matching_with_error_handling(provider):
     assert "hello-extended" in result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_verb_based_matching_with_boundaries(provider):
     """Test that verb-based triggers work with word boundaries."""
@@ -263,6 +289,8 @@ async def test_verb_based_matching_with_boundaries(provider):
     assert "calculator" in result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_keyword_matching_case_insensitive(provider):
     """Test that keyword matching is case-insensitive."""
@@ -275,6 +303,8 @@ async def test_keyword_matching_case_insensitive(provider):
     assert "hello-extended" in result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_no_injection_when_no_skills():
     """Test that nothing is injected when no skills are loaded."""
@@ -289,6 +319,8 @@ async def test_no_injection_when_no_skills():
     assert not result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_multiple_skills_matched_correctly(provider):
     """Test that multiple skills can be matched in one message."""
@@ -303,6 +335,8 @@ async def test_multiple_skills_matched_correctly(provider):
     assert "calculator" in result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_skill_without_instructions_still_discoverable():
     """Test that skills without instructions are still in registry and can match triggers."""
@@ -331,6 +365,8 @@ async def test_skill_without_instructions_still_discoverable():
     assert "api-client" in result.instructions
 
 
+@pytest.mark.unit
+@pytest.mark.skills
 @pytest.mark.asyncio
 async def test_hybrid_fallback_no_triggers_uses_registry():
     """Test that hybrid tier-1 uses registry when no skills have triggers."""

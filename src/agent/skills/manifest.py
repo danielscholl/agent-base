@@ -88,9 +88,22 @@ class SkillManifest(BaseModel):
         """Auto-generate brief description and add skill name as trigger."""
         # Auto-generate brief description if not provided
         if not self.brief_description:
-            # Take first sentence or first 80 chars of description
-            first_sentence = self.description.split(".")[0]
-            self.brief_description = first_sentence[:80]
+            # Take first sentence or first 80 chars, ensuring word boundaries
+            desc = self.description or ""
+            if "." in desc:
+                first_sentence = desc.split(".", 1)[0].strip()
+            else:
+                first_sentence = desc.strip()
+
+            if len(first_sentence) > 80:
+                # Truncate at last space before 77 chars, add "..."
+                cutoff = first_sentence[:77].rfind(" ")
+                if cutoff == -1:
+                    self.brief_description = first_sentence[:77] + "..."
+                else:
+                    self.brief_description = first_sentence[:cutoff] + "..."
+            else:
+                self.brief_description = first_sentence
 
         # Ensure triggers exists (creates new instance, not mutating default)
         if self.triggers is None:

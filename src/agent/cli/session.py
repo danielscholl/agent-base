@@ -63,8 +63,9 @@ def setup_session_logging(
 
             settings = load_config()
             log_level = settings.agent.log_level
-        except Exception:
-            # Fallback to INFO if settings can't be loaded
+        except Exception as e:
+            # Log the specific error before falling back
+            logging.getLogger(__name__).debug(f"Could not load log level from settings: {e}")
             log_level = "INFO"
 
     log_level = log_level.upper()

@@ -56,14 +56,12 @@ class SkillDocumentationIndex:
             name: Canonical skill name (normalized)
             manifest: Parsed SkillManifest with instructions and triggers
         """
-        # Convert triggers to dict format, using defaults if None
-        triggers_dict = {}
-        if manifest.triggers:
-            triggers_dict = {
-                "keywords": manifest.triggers.keywords,
-                "verbs": manifest.triggers.verbs,
-                "patterns": manifest.triggers.patterns,
-            }
+        # Convert triggers to dict format with consistent structure
+        triggers_dict = {
+            "keywords": manifest.triggers.keywords if manifest.triggers else [],
+            "verbs": manifest.triggers.verbs if manifest.triggers else [],
+            "patterns": manifest.triggers.patterns if manifest.triggers else [],
+        }
 
         self._skills[name] = SkillDocumentation(
             name=name,

@@ -93,9 +93,9 @@ class SkillContextProvider(ContextProvider):
             return Context(instructions=docs)
         elif self.skill_docs.has_skills():
             # Hybrid Tier-1 approach:
-            # - If any skill has structured triggers → minimal breadcrumb
-            # - If no skills have triggers → full registry (better discovery)
-            if self._any_skill_has_triggers():
+            # - If any skill has explicit triggers (beyond auto-added name) → minimal breadcrumb
+            # - If no skills have explicit triggers → full registry (better discovery)
+            if self._any_skill_has_explicit_triggers():
                 # Minimal breadcrumb: skill count only
                 breadcrumb = f"[{self.skill_docs.count()} skills available]"
                 logger.debug(
@@ -112,17 +112,19 @@ class SkillContextProvider(ContextProvider):
             # No skills installed - inject nothing
             return Context()
 
-    def _any_skill_has_triggers(self) -> bool:
-        """Check if any skill has structured triggers defined.
+    def _any_skill_has_explicit_triggers(self) -> bool:
+        """Check if any skill has explicit structured triggers (beyond skill name).
 
         Returns:
-            True if at least one skill has keywords, verbs, or patterns
+            True if at least one skill has more than just its name as a keyword,
+            or has verbs or patterns defined.
         """
         for skill in self.skill_docs.get_all_metadata():
             triggers = skill.get("triggers", {})
-            if triggers and (
-                triggers.get("keywords") or triggers.get("verbs") or triggers.get("patterns")
-            ):
+            keywords = triggers.get("keywords", [])
+            # The first keyword is always the skill name (auto-added by model_post_init)
+            # Explicit triggers exist if there are additional keywords, verbs, or patterns
+            if len(keywords) > 1 or triggers.get("verbs") or triggers.get("patterns"):
                 return True
         return False
 
@@ -183,8 +185,13 @@ class SkillContextProvider(ContextProvider):
             skill_name_lower = skill["name"].lower()
             triggers = skill.get("triggers", {})
 
-            # If no triggers, only match by skill name (restrictive fallback)
-            if not triggers:
+            # Check if triggers dict is effectively empty (no keywords, verbs, or patterns)
+            has_triggers = bool(
+                triggers.get("keywords") or triggers.get("verbs") or triggers.get("patterns")
+            )
+
+            # If no triggers defined, only match by skill name (restrictive fallback)
+            if not has_triggers:
                 try:
                     if re.search(rf"\b{re.escape(skill_name_lower)}\b", context):
                         matched.append(skill)
