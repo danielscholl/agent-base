@@ -144,27 +144,6 @@ Monitor your agent's performance with Telemetry:
 agent --telemetry start
 ```
 
-**Trace-Level Logging**: Capture detailed LLM request/response data with token counts for offline analysis:
-
-```bash
-# Enable trace logging (creates session-specific trace log files)
-export LOG_LEVEL=trace
-
-# Optional: Include full message content in traces
-export ENABLE_SENSITIVE_DATA=true
-
-# Run agent
-agent -p "Say hello"
-
-# View trace logs (JSON format)
-cat ~/.agent/logs/session-*-trace.log | jq .
-
-# Analyze token usage
-cat ~/.agent/logs/session-*-trace.log | jq -s 'map(select(.tokens)) | map(.tokens.total) | add'
-```
-
-Trace logs include token usage, timing, and model info. Full message content requires `ENABLE_SENSITIVE_DATA=true`.
-
 See [USAGE.md](USAGE.md) for complete examples.
 
 ## Skills
