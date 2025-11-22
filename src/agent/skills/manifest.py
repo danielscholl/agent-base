@@ -190,7 +190,7 @@ class SkillRegistryEntry(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
-    def model_dump(self, **kwargs):
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Custom serialization to handle Path and datetime objects."""
         data = super().model_dump(**kwargs)
         # Convert Path to string

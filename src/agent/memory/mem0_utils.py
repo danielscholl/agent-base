@@ -61,12 +61,13 @@ def extract_llm_config(config: AgentSettings) -> dict[str, Any]:
     if config.llm_provider == "openai":
         # Allow model override for mem0 (e.g., if project has limited model access)
         import os
-        mem0_model = os.getenv("MEM0_LLM_MODEL", config.openai_model)
+
+        openai_mem0_model = os.getenv("MEM0_LLM_MODEL", config.openai_model)
 
         return {
             "provider": "openai",
             "config": {
-                "model": mem0_model,
+                "model": openai_mem0_model,
                 "api_key": config.openai_api_key,
                 "openai_base_url": "https://api.openai.com/v1",  # Force direct OpenAI API
             },
@@ -94,22 +95,24 @@ def extract_llm_config(config: AgentSettings) -> dict[str, Any]:
             # Use OpenAI provider for better compatibility
             # Use MEM0_LLM_MODEL if set, otherwise try agent's OpenAI model if configured,
             # finally fallback to gpt-4o-mini
-            mem0_model = os.getenv("MEM0_LLM_MODEL")
-            if not mem0_model:
+            azure_mem0_model_override = os.getenv("MEM0_LLM_MODEL")
+            if azure_mem0_model_override:
+                azure_mem0_model: str = azure_mem0_model_override
+            elif config.openai_api_key:
                 # Try to use agent's OpenAI model if it's configured
-                if config.openai_api_key:
-                    mem0_model = config.openai_model
-                else:
-                    mem0_model = "gpt-4o-mini"  # Final fallback
+                azure_mem0_model = config.openai_model
+            else:
+                # Final fallback
+                azure_mem0_model = "gpt-4o-mini"
 
             logger.info(
-                f"Using OpenAI provider for mem0 LLM (model: {mem0_model}). "
+                f"Using OpenAI provider for mem0 LLM (model: {azure_mem0_model}). "
                 "Azure OpenAI will still be used for agent completions."
             )
             return {
                 "provider": "openai",
                 "config": {
-                    "model": mem0_model,
+                    "model": azure_mem0_model,
                     "api_key": openai_api_key,
                     "openai_base_url": "https://api.openai.com/v1",
                 },
@@ -177,7 +180,8 @@ def _create_embedder_config(llm_config: dict[str, Any]) -> dict[str, Any]:
     Returns:
         Dict with embedder configuration including provider-specific embedding models
     """
-    provider = llm_config["provider"]
+    provider: str = str(llm_config["provider"])
+    embedder_config: dict[str, Any]
 
     # Build embedder config with only the parameters needed for embeddings
     # Different from LLM config because embeddings don't use all the same parameters
@@ -185,6 +189,7 @@ def _create_embedder_config(llm_config: dict[str, Any]) -> dict[str, Any]:
         # Azure OpenAI embeddings in mem0 require special handling
         # Check if OpenAI API key is available for embeddings
         import os
+
         openai_api_key = os.getenv("OPENAI_API_KEY")
 
         if openai_api_key:
@@ -198,7 +203,7 @@ def _create_embedder_config(llm_config: dict[str, Any]) -> dict[str, Any]:
                 "config": {
                     "model": get_embedding_model(llm_config),
                     "api_key": openai_api_key,
-                }
+                },
             }
         else:
             # Fall back to trying Azure, but with minimal config
@@ -214,7 +219,7 @@ def _create_embedder_config(llm_config: dict[str, Any]) -> dict[str, Any]:
                 "config": {
                     "model": get_embedding_model(llm_config),
                     "api_key": llm_config["config"].get("api_key", ""),
-                }
+                },
             }
     elif provider == "openai":
         # OpenAI embeddings
@@ -223,7 +228,7 @@ def _create_embedder_config(llm_config: dict[str, Any]) -> dict[str, Any]:
             "config": {
                 "model": get_embedding_model(llm_config),
                 "api_key": llm_config["config"].get("api_key"),
-            }
+            },
         }
         # Include custom base_url if set (for GitHub Models compatibility)
         if "openai_base_url" in llm_config["config"]:
@@ -235,7 +240,7 @@ def _create_embedder_config(llm_config: dict[str, Any]) -> dict[str, Any]:
             "config": {
                 "model": get_embedding_model(llm_config),
                 "api_key": llm_config["config"].get("api_key"),
-            }
+            },
         }
     elif provider == "gemini":
         # Gemini embeddings
@@ -244,7 +249,7 @@ def _create_embedder_config(llm_config: dict[str, Any]) -> dict[str, Any]:
             "config": {
                 "model": get_embedding_model(llm_config),
                 "api_key": llm_config["config"].get("api_key"),
-            }
+            },
         }
     else:
         # Default: copy all config but override model
