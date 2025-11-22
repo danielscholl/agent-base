@@ -105,7 +105,7 @@ agent config provider openai      # Enable/configure OpenAI
 agent config memory               # Switch between in_memory and mem0
 ```
 
-See [CONFIG.md](CONFIG.md) for additional information on CI/CD, Docker, Kubernetes, and environment variable configuration.
+See [CONFIG.md](docs/design/config.md) for additional information on CI/CD, Docker, Kubernetes, and environment variable configuration.
 
 ## Usage
 

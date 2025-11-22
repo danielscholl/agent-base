@@ -200,7 +200,7 @@ agent
 
 ## See Also
 
-- [README.md](README.md) - Quick start and setup
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Development configuration
-- [architecture.md](docs/design/architecture.md) - System architecture
-- [ADR-0020](docs/decisions/0020-legacy-config-deprecation-plan.md) - Legacy config deprecation
+- [README.md](../../README.md) - Quick start and setup
+- [CONTRIBUTING.md](../../CONTRIBUTING.md) - Development configuration
+- [architecture.md](architecture.md) - System architecture
+- [ADR-0020](../decisions/0020-legacy-config-deprecation-plan.md) - Legacy config deprecation
