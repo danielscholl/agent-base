@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.3.1](https://github.com/danielscholl/agent-base/compare/agent-template-v0.3.0...agent-template-v0.3.1) (2025-11-22)
+
+
+### Features
+
+* **mem0:** enhance mem0 LLM config handling ([73e8684](https://github.com/danielscholl/agent-base/commit/73e868498865c3addd73ef43dfaf82967078c563))
+
+
+### Bug Fixes
+
+* resolve configuration and mem0 usability issues after settings.json migration ([40bfd9f](https://github.com/danielscholl/agent-base/commit/40bfd9f3f35610fac32d1665d7a9700ab199a4a2))
+
+
+### Documentation
+
+* convert bullet-heavy sections to narrative prose and tables ([5f575c4](https://github.com/danielscholl/agent-base/commit/5f575c43b0d748ec72f048ac3a546f714eff250e))
+* enhance architecture.md readability with narrative flow and tables ([45a6d07](https://github.com/danielscholl/agent-base/commit/45a6d073d1da8634e517009cee20bb8f728ae434))
+* remove trace logging section from README ([c7807ef](https://github.com/danielscholl/agent-base/commit/c7807ef5928b1d88370e7f913b7ea50790910c3e))
+* remove trace-level logging section from README ([befaa3f](https://github.com/danielscholl/agent-base/commit/befaa3fac8f2429d294b7cafa1dbf40c2331a036))
+* **skills:** add cross-references to Best Practices table ([9a64320](https://github.com/danielscholl/agent-base/commit/9a643204babe8f2c5a694c102a83c29db13ee051))
+* **skills:** convert Best Practices to table format with rationale ([35702de](https://github.com/danielscholl/agent-base/commit/35702de30dc97883a5f5f03f9b3a0ec91e1fb1d8))
+* **skills:** reformat Best Practices section using table format ([6058de8](https://github.com/danielscholl/agent-base/commit/6058de85af532562110431d1a8536aea6d6452c7))
+* update documentation post-config migration ([1387506](https://github.com/danielscholl/agent-base/commit/13875063e52e458e62eba436b96775299d09e363))
+* update legacy config migration plan and notes ([5c26ec1](https://github.com/danielscholl/agent-base/commit/5c26ec11f2405e495bc536032df0e7dd71c07ea3))
+
+
+### Code Refactoring
+
+* improve mem0 LLM model selection and typing ([9000518](https://github.com/danielscholl/agent-base/commit/900051879c6c7cb10d2f747f1ea97047f9267ea5))
+* **manifest:** use json_encoders for Path and datetime ([9b7c2c5](https://github.com/danielscholl/agent-base/commit/9b7c2c5d4d0a5beade0aad640313ef062feb5371))
+
 ## [0.3.0](https://github.com/danielscholl/agent-base/compare/agent-template-v0.2.9...agent-template-v0.3.0) (2025-11-21)
 
 
