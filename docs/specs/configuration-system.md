@@ -1,5 +1,7 @@
 # Feature: File-Based Configuration System
 
+> **Historical Note:** This specification was written for v0.2.x development. As of v0.3.0, the legacy `AgentConfig` system referenced in this spec has been removed. All examples showing `AgentConfig.from_env()` or similar methods should now use `AgentSettings` and `load_config()` from the modern configuration system. This spec is preserved for historical reference and to document the design decisions that led to the current implementation.
+
 ## Feature Description
 
 Replace the current environment variable-based configuration with a modern file-based configuration system using JSON files stored in `~/.agent/settings.json`. This new system will provide:

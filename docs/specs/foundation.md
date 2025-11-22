@@ -1,5 +1,7 @@
 # Feature: CLI Agent Tool Architecture
 
+> **Historical Note:** This foundational specification references the legacy `AgentConfig` system in examples. As of v0.3.0, the configuration system uses `AgentSettings` and `load_config()`. The architectural principles and patterns described here remain current.
+
 ## Feature Description
 
 Transform the agent-template from a chat-only CLI agent into a tool-enabled agent that follows proven architectural patterns while avoiding common implementation flaws. This MVP implementation will establish the foundation for tool support by creating a "hello world" tool that demonstrates the complete tool lifecycle, registration, invocation, error handling, and testing patterns.

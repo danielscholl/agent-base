@@ -28,7 +28,7 @@ uv run agent --check
 # Run all free tests (CI equivalent)
 uv run pytest -m "not llm" -n auto
 
-# Should complete in ~4 seconds with ~220 tests passing
+# Should complete in ~10 seconds with ~966 tests passing
 ```
 
 ### 2. Make Your Changes

@@ -1,5 +1,7 @@
 # Bug: Unfriendly Provider API Error Messages
 
+> **Historical Note:** This specification references the legacy `AgentConfig` system. As of v0.3.0, use `AgentSettings` and `load_config()` instead. The error handling patterns described here remain valid with the modern configuration system.
+
 ## Bug Description
 
 When LLM provider APIs experience errors (500 Internal Server Error, rate limiting, network issues), the agent displays cryptic error messages that don't help users distinguish between:
