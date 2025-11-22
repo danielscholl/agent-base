@@ -8,39 +8,31 @@ Agent-base uses a class-based architecture with dependency injection to avoid gl
 
 ## Design Principles
 
-1. **Testability** - All dependencies injected via constructors, enabling easy mocking without real LLM calls
-2. **Type Safety** - Type hints throughout for compile-time verification
-3. **Loose Coupling** - Event bus for component communication without direct dependencies
-4. **No Global State** - Class-based design with explicit dependency ownership
-5. **High Coverage** - 85%+ test coverage enforced, with clear separation between free and paid tests
+The architecture is guided by five core principles that ensure maintainability, reliability, and ease of testing. These principles work together to create a robust framework that can evolve without accumulating technical debt.
+
+| Principle | Description | Benefits |
+|-----------|-------------|----------|
+| **Testability** | All dependencies injected via constructors | Easy mocking without real LLM calls, fast test execution |
+| **Type Safety** | Type hints throughout the codebase | Compile-time verification, better IDE support |
+| **Loose Coupling** | Event bus for component communication | No direct dependencies between components |
+| **No Global State** | Class-based design with explicit ownership | Clear dependency chains, no initialization order issues |
+| **High Coverage** | 85%+ test coverage enforced | Confidence in changes, clear separation between free and paid tests |
 
 ## Key Patterns
 
 ### Dependency Injection
 
-**Rationale:** Enables testing without real LLM calls or external services.
+Dependencies flow through constructor parameters rather than global variables or singletons. This approach enables testing without real LLM calls or external services. All components receive their dependencies explicitly: toolsets receive `AgentConfig`, the Agent accepts an optional `chat_client` for testing, and the memory manager is injected into the Agent.
 
-All components receive dependencies through constructors. Toolsets receive `AgentConfig`, Agent accepts `chat_client` for testing, memory manager is injected into Agent.
-
-**What it enables:**
-- Test with `MockChatClient` instead of real LLM providers
-- Run full test suite without API costs
-- Multiple configurations simultaneously
-- No initialization order requirements
+This pattern provides several key benefits. Tests can use a `MockChatClient` instead of making expensive API calls to real LLM providers, allowing the full test suite to run without incurring costs. Multiple configurations can exist simultaneously without conflicts, and there are no initialization order requirements to worry about. The explicit dependency chain makes it clear what each component needs and how components interact.
 
 See ADR-0006 for detailed rationale on class-based design.
 
 ### Event-Driven Architecture
 
-**Rationale:** Middleware and display components should not know about each other.
+The framework uses an observer pattern through an event bus to decouple middleware and display components. Middleware emits events such as `TOOL_START` and `TOOL_COMPLETE`, while the display subscribes to these events and renders them. Importantly, neither component directly imports or depends on the other, maintaining clean separation of concerns.
 
-Observer pattern via event bus. Middleware emits events (`TOOL_START`, `TOOL_COMPLETE`), display subscribes and renders. Neither component imports the other.
-
-**What it enables:**
-- Test middleware without display
-- Swap display implementations
-- Add monitoring without changing middleware
-- Multiple subscribers to same events
+This loose coupling enables several powerful capabilities. Middleware can be tested independently without requiring a display component. Different display implementations can be swapped in without modifying middleware code. Monitoring and logging can be added by subscribing to events without touching existing middleware. Multiple subscribers can react to the same events simultaneously, allowing for flexible architectures.
 
 See ADR-0005 for detailed analysis of alternatives.
 
@@ -63,15 +55,9 @@ See ADR-0007 for response format specification.
 
 ### ContextProvider Pattern
 
-**Rationale:** Memory needs both request and response messages to store complete conversations.
+Memory management requires access to both request and response messages to store complete conversation turns. The Microsoft Agent Framework's ContextProvider pattern is specifically designed for this use case, providing hooks at both the `invoking` stage (before the LLM call) and the `invoked` stage (after receiving the response). Traditional middleware only sees traffic flowing in one direction, making it unsuitable for bidirectional operations like memory management.
 
-Microsoft Agent Framework's ContextProvider receives both pre-LLM messages (`invoking`) and post-LLM messages (`invoked`). Middleware only sees one direction.
-
-**Why ContextProvider instead of middleware:**
-- Receives both request AND response messages
-- Can inject context before LLM call
-- Framework's intended pattern for memory/context
-- Proven pattern from production implementations
+ContextProvider offers distinct advantages for memory operations. It receives both request and response messages in the same component, can inject relevant context before the LLM processes a request, follows the framework's intended pattern for memory and context management, and represents a proven pattern validated in production implementations.
 
 See ADR-0013 for memory architecture decisions.
 
@@ -115,35 +101,29 @@ See ADR-0013 for memory architecture decisions.
 
 ### Major Components
 
-**CLI** (`cli/`) - Interactive interface with Typer, prompt_toolkit, session management
+The framework consists of several specialized components, each with a focused responsibility:
 
-**Agent** (`agent.py`) - Core orchestration, multi-provider LLM support (6 providers), dependency injection
-
-**Toolsets** (`tools/`) - Class-based tool implementations inheriting from `AgentToolset`
-
-**Skills** (`skills/`) - Progressive disclosure system for optional capabilities, ContextProvider-based documentation injection
-
-**Providers** (`providers/`) - Custom LLM provider implementations (Gemini custom client)
-
-**Memory** (`memory/`) - ContextProvider-based conversation storage with in-memory backend
-
-**Event Bus** (`events.py`) - Observer pattern for loose coupling between middleware and display
-
-**Display** (`display/`) - Rich-based execution visualization, tree hierarchy, multiple modes
-
-**Persistence** (`persistence.py`) - Session and memory state serialization
+| Component | Location | Responsibility |
+|-----------|----------|----------------|
+| **CLI** | `cli/` | Interactive interface with Typer, prompt_toolkit, session management |
+| **Agent** | `agent.py` | Core orchestration, multi-provider LLM support (6 providers), dependency injection |
+| **Toolsets** | `tools/` | Class-based tool implementations inheriting from `AgentToolset` |
+| **Skills** | `skills/` | Progressive disclosure system for optional capabilities, ContextProvider-based documentation injection |
+| **Providers** | `providers/` | Custom LLM provider implementations (Gemini custom client) |
+| **Memory** | `memory/` | ContextProvider-based conversation storage with in-memory backend |
+| **Event Bus** | `events.py` | Observer pattern for loose coupling between middleware and display |
+| **Display** | `display/` | Rich-based execution visualization, tree hierarchy, multiple modes |
+| **Persistence** | `persistence.py` | Session and memory state serialization |
 
 See `src/agent/` for implementation details.
 
 ## Anti-Patterns Avoided
 
-**Global State** - All state managed through class instances with explicit dependencies. No module-level variables holding configuration or managers.
+The architecture deliberately avoids several common anti-patterns that can lead to maintenance problems and testing difficulties.
 
-**Runtime Initialization** - Dependencies injected at construction time, not lazily initialized with runtime checks. No `if not _manager: raise RuntimeError`.
+All state is managed through class instances with explicit dependencies rather than global state. There are no module-level variables holding configuration or managers, which ensures clear ownership and prevents hidden coupling. Dependencies are injected at construction time rather than being lazily initialized with runtime checks—there are no `if not _manager: raise RuntimeError` patterns that defer error detection.
 
-**Tight Coupling** - Event bus enables component independence. Display doesn't import middleware, middleware doesn't import display.
-
-**Direct LLM Calls in Tests** - Dependency injection allows `MockChatClient` in all tests except explicit LLM integration tests (marked with `@pytest.mark.llm`).
+The event bus enables true component independence. The display component doesn't import middleware, and middleware doesn't import display, preventing circular dependencies and making each component easier to test and modify independently. Testing is simplified through dependency injection, which allows using `MockChatClient` in all tests except explicit LLM integration tests (marked with `@pytest.mark.llm`), eliminating expensive API calls during development.
 
 See ADR-0006 for detailed examples of avoided patterns.
 
@@ -151,14 +131,16 @@ See ADR-0006 for detailed examples of avoided patterns.
 
 ### Test Organization
 
-Tests separated by type with clear cost implications:
+Tests are organized by type with clear cost implications to ensure the development workflow remains fast and affordable:
 
-- **Unit** - Isolated component tests (free, fast)
-- **Integration** - Component interaction with `MockChatClient` (free, moderate)
-- **Validation** - CLI subprocess tests (free, moderate)
-- **LLM** - Real API calls (costs money, opt-in via marker)
+| Test Type | Speed | Cost | Description |
+|-----------|-------|------|-------------|
+| **Unit** | Fast | Free | Isolated component tests with mocked dependencies |
+| **Integration** | Moderate | Free | Component interaction tests using `MockChatClient` |
+| **Validation** | Moderate | Free | CLI subprocess tests verifying end-to-end behavior |
+| **LLM** | Slow | Paid | Real API calls (opt-in via `@pytest.mark.llm` marker) |
 
-Only LLM tests make API calls. All others run in CI for free.
+Only LLM tests make actual API calls. All others run in CI for free, keeping the development feedback loop quick and cost-effective.
 
 ### Architecture Enables Testing
 
@@ -191,23 +173,20 @@ See `tests/README.md` for comprehensive testing guide.
 
 ## Configuration Architecture
 
-Multi-provider support via `AgentConfig`:
+The framework supports multiple LLM providers through a flexible configuration system built around `AgentConfig`. Configuration uses a layered approach with JSON-based settings as the foundation at `~/.agent/settings.json`, while environment variables can override any setting for deployment flexibility. Provider-specific validation runs on startup to catch configuration errors early. Memory settings control whether conversation history is enabled, which storage backend to use, and how much history to retain. All default values are centralized in `config/defaults.py` for easy maintenance.
 
-- **JSON-based configuration** - Primary config at `~/.agent/settings.json`
-- **Environment overrides** - Environment variables can override JSON settings
-- **Validation** - Provider-specific validation on startup
-- **Memory settings** - Enable/disable, type selection, history limits
-- **Centralized defaults** - All defaults in `config/defaults.py`
+Six LLM providers are currently supported, each offering different trade-offs:
 
-**Supported providers:**
-- Local (Docker Desktop models, free, offline)
-- OpenAI (direct API)
-- Anthropic (direct API)
-- Gemini (Google Gemini API or Vertex AI)
-- Azure OpenAI (Azure-hosted)
-- Azure AI Foundry (managed platform)
+| Provider | Hosting | Cost | Key Features |
+|----------|---------|------|--------------|
+| **Local** | Docker Desktop | Free | Offline operation, privacy |
+| **OpenAI** | Direct API | Paid | Latest models (GPT-4o, o1) |
+| **Anthropic** | Direct API | Paid | Long context, Claude models |
+| **Gemini** | Google Cloud | Paid | 2M token context, multimodal |
+| **Azure OpenAI** | Azure-hosted | Paid | Enterprise compliance, data residency |
+| **Azure AI Foundry** | Managed platform | Paid | Model catalog, unified deployment |
 
-Provider selection changes chat client implementation but Agent interface remains identical.
+Provider selection changes the underlying chat client implementation, but the Agent interface remains identical, allowing seamless switching between providers.
 
 See ADR-0003 for multi-provider architecture strategy.
 
@@ -215,31 +194,15 @@ See ADR-0003 for multi-provider architecture strategy.
 
 ### Design Decision
 
-Support multiple LLM providers with three implementation patterns.
+The framework supports multiple LLM providers through three distinct implementation patterns, chosen to balance developer convenience with flexibility. This approach enables users to choose providers based on cost, features, compliance requirements, or offline availability. By avoiding vendor lock-in to any single provider, the framework leverages the Microsoft Agent Framework's built-in multi-provider support while supporting both free local development and paid cloud providers. This meets diverse needs across students, enterprises, and privacy-conscious users.
 
-**Rationale:**
-- Enable user flexibility (cost, features, compliance, offline)
-- Avoid vendor lock-in to any single provider
-- Leverage Microsoft Agent Framework's multi-provider support
-- Support free local development alongside cloud providers
-- Meet diverse user needs (students, enterprises, privacy-conscious)
+Three implementation patterns handle different provider integration scenarios:
 
-**Implementation patterns:**
-
-1. **Framework clients** - OpenAI, Anthropic, Azure
-   - Use official `agent-framework-{provider}` packages
-   - Zero custom client code needed
-   - Example: `OpenAIChatClient`, `AnthropicChatClient`
-
-2. **Custom clients** - Gemini
-   - Extend `BaseChatClient` for providers without framework package
-   - Implement message conversion and API integration
-   - Example: `GeminiChatClient` using `google-genai` SDK
-
-3. **Client reuse** - Local
-   - Reuse existing framework client with different endpoint
-   - Example: `OpenAIChatClient` pointed at Docker Model Runner
-   - Works with any OpenAI-compatible API
+| Pattern | Use Case | Examples | Implementation |
+|---------|----------|----------|----------------|
+| **Framework clients** | Providers with official packages | OpenAI, Anthropic, Azure | Use `agent-framework-{provider}` packages, zero custom code |
+| **Custom clients** | Providers without framework support | Gemini | Extend `BaseChatClient`, implement message conversion |
+| **Client reuse** | OpenAI-compatible APIs | Local Docker | Reuse `OpenAIChatClient` with custom endpoint |
 
 **Provider capabilities:**
 - **Local**: Free, offline, privacy (qwen3, phi4, llama3.2 via Docker)
@@ -266,24 +229,18 @@ See ADR-0016 for Local Docker Model Runner integration.
 
 ### Design Decision
 
-Use Microsoft Agent Framework's ContextProvider pattern rather than middleware.
+Memory management uses the Microsoft Agent Framework's ContextProvider pattern rather than traditional middleware. This choice stems from memory's need to access both request and response messages: the `invoking()` hook can inject relevant context before the LLM processes a request, while the `invoked()` hook stores the complete conversation turn after receiving the response. This bidirectional access makes ContextProvider the framework's intended pattern for memory management.
 
-**Rationale:**
-- ContextProvider receives both request and response messages
-- `invoking()` can inject context before LLM call
-- `invoked()` can store complete conversation turn
-- Framework's intended pattern for memory management
+The memory system consists of four coordinated components:
 
-**Components:**
-- `MemoryManager` - Abstract interface for extensibility
-- `InMemoryStore` - Default implementation with search
-- `MemoryContextProvider` - Framework integration
-- `MemoryPersistence` - Save/load with sessions
+| Component | Responsibility |
+|-----------|----------------|
+| `MemoryManager` | Abstract interface defining memory operations for extensibility |
+| `InMemoryStore` | Default implementation providing search and retrieval |
+| `MemoryContextProvider` | Integration layer with the agent framework |
+| `MemoryPersistence` | Serialization for save/load with sessions |
 
-**Future extensibility:**
-- Swap `InMemoryStore` for external services (mem0, langchain)
-- Memory manager interface remains stable
-- Agent code unchanged
+Future extensibility is built in: the `InMemoryStore` can be swapped for external services like mem0 or langchain without changes to the Agent code, since the `MemoryManager` interface remains stable.
 
 See ADR-0013 for detailed memory architecture analysis.
 
@@ -440,56 +397,31 @@ See ADR-0019 for detailed progressive disclosure decisions and token measurement
 
 ## Session Management
 
-Sessions persist both thread state (conversation history) and memory state (long-term context).
+Sessions persist both thread state (conversation history) and memory state (long-term context) to enable resumable conversations. The architecture uses separate but coordinated persistence mechanisms: thread persistence leverages the framework's serialization for conversation history, while memory persistence uses a custom implementation to serialize the memory store. Although stored separately, both are saved and restored together as a unit. This separation positions the system for future enhancements like sharing memory across multiple conversation threads.
 
-**Design decision:** Separate but coordinated persistence.
-
-**Rationale:**
-- Thread persistence from framework (serializes conversation)
-- Memory persistence custom (serializes memory store)
-- Saved together, restored together
-- Future: share memory across threads
-
-**Implementation:**
-- `ThreadPersistence.save_thread()` - Conversation history
-- `ThreadPersistence.save_memory_state()` - Memory store
-- Both serialized to session directory
-- Metadata tracks both files
+The implementation provides two primary operations through `ThreadPersistence`: `save_thread()` serializes conversation history, while `save_memory_state()` serializes the memory store. Both are written to the session directory with metadata tracking both files to ensure they remain synchronized.
 
 ## CLI Architecture
 
-**Design decision:** Typer for commands, prompt_toolkit for interactive shell, Rich for display.
+The command-line interface combines three complementary libraries: Typer for command structure and help generation, prompt_toolkit for advanced interactive input with history and shortcuts, and Rich for formatted output without manual terminal escape codes. These libraries integrate cleanly while each handling a distinct aspect of the user experience.
 
-**Rationale:**
-- Typer provides argument parsing and help
-- prompt_toolkit enables advanced input (history, shortcuts)
-- Rich provides formatted output without manual terminal codes
-- All three integrate cleanly
-
-**Interactive commands:** Internal commands (`/clear`, `/continue`) handled before LLM
-
-**Shell commands:** Prefix `!` executes system commands without exiting
-
-**Keyboard shortcuts:** Extensible handler system via `utils/keybindings/`
+The CLI supports three types of user input. Interactive commands like `/clear` and `/continue` are handled internally before reaching the LLM. Shell commands prefixed with `!` execute system commands without exiting the agent session. Keyboard shortcuts provide quick access to common operations through an extensible handler system in `utils/keybindings/`.
 
 See ADR-0009 for CLI framework selection.
 
 ## Display Architecture
 
-**Design decision:** Event-driven updates via Rich Live display.
+The display system uses event-driven updates through Rich's Live display capabilities. Middleware components emit events without any rendering logic, while the display subscribes to these events and updates the interface. This separation allows swapping display modes without modifying middleware and enables testing middleware independently of display components.
 
-**Rationale:**
-- Middleware emits events, doesn't render
-- Display subscribes to events, updates live
-- Swap display modes without changing middleware
-- Test middleware without display
+Three display modes adapt the output to different use cases:
 
-**Display modes:**
-- Default: Completion summary with timing
-- Verbose: Full execution tree
-- Quiet: Response only
+| Mode | Content | Use Case |
+|------|---------|----------|
+| **Default** | Completion summary with timing | Balanced detail for normal use |
+| **Verbose** | Full execution tree | Debugging and understanding tool execution |
+| **Quiet** | Response only | Scripts and automation |
 
-Tree rendering uses Rich's tree structure, updated incrementally as events arrive.
+Tree rendering leverages Rich's tree structure, updating incrementally as events arrive to provide real-time feedback during execution.
 
 See ADR-0010 for display format decisions.
 
@@ -497,21 +429,9 @@ See ADR-0010 for display format decisions.
 
 ### Design Decision
 
-Optional OpenTelemetry integration for production monitoring.
+The framework includes optional OpenTelemetry integration for production monitoring, providing visibility into agent behavior and performance without impacting development workflows. This opt-in telemetry traces LLM calls, tool invocations, and execution flow using the industry-standard OpenTelemetry protocol. When disabled, there is zero performance impact, making it safe for production use. Support for both cloud exporters (Azure Application Insights) and local exporters (Aspire Dashboard) accommodates different deployment environments.
 
-**Rationale:**
-- Production visibility into agent behavior and performance
-- Trace LLM calls, tool invocations, and execution flow
-- Industry-standard telemetry (OpenTelemetry)
-- Zero impact when disabled (opt-in only)
-- Supports both cloud (Azure) and local (Aspire Dashboard) exporters
-
-**Implementation:**
-- Microsoft Agent Framework provides built-in OpenTelemetry instrumentation
-- Automatic span creation for agent operations and LLM calls
-- Export to Azure Application Insights or local Aspire Dashboard
-- Configurable via `ENABLE_OTEL` environment variable
-- Sensitive data filtering via `ENABLE_SENSITIVE_DATA` flag
+The Microsoft Agent Framework provides built-in OpenTelemetry instrumentation that automatically creates spans for agent operations and LLM calls. Configuration happens through environment variables: `ENABLE_OTEL` toggles telemetry on or off, while `ENABLE_SENSITIVE_DATA` controls whether prompt and response content is included in traces. Telemetry can export to Azure Application Insights for cloud monitoring or to the local Aspire Dashboard for development debugging.
 
 **Telemetry dashboard:**
 ```bash
@@ -525,50 +445,23 @@ export ENABLE_OTEL=true
 agent -p "test prompt"
 ```
 
-**What gets traced:**
-- Agent initialization and configuration
-- LLM API calls (request/response, tokens, latency)
-- Tool invocations and results
-- Session management operations
-- Error conditions and exceptions
-
-**Privacy controls:**
-- Prompt/response content excluded by default
-- `ENABLE_SENSITIVE_DATA=true` includes full content for debugging
-- Azure Application Insights for cloud monitoring
-- Local-only option with Aspire Dashboard
+The tracing system captures agent initialization and configuration, LLM API calls with request/response details, tokens used, and latency, tool invocations with their results, session management operations, and error conditions with exceptions. Privacy controls ensure prompt and response content is excluded by default, with `ENABLE_SENSITIVE_DATA=true` available for debugging scenarios. Organizations can choose between Azure Application Insights for cloud monitoring or the local-only Aspire Dashboard for development environments.
 
 See ADR-0014 for observability integration decisions.
 
 ## Design Decisions
 
-Detailed rationale in Architecture Decision Records:
+The architecture decisions documented in this guide represent choices made through careful analysis of trade-offs and alternatives. Each decision is captured in detail through Architecture Decision Records (ADRs) that explain the context, considered options, and rationale. These records are organized by area:
 
-**Core Architecture:**
-- [ADR-0001](../decisions/0001-module-and-package-naming-conventions.md) - Naming conventions
-- [ADR-0003](../decisions/0003-multi-provider-llm-architecture.md) - Multi-provider strategy
-- [ADR-0004](../decisions/0004-custom-exception-hierarchy-design.md) - Exception hierarchy
-- [ADR-0006](../decisions/0006-class-based-toolset-architecture.md) - Class-based toolsets
-- [ADR-0007](../decisions/0007-tool-response-format.md) - Structured responses
+| Category | ADRs | Topics Covered |
+|----------|------|----------------|
+| **Core Architecture** | 0001, 0003, 0004, 0006, 0007 | Naming conventions, multi-provider strategy, exception hierarchy, class-based toolsets, structured responses |
+| **Component Integration** | 0005, 0012, 0013, 0019 | Event bus pattern, middleware approach, memory with ContextProvider, skills progressive disclosure |
+| **User Interface** | 0009, 0010, 0011 | CLI framework choice, display format, session persistence |
+| **Operations** | 0008, 0014 | Testing strategy, observability integration |
+| **Provider Implementations** | 0015, 0016 | Gemini custom client, Local Docker integration |
 
-**Component Integration:**
-- [ADR-0005](../decisions/0005-event-bus-pattern-for-loose-coupling.md) - Event bus pattern
-- [ADR-0012](../decisions/0012-middleware-integration-strategy.md) - Middleware approach
-- [ADR-0013](../decisions/0013-memory-architecture.md) - Memory with ContextProvider
-- [ADR-0019](../decisions/0019-skill-progressive-discovery.md) - Skills progressive disclosure
-
-**User Interface:**
-- [ADR-0009](../decisions/0009-cli-framework-selection.md) - CLI framework choice
-- [ADR-0010](../decisions/0010-display-output-format.md) - Display format
-- [ADR-0011](../decisions/0011-session-management-architecture.md) - Session persistence
-
-**Operations:**
-- [ADR-0008](../decisions/0008-testing-strategy-and-coverage-targets.md) - Testing strategy
-- [ADR-0014](../decisions/0014-observability-integration.md) - Observability integration
-
-**Provider Implementations:**
-- [ADR-0015](../decisions/0015-gemini-provider-integration.md) - Gemini custom client
-- [ADR-0016](../decisions/0016-local-provider-integration.md) - Local Docker integration
+For complete details on any decision including alternatives considered and implementation guidance, see the individual ADR documents in [docs/decisions/](../decisions/).
 
 ## See Also
 
