@@ -193,7 +193,7 @@ Wire up the new loading mechanism, create comprehensive tests, and update docume
 - **Description**: Document the new feature in README and add usage examples
 - **Files to modify**:
   - `README.md` (add section on custom prompts)
-  - `USAGE.md` (add examples)
+  - `docs/design/usage.md` (add examples)
 - **Details**:
   - Add "Custom System Prompts" section to README
   - Include example prompt file

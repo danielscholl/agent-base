@@ -378,7 +378,7 @@ Introduce a `Mem0Store` implementation that integrates the mem0 Python library d
    - Memory overhead test: <50MB for 1000 memories
 
 5. **Documentation**:
-   - Add "Semantic Memory" section to `USAGE.md`:
+   - Add "Semantic Memory" section to `docs/design/usage.md`:
      - Benefits explanation
      - Setup guide for Docker Compose
      - Configuration examples (self-hosted + cloud)
@@ -863,11 +863,11 @@ Introduce a `Mem0Store` implementation that integrates the mem0 Python library d
   volumes:
     mem0_data:
   ```
-- Document in `USAGE.md` or `README.md` how to use Docker Compose as alternative
+- Document in `docs/design/usage.md` or `README.md` how to use Docker Compose as alternative
 
 ### Task 11: Update Documentation
 
-- Add section to `USAGE.md`:
+- Add section to `docs/design/usage.md`:
   - "Semantic Memory with Mem0"
   - Explain benefits of semantic search
   - Show both deployment modes (self-hosted vs cloud)
@@ -1010,7 +1010,7 @@ Introduce a `Mem0Store` implementation that integrates the mem0 Python library d
 
 8. **Documentation Complete**:
    - [ ] `.env.example` includes mem0 configuration examples
-   - [ ] `USAGE.md` explains semantic memory setup and benefits
+   - [ ] `docs/design/usage.md` explains semantic memory setup and benefits
    - [ ] Code comments explain key design decisions
    - [ ] Help text (`/memory help`) is accurate and helpful
 
@@ -1156,7 +1156,7 @@ agent -p "Say hello" --verbose
 - Filter messages before sending to mem0 API
 - Log filtered messages (redacted) for visibility
 - Phase 3: Add pattern-based filters for common secrets (API keys, tokens, passwords)
-- Document safe usage patterns in USAGE.md
+- Document safe usage patterns in docs/design/usage.md
 
 **Graceful Degradation**:
 - If mem0 fails to initialize, fallback handled at factory level (not in Mem0Store)

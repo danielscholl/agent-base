@@ -652,7 +652,7 @@ The categories and coverage areas are the critical specification; exact test nam
   - Add configuration fields for workspace root and filesystem write settings.
 - `src/agent/config/manager.py`  
   - Ensure new config fields are persisted/validated.
-- `README.md` / `USAGE.md`  
+- `README.md` / `docs/design/usage.md`  
   - Document new capabilities (high-level).
 - `docs/specs/validation-strategy.md`  
   - Optionally extend validation strategy to include filesystem behaviors.
@@ -752,7 +752,7 @@ The categories and coverage areas are the critical specification; exact test nam
 
 2. **Documentation Updates** (2-3 hours)
    - Update `README.md`: Add filesystem tools to capabilities list
-   - Update `USAGE.md`: Add examples of using filesystem tools
+   - Update `docs/design/usage.md`: Add examples of using filesystem tools
    - Create usage examples: "list project files", "search for TODO comments", "edit a file"
    - Document configuration requirements and best practices
    - Add security guidance (workspace boundaries, write permissions)

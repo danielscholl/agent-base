@@ -598,8 +598,8 @@ async def run_chat_mode(
         error_msg = str(e)
         console.print(f"[red]Configuration error:[/red] {error_msg}\n")
 
-        # If it's a "No configuration found" error, offer to run init
-        if "No configuration found" in error_msg:
+        # If it's a "No configuration found" or "No providers enabled" error, offer to run init
+        if "No configuration found" in error_msg or "No providers enabled" in error_msg:
             # Only offer interactive setup if running in a TTY
             if sys.stdin.isatty():
                 if Confirm.ask("Would you like to set up configuration now?", default=True):

@@ -68,7 +68,7 @@ Chosen option: **"Gradual Deprecation with Warnings (v1.x → v2.0)"**, because 
   )
   ```
 - Update documentation to recommend new system
-- Add migration guide to USAGE.md
+- Add migration guide to docs/design/usage.md
 
 **Phase 3: 1.2.0 - Migration Tooling**
 - Add `agent config migrate` command
@@ -236,7 +236,7 @@ This ADR documents the plan for future releases. Implementation will begin with 
 
 ## Related Changes (1.0.0)
 
-As part of 1.0.0 preparation, `.env.example` was removed from the repository in favor of comprehensive configuration documentation in `docs/design/configuration.md`. This aligns with the vision of settings.json as the primary configuration method, with environment variables documented for CI/CD use cases rather than promoted via an example file.
+As part of 1.0.0 preparation, `.env.example` was removed from the repository in favor of comprehensive configuration documentation in `docs/design/config.md`. This aligns with the vision of settings.json as the primary configuration method, with environment variables documented for CI/CD use cases rather than promoted via an example file.
 
 ---
 
@@ -310,7 +310,7 @@ See CHANGELOG v0.3.0 for complete breaking change documentation.
 **Tests:** All 966 tests passing (838 free, 30 LLM opt-in)
 **Coverage:** 86% maintained (exceeds 85% requirement)
 **Files Changed:** 48 production files, 32 test files
-**Documentation:** README, CONTRIBUTING, configuration.md all updated
+**Documentation:** README, CONTRIBUTING, config.md all updated
 
 ### Lessons Learned
 

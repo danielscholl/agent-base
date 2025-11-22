@@ -70,7 +70,7 @@ Configuration will be added to `AgentConfig` to support Gemini-specific settings
   - Add Gemini to list of supported providers
   - Update provider count in overview
 
-- **USAGE.md** (lines 60-65)
+- **docs/design/usage.md** (lines 60-65)
   - Add Gemini to provider list in `--check` command example
 
 ### New Files to Create
@@ -358,7 +358,7 @@ Configuration will be added to `AgentConfig` to support Gemini-specific settings
   - Add Gemini to supported providers list (line 37)
   - Add link to Gemini API documentation
   - Update provider count from 4 to 5
-- Edit `USAGE.md`:
+- Edit `docs/design/usage.md`:
   - Add Gemini to `--check` command example output (line 60-65)
   - Add Gemini to prerequisites section
 - Create `docs/decisions/0015-gemini-provider-integration.md`:

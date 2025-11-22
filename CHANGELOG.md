@@ -5,7 +5,7 @@
 
 ### ⚠ BREAKING CHANGES
 
-* This release marks the 1.0.0 MVP milestone with consolidated configuration architecture. Removed .env.example in favor of comprehensive configuration documentation at docs/design/configuration.md. The codebase is production-ready with 85%+ test coverage, comprehensive documentation, and clear migration paths for future releases.
+* This release marks the 1.0.0 MVP milestone with consolidated configuration architecture. Removed .env.example in favor of comprehensive configuration documentation at docs/design/config.md. The codebase is production-ready with 85%+ test coverage, comprehensive documentation, and clear migration paths for future releases.
 
 ### Features
 

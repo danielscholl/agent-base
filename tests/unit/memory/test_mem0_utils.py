@@ -82,17 +82,27 @@ class TestMem0Utils:
         assert llm_config["config"]["model"] == "claude-3-opus-20240229"
         assert llm_config["config"]["api_key"] == "sk-ant-test"
 
-    def test_extract_llm_config_azure(self):
-        """Test LLM config extraction for Azure OpenAI provider."""
+    def test_extract_llm_config_azure(self, monkeypatch):
+        """Test LLM config extraction for Azure OpenAI provider.
+
+        Azure OpenAI is not fully supported by mem0 - it requires OPENAI_API_KEY
+        to be set, otherwise it raises an error recommending to use in_memory.
+        """
         config = _create_azure_config()
 
+        # Test with OPENAI_API_KEY set - should use OpenAI provider
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test-openai")
         llm_config = extract_llm_config(config)
 
-        assert llm_config["provider"] == "azure_openai"
-        assert llm_config["config"]["model"] == "gpt-4o"
-        assert llm_config["config"]["api_key"] == "test-key"
-        assert llm_config["config"]["azure_endpoint"] == "https://test.openai.azure.com/"
-        assert llm_config["config"]["api_version"] == "2024-10-21"
+        assert llm_config["provider"] == "openai"
+        assert llm_config["config"]["model"] == "gpt-4o-mini"
+        assert llm_config["config"]["api_key"] == "sk-test-openai"
+        assert llm_config["config"]["openai_base_url"] == "https://api.openai.com/v1"
+
+        # Test without OPENAI_API_KEY - should raise ValueError
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        with pytest.raises(ValueError, match="mem0 does not fully support Azure OpenAI"):
+            extract_llm_config(config)
 
     def test_extract_llm_config_gemini(self):
         """Test LLM config extraction for Gemini provider."""

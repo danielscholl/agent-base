@@ -52,7 +52,7 @@ Execute Phase 4 of ADR-0020: Remove the legacy configuration system entirely and
 ## Related Documentation
 
 ### Requirements
-- [Configuration Design](../design/configuration.md) - Primary configuration documentation
+- [Configuration Design](../design/config.md) - Primary configuration documentation
 - [Architecture](../design/architecture.md) - System architecture overview
 
 ### Architecture Decisions
@@ -149,7 +149,7 @@ Tasks will be created during implementation phase.
 #### Documentation Files (5 files)
 - **README.md** - Remove any `.env` references, emphasize `settings.json`
 - **CONTRIBUTING.md** - Update configuration instructions
-- **docs/design/configuration.md** - Remove legacy system documentation
+- **docs/design/config.md** - Remove legacy system documentation
 - **docs/decisions/0020-legacy-config-deprecation-plan.md** - Mark as "Implemented" in status
 - **CHANGELOG.md** - Add 2.0.0 breaking change entry
 
@@ -216,7 +216,7 @@ Tasks will be created during implementation phase.
 3. **Update Documentation**
    - Update README.md configuration section
    - Update CONTRIBUTING.md development setup
-   - Update docs/design/configuration.md to remove legacy references
+   - Update docs/design/config.md to remove legacy references
    - Mark ADR-0020 as "Implemented"
    - Add CHANGELOG.md entry for 2.0.0 breaking change
 
@@ -372,7 +372,7 @@ Execute tasks in order, top to bottom. Tasks will be created in Archon during im
 
 ### Task 19: Update Configuration Design Doc
 - **Description**: Remove legacy system documentation
-- **Files to modify**: `docs/design/configuration.md`
+- **Files to modify**: `docs/design/config.md`
 - **Pattern**: Remove all references to `.env` as primary method
 - **Validation**: Documentation reflects single configuration approach
 
@@ -468,7 +468,7 @@ Execute tasks in order, top to bottom. Tasks will be created in Archon during im
 ### Migration Testing
 - **Test**: Existing deployments using only env vars continue to work
 - **Test**: Existing settings.json files continue to work
-- **Test**: All environment variables documented in configuration.md work
+- **Test**: All environment variables documented in config.md work
 
 ## Acceptance Criteria
 
@@ -494,7 +494,7 @@ Execute tasks in order, top to bottom. Tasks will be created in Archon during im
 ### Documentation
 - [ ] README.md updated to reflect single configuration approach
 - [ ] CONTRIBUTING.md updated with new patterns
-- [ ] docs/design/configuration.md cleaned of legacy references
+- [ ] docs/design/config.md cleaned of legacy references
 - [ ] ADR-0020 marked as "implemented"
 - [ ] CHANGELOG.md documents breaking change
 

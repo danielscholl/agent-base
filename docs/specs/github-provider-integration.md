@@ -57,7 +57,7 @@ This approach:
 - **tests/integration/llm/conftest.py** - Add GitHub agent fixture
 - **pyproject.toml** - Update test markers (add `requires_github`)
 - **README.md** - Add GitHub Models to provider list
-- **USAGE.md** - Add GitHub Models usage examples
+- **docs/design/usage.md** - Add GitHub Models usage examples
 - **docs/design/architecture.md** - Update provider count and matrix
 
 ### New Files
@@ -129,7 +129,7 @@ This approach:
   - Add GitHub Models to supported providers list
   - Add authentication prerequisites
   - Update provider count (6 → 7)
-- Update `USAGE.md`:
+- Update `docs/design/usage.md`:
   - Add GitHub Models usage examples
   - Document authentication methods
   - Add model selection guidance
@@ -239,7 +239,7 @@ This approach:
   - Add GitHub Models to provider list in prerequisites table
   - Add authentication requirement (`gh` CLI or GITHUB_TOKEN)
   - Update provider count (6 → 7 providers)
-- Update `USAGE.md`:
+- Update `docs/design/usage.md`:
   - Add GitHub Models setup example
   - Add usage example with `agent --provider github`
   - Document authentication methods
@@ -374,7 +374,7 @@ This approach:
 
 5. **Documentation**
    - ✅ README.md updated with GitHub Models as supported provider
-   - ✅ USAGE.md includes GitHub Models setup and usage examples
+   - ✅ docs/design/usage.md includes GitHub Models setup and usage examples
    - ✅ Architecture documentation updated (provider count, matrix)
    - ✅ ADR-0017 created documenting implementation decisions
    - ✅ Code includes clear docstrings and comments
@@ -488,7 +488,7 @@ uv run agent --provider local -p "test"    # Should work
 grep -i "github" README.md
 
 # Verify USAGE has GitHub examples
-grep -i "github" USAGE.md
+grep -i "github" docs/design/usage.md
 
 # Verify ADR exists
 ls docs/decisions/0017-github-provider-integration.md

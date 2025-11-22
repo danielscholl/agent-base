@@ -719,7 +719,7 @@ uv run pytest tests/unit/test_cli_toolbar.py --cov=agent.cli --cov-report=term-m
 
 **Files to modify**:
 - `README.md` - Add to Interactive Mode features
-- `USAGE.md` - Add sticky toolbar section
+- `docs/design/usage.md` - Add sticky toolbar section
 - `docs/decisions/0009-cli-framework-selection.md` - Note toolbar addition
 
 **Implementation details**:
@@ -740,7 +740,7 @@ uv run pytest tests/unit/test_cli_toolbar.py --cov=agent.cli --cov-report=term-m
 - **Dynamic updates**: Status reflects current operation during execution
 ```
 
-**USAGE.md Updates** (new section):
+**docs/design/usage.md Updates** (new section):
 
 ```markdown
 ## Sticky Status Bar
@@ -804,12 +804,12 @@ grep -r "bottom toolbar" docs/
 
 # Verify links work
 markdown-link-check README.md
-markdown-link-check USAGE.md
+markdown-link-check docs/design/usage.md
 ```
 
 **Success criteria**:
 - [ ] README.md updated with sticky bar feature
-- [ ] USAGE.md has comprehensive toolbar section
+- [ ] docs/design/usage.md has comprehensive toolbar section
 - [ ] ADR-0009 notes the addition
 - [ ] Examples show actual output format
 - [ ] All markdown links valid
@@ -921,7 +921,7 @@ markdown-link-check USAGE.md
 
 **Documentation:**
 - [ ] README.md updated
-- [ ] USAGE.md has toolbar section
+- [ ] docs/design/usage.md has toolbar section
 - [ ] ADR-0009 notes addition
 - [ ] Examples show correct format
 - [ ] Feature properly explained
@@ -961,7 +961,7 @@ uv run agent -p "Say hello"
 
 # Check documentation
 cat README.md | grep -A 5 "Sticky Status Bar"
-cat USAGE.md | grep -A 10 "Sticky Status Bar"
+cat docs/design/usage.md | grep -A 10 "Sticky Status Bar"
 ```
 
 ## Notes
@@ -1173,7 +1173,7 @@ manage_task(
     "create",
     project_id="58d4551a-1f86-48c9-9653-08f06a8217b0",
     title="Update documentation for sticky toolbar feature",
-    description="Update README.md, USAGE.md, and ADR-0009 to document the new sticky toolbar feature with examples and usage patterns.",
+    description="Update README.md, docs/design/usage.md, and ADR-0009 to document the new sticky toolbar feature with examples and usage patterns.",
     status="todo",
     task_order=60
 )

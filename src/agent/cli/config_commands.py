@@ -18,6 +18,7 @@ from agent.config import (
     get_config_path,
     get_default_config,
     load_config,
+    load_config_with_env,
     save_config,
     validate_config,
 )
@@ -825,8 +826,8 @@ def config_memory() -> None:
         try:
             from agent.memory.mem0_utils import SUPPORTED_PROVIDERS, is_provider_compatible
 
-            # Load current provider from settings
-            current_config = load_config()
+            # Load current provider from settings (including env vars)
+            current_config = load_config_with_env()
             is_compatible, reason = is_provider_compatible(current_config)
 
             if not is_compatible:

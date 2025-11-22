@@ -62,7 +62,7 @@ This approach minimizes code changes, reuses proven infrastructure, and aligns w
   - Add "Local (Docker Models)" to supported providers list
   - Update "Prerequisites" section to mention Docker as optional
 
-- **`USAGE.md`**
+- **`docs/design/usage.md`**
   - Add section documenting local provider setup and usage
   - Include Docker model pull command example
   - Document benefits and limitations of local provider
@@ -224,7 +224,7 @@ Complete end-to-end integration and documentation. This includes:
   - [Docker Desktop](https://www.docker.com/products/docker-desktop/) - Local model serving (ai/phi4, etc.)
   ```
 
-#### USAGE.md Updates:
+#### docs/design/usage.md Updates:
 - Add new section "Using Local Models with Docker":
   ```markdown
   ## Using Local Models with Docker
@@ -405,7 +405,7 @@ Execute all validation commands to ensure zero regressions and confirm feature w
 9. ✅ Overall test coverage remains ≥85%
 10. ✅ `.env.example` documents local provider configuration
 11. ✅ README lists local provider in supported providers
-12. ✅ USAGE.md includes local provider setup guide
+12. ✅ docs/design/usage.md includes local provider setup guide
 13. ✅ ADR-0016 documents architectural decisions
 14. ✅ Manual testing confirms end-to-end functionality with Docker models
 15. ✅ Agent works offline when using local provider

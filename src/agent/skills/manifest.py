@@ -188,13 +188,13 @@ class SkillRegistryEntry(BaseModel):
     trusted: bool = False
     installed_at: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        """Pydantic config for custom types."""
-
-        json_encoders = {
+    model_config = {
+        "arbitrary_types_allowed": True,
+        "json_encoders": {
             Path: str,
             datetime: lambda v: v.isoformat(),
-        }
+        },
+    }
 
 
 def extract_yaml_frontmatter(content: str) -> tuple[dict[str, Any], str]:

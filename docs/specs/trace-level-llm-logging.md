@@ -281,7 +281,7 @@ Tasks will be created during implementation phase using `/sdlc:implement`.
 3. **Update documentation**
    - Add usage section to README.md
    - Create ADR for trace logging design decisions
-   - Update USAGE.md with trace logging examples
+   - Update docs/design/usage.md with trace logging examples
    - Document trace log format and fields
 
 ## Step by Step Tasks
@@ -355,7 +355,7 @@ Tasks will be created during implementation phase using `/sdlc:implement`.
 - **Description**: Add usage examples and update user-facing documentation
 - **Files to modify**:
   - `README.md` (add trace logging section)
-  - `USAGE.md` (add examples)
+  - `docs/design/usage.md` (add examples)
   - `CONTRIBUTING.md` (update if needed)
 - **Archon task**: Will be created during implementation
 

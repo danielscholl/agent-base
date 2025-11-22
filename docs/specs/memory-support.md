@@ -405,7 +405,7 @@ Tasks will be created in Archon during implementation phase via `/implement`.
 - **Description**: Add memory documentation and examples
 - **Files to create/modify**:
   - `docs/design/memory-architecture.md` (new)
-  - `USAGE.md` (add memory section)
+  - `docs/design/usage.md` (add memory section)
   - `.env.example` (add memory settings)
 - **Content**:
   - Architecture overview
@@ -582,7 +582,7 @@ async def test_agent_with_memory_workflow(mock_config):
 - [ ] Memory toolset implemented (optional) - skipped, not needed
 - [x] All unit tests pass with 97% coverage for memory code
 - [x] All integration tests pass with memory workflows
-- [x] Documentation updated (USAGE.md, ADR-0013)
+- [x] Documentation updated (docs/design/usage.md, ADR-0013)
 - [x] `.env.example` updated with memory settings (enabled by default)
 - [x] No regressions in existing functionality (308 tests passing)
 - [x] Memory can be disabled via configuration

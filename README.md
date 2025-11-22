@@ -105,7 +105,7 @@ agent config provider openai      # Enable/configure OpenAI
 agent config memory               # Switch between in_memory and mem0
 ```
 
-> **Advanced:** For CI/CD, Docker, Kubernetes, and environment variable configuration, see [docs/design/configuration.md](docs/design/configuration.md).
+See [docs/design/config.md](docs/design/config.md) for complete configuration.
 
 ## Usage
 
@@ -144,7 +144,7 @@ Monitor your agent's performance with Telemetry:
 agent --telemetry start
 ```
 
-See [USAGE.md](USAGE.md) for complete examples.
+See [docs/design/usage.md](docs/design/usage.md) for complete examples.
 
 ## Skills
 

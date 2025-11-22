@@ -219,7 +219,7 @@ When adding support for a new LLM provider:
 6. **Update display name** in `get_model_display_name()`
 7. **Add test fixtures** in `tests/integration/llm/conftest.py`
 8. **Write integration tests** in `tests/integration/llm/test_{provider}_integration.py`
-9. **Update documentation** (README, USAGE.md, --check command)
+9. **Update documentation** (README, docs/design/usage.md, --check command)
 10. **Add to provider matrix** above
 
 ### Future Considerations

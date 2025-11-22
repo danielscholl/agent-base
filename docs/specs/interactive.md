@@ -1165,7 +1165,7 @@ open htmlcov/index.html
 
 **Files to modify**:
 - `README.md` - Update with Phase 3 features
-- `USAGE.md` - Add interactive mode documentation
+- `docs/design/usage.md` - Add interactive mode documentation
 - `CONTRIBUTING.md` - Update testing guidelines
 
 **Implementation details**:
@@ -1188,7 +1188,7 @@ open htmlcov/index.html
 - **Alternatives**: Direct tool modification, polling, manual logging
 - **Rationale**: Decoupled, reusable, framework-native
 
-**USAGE.md Updates**:
+**docs/design/usage.md Updates**:
 ```markdown
 ## Interactive Mode
 
@@ -1246,7 +1246,7 @@ ls docs/decisions/001*.md
 **Success criteria**:
 - [ ] All ADRs created and accepted
 - [ ] README updated with Phase 3 features
-- [ ] USAGE.md has interactive mode guide
+- [ ] docs/design/usage.md has interactive mode guide
 - [ ] Examples demonstrate all features
 - [ ] Documentation reviewed for accuracy
 
@@ -1456,7 +1456,7 @@ command_tests:
 
 **Documentation:**
 - [ ] README updated with Phase 3 features
-- [ ] USAGE.md has interactive mode guide
+- [ ] docs/design/usage.md has interactive mode guide
 - [ ] CONTRIBUTING.md updated for testing
 - [ ] ADR-0010 created (Display format)
 - [ ] ADR-0011 created (Session management)
