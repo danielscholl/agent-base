@@ -243,29 +243,16 @@ agent skill disable <name>
 
 ## Best Practices
 
-### Keep Skills Focused
+Following these best practices will help you build maintainable, secure, and efficient skills that integrate seamlessly with the agent framework.
 
-Each skill should address a single domain or capability. Avoid mixing unrelated functions in a single skill.
-
-### Minimize Context Overhead
-
-Since manifest content is loaded into the context, keep it short and written in clear natural language.
-
-### Handle Errors Gracefully
-
-Validate inputs early, return structured error responses, and let unexpected exceptions propagate so they can be fixed.
-
-### Security Considerations
-
-Validate URLs, avoid shell execution, sanitize paths, and document environment variables without embedding credentials.
-
-### Test Incrementally
-
-Use `uv run` during development for fast feedback, then test through the agent once the script behaves correctly.
-
-### Document Clearly
-
-Provide realistic usage examples and document required environment variables. Keep detailed parameter documentation in script help.
+| Practice | Guidelines | Rationale |
+|----------|-----------|-----------|
+| **Keep Skills Focused** | Each skill should address a single domain or capability. Avoid mixing unrelated functions in a single skill. | Focused skills are easier to maintain, test, and reuse. Single-responsibility design prevents bloat and improves discoverability. |
+| **Minimize Context Overhead** | Keep manifest content short and written in clear natural language. Aim for concise SKILL.md (generally under 250 tokens as noted in [Manifest Format](#manifest-format)). | Manifest content is loaded into the LLM context at startup. Concise documentation reduces token usage and improves agent response time. |
+| **Handle Errors Gracefully** | Validate inputs early, return structured error responses using the format defined in [Response Format](#response-format), and let unexpected exceptions propagate. | Early validation prevents cascading failures. Structured responses enable consistent error handling. Propagating unexpected exceptions helps identify and fix bugs. |
+| **Security Considerations** | Validate URLs before requests, avoid shell execution, sanitize file paths, and document environment variables without embedding credentials. | Input validation prevents injection attacks. Avoiding shell execution reduces attack surface. Proper path handling prevents directory traversal vulnerabilities. |
+| **Test Incrementally** | Use `uv run` during development for fast feedback, then test through the agent once the script behaves correctly. | Direct script testing accelerates development cycles. Integration testing with the agent validates end-to-end behavior after core functionality is proven. |
+| **Document Clearly** | Provide realistic usage examples in SKILL.md, document required environment variables, and keep detailed parameter documentation in script help (`--help`). | Clear examples help the agent understand when and how to use the skill. Environment variable documentation prevents configuration errors. Script help provides on-demand reference. |
 
 ## See Also
 
