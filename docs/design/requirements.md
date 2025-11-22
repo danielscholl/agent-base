@@ -281,8 +281,8 @@ class MyToolset(AgentToolset):
 
 **Example**:
 ```python
-config = AgentConfig.from_env()  # Load from environment
-config.validate()  # Provider-specific validation
+settings = load_config()  # Loads from file + env merge
+# Validation happens automatically during load
 ```
 
 **Implementation Status**: ✅ COMPLETE
