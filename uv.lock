@@ -68,6 +68,7 @@ dev = [
     { name = "ruff" },
     { name = "tiktoken" },
     { name = "types-pyyaml" },
+    { name = "types-requests" },
 ]
 mem0 = [
     { name = "chromadb" },
@@ -103,6 +104,7 @@ requires-dist = [
     { name = "tiktoken", marker = "extra == 'dev'", specifier = ">=0.5.0" },
     { name = "typer", specifier = ">=0.12.0" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12" },
+    { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.32.0" },
 ]
 provides-extras = ["mem0", "dev"]
 

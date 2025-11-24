@@ -17,7 +17,7 @@ MODEL_PULL_TIMEOUT = 1200  # 20 minutes
 try:
     import requests
 except ImportError:
-    requests = None  # type: ignore[assignment]
+    requests = None  # type: ignore[assignment, unused-ignore]
 
 
 class LocalSetup:

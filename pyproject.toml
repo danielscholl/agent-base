@@ -59,6 +59,7 @@ dev = [
     "black>=25.1.0",
     "mypy>=1.14.1",
     "types-PyYAML>=6.0.12",        # Type stubs for PyYAML
+    "types-requests>=2.32.0",      # Type stubs for requests
 
     # Context efficiency validation
     "tiktoken>=0.5.0",  # Token counting for skill overhead measurement
