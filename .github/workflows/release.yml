@@ -27,7 +27,7 @@ jobs:
       # Update uv.lock when release PR is created/updated
       - name: Checkout release PR branch
         if: ${{ steps.release.outputs.pr }}
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ fromJson(steps.release.outputs.pr).headBranchName }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -54,7 +54,7 @@ jobs:
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
