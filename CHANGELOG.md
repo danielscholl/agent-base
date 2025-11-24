@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.2](https://github.com/danielscholl/agent-base/compare/agent-template-v0.3.1...agent-template-v0.3.2) (2025-11-24)
+
+
+### Build System
+
+* **uv.lock:** add types-requests to dependency lock ([0ff7123](https://github.com/danielscholl/agent-base/commit/0ff7123b1257d45a7b2f490f8ea7a304b3f5da77))
+
+
+### Miscellaneous
+
+* **deps:** bump actions/checkout from 4 to 6 ([feb868d](https://github.com/danielscholl/agent-base/commit/feb868dc20f6ff206af69ceee1657d5e72c273e1))
+* **deps:** bump actions/checkout from 4 to 6 ([469ac27](https://github.com/danielscholl/agent-base/commit/469ac272b134d735db74a96fdd9e7a171e60df46))
+* **deps:** bump actions/setup-python from 5 to 6 ([ac2ac82](https://github.com/danielscholl/agent-base/commit/ac2ac82464135483902a5bb1bdf27a81b07afee7))
+* **deps:** bump actions/setup-python from 5 to 6 ([6f792e9](https://github.com/danielscholl/agent-base/commit/6f792e9556ec6e726f827c47dafa08dab38e275e))
+* **deps:** bump the python-dev group with 2 updates ([535afa0](https://github.com/danielscholl/agent-base/commit/535afa0950f803e255fad581dd8feec8c9b559d8))
+* **deps:** bump the python-dev group with 2 updates ([b239012](https://github.com/danielscholl/agent-base/commit/b239012b4bee27da1a2e7b65f27ba4e8b0bbe18f))
+* **deps:** bump the python-prod group with 7 updates ([9bab96c](https://github.com/danielscholl/agent-base/commit/9bab96ca96531c84ffa1316ebc848aa1b58f42e2))
+* **deps:** bump the python-prod group with 7 updates ([547ebcc](https://github.com/danielscholl/agent-base/commit/547ebcc63964c9c733c6d9fe8167bdda37bbb86e))
+
 ## [0.3.1](https://github.com/danielscholl/agent-base/compare/agent-template-v0.3.0...agent-template-v0.3.1) (2025-11-22)
 
 
